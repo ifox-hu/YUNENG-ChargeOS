@@ -1,10 +1,7 @@
 # Keep module repositories as independent Git projects; root Git stores the unified README and Pages site.
-huizhi-cloud/**
-!huizhi-cloud/
-huizhi-admin/**
-!huizhi-admin/
-huizhi-mini/**
-!huizhi-mini/
+huizhi-cloud/
+huizhi-admin/
+huizhi-mini/
 *.log
 node_modules/
 **/node_modules/
@@ -16,3 +13,4 @@ tools/
 video-frames/
 design-preview/
 design-tools/
+fault-admin-*.png
