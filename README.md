@@ -52,7 +52,7 @@ huizhi/
 先启动 Docker Desktop，再运行后端服务：
 
 ```powershell
-Set-Location D:\xiangmu\huizhi\huizhi-cloud\docker
+Set-Location .\huizhi-cloud\docker
 powershell -ExecutionPolicy Bypass -File .\start-local.ps1 -AllModules
 ```
 
@@ -73,7 +73,7 @@ powershell -ExecutionPolicy Bypass -File .\start-local.ps1 -AllModules
 ### 后端
 
 ```powershell
-Set-Location D:\xiangmu\huizhi\huizhi-cloud
+Set-Location .\huizhi-cloud
 mvn -pl hcp-modules/hcp-mp -am package -DskipTests
 Copy-Item hcp-modules\hcp-mp\target\hcp-mp.jar docker\hcp\modules\mp\jar\hcp-mp.jar -Force
 Set-Location docker
@@ -86,7 +86,7 @@ docker compose up -d hcp-mp
 ### 管理后台
 
 ```powershell
-Set-Location D:\xiangmu\huizhi\huizhi-admin
+Set-Location .\huizhi-admin
 npm ci
 npm run build:prod
 ```
@@ -96,7 +96,7 @@ npm run build:prod
 ### 微信小程序
 
 ```powershell
-Set-Location D:\xiangmu\huizhi\huizhi-mini
+Set-Location .\huizhi-mini
 npm ci
 powershell -ExecutionPolicy Bypass -File .\scripts\compile-local.ps1
 ```
@@ -104,7 +104,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\compile-local.ps1
 在微信开发者工具导入：
 
 ```text
-D:\xiangmu\huizhi\huizhi-mini\unpackage\dist\dev\mp-weixin
+huizhi-mini\unpackage\dist\dev\mp-weixin
 ```
 
 如果页面出现旧内容或事件跳转错乱，先使用“工具 → 清除缓存 → 清除文件缓存”，再重新编译。
@@ -134,9 +134,7 @@ GET  /hcp-mp/fault/mine
 小程序静态产物检查：
 
 ```powershell
-& 'C:\Users\Lenovo\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' `
-  'C:\Users\Lenovo\.codex\skills\launch-wechat-miniprogram\scripts\validate_miniprogram_artifacts.py' `
-  'D:\xiangmu\huizhi\huizhi-mini'
+python .\scripts\validate_miniprogram_artifacts.py .\huizhi-mini
 ```
 
 页面流程脚本位于 `huizhi-mini/scripts/`，覆盖登录刷新、页面跳转、报修分页、重复提交、积分/余额入口和返回键。当前已验证小程序编译产物 0 错误、0 警告，后端模块 Maven 构建通过，网关登录、余额查询、幂等充值和重复签到通过。
