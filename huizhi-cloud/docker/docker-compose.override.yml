@@ -1,0 +1,127 @@
+services:
+  hcp-mysql:
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD-SHELL, 'MYSQL_PWD="$${MYSQL_ROOT_PASSWORD}" mysqladmin ping -h 127.0.0.1 -uroot --silent']
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 20s
+  hcp-redis:
+    restart: unless-stopped
+  hcp-nginx:
+    restart: unless-stopped
+  hcp-nacos:
+    restart: unless-stopped
+    depends_on:
+      hcp-mysql:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          bash -c 'exec 3<>/dev/tcp/127.0.0.1/8848; printf "GET /nacos/v1/console/health/readiness HTTP/1.0\r\nHost: localhost\r\n\r\n" >&3; cat <&3' | grep -q OK
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 20s
+    environment:
+      JVM_XMS: 256m
+      JVM_XMX: 512m
+      JVM_XMN: 128m
+  hcp-gateway:
+    restart: unless-stopped
+    depends_on:
+      hcp-nacos:
+        condition: service_healthy
+    environment:
+      SPRING_CLOUD_NACOS_CONFIG_NAMESPACE: hcp
+      JAVA_TOOL_OPTIONS: -Xms64m -Xmx256m -XX:MaxMetaspaceSize=192m
+  hcp-auth:
+    restart: unless-stopped
+    depends_on:
+      hcp-nacos:
+        condition: service_healthy
+    environment:
+      SPRING_CLOUD_NACOS_CONFIG_NAMESPACE: hcp
+      JAVA_TOOL_OPTIONS: -Xms64m -Xmx256m -XX:MaxMetaspaceSize=192m
+  hcp-system:
+    restart: unless-stopped
+    depends_on:
+      hcp-nacos:
+        condition: service_healthy
+    environment:
+      SPRING_CLOUD_NACOS_CONFIG_NAMESPACE: hcp
+      JAVA_TOOL_OPTIONS: -Xms64m -Xmx384m -XX:MaxMetaspaceSize=256m
+  hcp-file:
+    restart: unless-stopped
+    depends_on:
+      hcp-nacos:
+        condition: service_healthy
+    environment:
+      SPRING_CLOUD_NACOS_CONFIG_NAMESPACE: hcp
+      JAVA_TOOL_OPTIONS: -Xms64m -Xmx256m -XX:MaxMetaspaceSize=192m
+  hcp-operator:
+    restart: unless-stopped
+    depends_on:
+      hcp-nacos:
+        condition: service_healthy
+    environment:
+      SPRING_CLOUD_NACOS_CONFIG_NAMESPACE: hcp
+      JAVA_TOOL_OPTIONS: -Xms64m -Xmx384m -XX:MaxMetaspaceSize=256m
+  hcp-mp:
+    restart: unless-stopped
+    depends_on:
+      hcp-nacos:
+        condition: service_healthy
+    environment:
+      SPRING_APPLICATION_JSON: '{"hcp":{"test-login":{"enabled":true},"wallet":{"local-recharge":{"enabled":true}}}}'
+      SPRING_CLOUD_NACOS_CONFIG_NAMESPACE: hcp
+      JAVA_TOOL_OPTIONS: -Xms64m -Xmx256m -XX:MaxMetaspaceSize=192m
+  hcp-simulator:
+    profiles: [simulator]
+    restart: unless-stopped
+    depends_on:
+      hcp-nacos:
+        condition: service_healthy
+    environment:
+      SPRING_CLOUD_NACOS_CONFIG_NAMESPACE: hcp
+      JAVA_TOOL_OPTIONS: -Xms64m -Xmx256m -XX:MaxMetaspaceSize=192m
+  hcp-gen:
+    profiles: [extras]
+    restart: unless-stopped
+    depends_on:
+      hcp-nacos:
+        condition: service_healthy
+    environment:
+      SPRING_CLOUD_NACOS_CONFIG_NAMESPACE: hcp
+      JAVA_TOOL_OPTIONS: -Xms64m -Xmx256m -XX:MaxMetaspaceSize=192m
+  hcp-job:
+    profiles: [extras]
+    restart: unless-stopped
+    depends_on:
+      hcp-nacos:
+        condition: service_healthy
+    environment:
+      SPRING_CLOUD_NACOS_CONFIG_NAMESPACE: hcp
+      JAVA_TOOL_OPTIONS: -Xms64m -Xmx256m -XX:MaxMetaspaceSize=192m
+  hcp-monitor:
+    profiles: [extras]
+    restart: unless-stopped
+    depends_on:
+      hcp-nacos:
+        condition: service_healthy
+    environment:
+      SPRING_CLOUD_NACOS_CONFIG_NAMESPACE: hcp
+      JAVA_TOOL_OPTIONS: -Xms64m -Xmx256m -XX:MaxMetaspaceSize=192m
+  hcp-demo:
+    profiles: [extras]
+    restart: unless-stopped
+    depends_on:
+      hcp-nacos:
+        condition: service_healthy
+    environment:
+      SPRING_CLOUD_NACOS_CONFIG_NAMESPACE: hcp
+      SPRING_CLOUD_NACOS_DISCOVERY_NAMESPACE: hcp
+      SPRING_CLOUD_NACOS_DISCOVERY_IP: 172.18.0.12
+      JAVA_TOOL_OPTIONS: -Xms64m -Xmx256m -XX:MaxMetaspaceSize=192m

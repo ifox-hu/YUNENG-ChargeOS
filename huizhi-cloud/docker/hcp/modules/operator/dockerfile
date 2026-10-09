@@ -1,0 +1,14 @@
+# 基础镜像
+FROM eclipse-temurin:8-jre-jammy
+# author
+MAINTAINER hcp
+
+# 挂载目录
+# 创建目录
+RUN mkdir -p /home/hcp
+# 指定路径
+WORKDIR /home/hcp
+# 复制jar文件到路径
+COPY ./jar/hcp-operator.jar /home/hcp/hcp-operator.jar
+# 启动系统服务
+ENTRYPOINT ["java","-jar","hcp-operator.jar"]

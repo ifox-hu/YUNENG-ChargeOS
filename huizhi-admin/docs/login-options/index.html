@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>充电桩平台 · 登录页三版设计方案</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"PingFang SC","Microsoft YaHei","Helvetica Neue",Arial,sans-serif;background:#eceff3;color:#1f2733}
+  .switcher{position:sticky;top:0;z-index:99;display:flex;gap:8px;align-items:center;padding:14px 24px;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid #e3e8ef;flex-wrap:wrap}
+  .switcher .lab{font-size:13px;color:#8a94a6;margin-right:6px}
+  .btn{padding:8px 16px;border-radius:8px;border:1px solid #d8dee8;background:#fff;font-size:13px;cursor:pointer;color:#48536b;transition:.2s}
+  .btn.on{background:#0f9d84;border-color:#0f9d84;color:#fff;box-shadow:0 6px 16px rgba(15,157,132,.28)}
+  .note{margin-left:auto;font-size:12px;color:#9aa3b2}
+  .stage{padding:26px 20px 60px}
+  .view{display:none}
+  .view.on{display:block}
+  .meta{max-width:1180px;margin:0 auto 18px;display:flex;gap:14px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap}
+  .meta h2{font-size:20px}
+  .meta p{font-size:13px;color:#7b8598;max-width:760px;line-height:1.7}
+  .tags span{display:inline-block;margin-right:8px;padding:4px 10px;border-radius:20px;background:#fff;border:1px solid #e1e7ef;font-size:12px;color:#5b6579}
+
+  .frame{max-width:1180px;margin:0 auto;border-radius:18px;overflow:hidden;box-shadow:0 24px 60px rgba(24,39,75,.14);background:#fff}
+  .wrap{display:flex;min-height:600px}
+  .pane{flex:1;display:flex;align-items:center;justify-content:center;padding:40px}
+  .card{width:100%;max-width:380px}
+  .brand{display:flex;align-items:center;gap:12px;margin-bottom:26px}
+  .mark{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;color:#fff}
+  .mark svg{width:24px;height:24px}
+  .btxt b{display:block;font-size:19px;letter-spacing:.5px}
+  .btxt i{font-style:normal;font-size:11px;letter-spacing:2px;color:#93a0b4;text-transform:uppercase}
+  .card h1{font-size:23px;margin-bottom:6px}
+  .card .sub{font-size:13px;color:#8b95a7;margin-bottom:26px}
+  .fld{margin-bottom:14px}
+  .fld label{display:block;font-size:12px;color:#6d7789;margin-bottom:6px}
+  .inp{display:flex;align-items:center;gap:10px;height:46px;padding:0 14px;border-radius:10px;border:1px solid #dfe5ee;background:#fbfcfe;transition:.2s}
+  .inp:focus-within{border-color:var(--c);box-shadow:0 0 0 3px var(--glow);background:#fff}
+  .inp svg{width:17px;height:17px;flex:none;opacity:.45}
+  .inp input{flex:1;border:0;outline:0;background:transparent;font-size:14px;color:#1f2733}
+  .cap{flex:none;width:104px;height:38px;border-radius:8px;background:linear-gradient(115deg,#5f6b80,#2f3a4d);color:#dff6ee;display:grid;place-items:center;font-size:17px;letter-spacing:5px;font-style:italic;font-family:Georgia,serif}
+  .row{display:flex;align-items:center;justify-content:space-between;margin:6px 0 22px;font-size:13px;color:#77808f}
+  .row label{display:flex;align-items:center;gap:7px;cursor:pointer}
+  .box{width:15px;height:15px;border-radius:4px;border:1px solid #cdd5e0;display:grid;place-items:center;font-size:10px;color:#fff}
+  .box.on{background:var(--c);border-color:var(--c)}
+  .go{width:100%;height:48px;border:0;border-radius:10px;background:var(--c);color:#fff;font-size:15px;letter-spacing:4px;cursor:pointer;box-shadow:var(--sh);transition:.2s}
+  .go:hover{filter:brightness(1.06);transform:translateY(-1px)}
+  .foot{margin-top:26px;font-size:12px;color:#a2abba;line-height:1.9;text-align:center}
+  .foot a{color:var(--c);text-decoration:none}
+  .left{flex:1.15;position:relative;padding:52px 46px;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden}
+  .left h2{font-size:29px;line-height:1.45;letter-spacing:.5px}
+  .left .en{font-size:12px;letter-spacing:4px;text-transform:uppercase;opacity:.55;margin-bottom:14px}
+  .left p{font-size:13px;line-height:2;opacity:.72;max-width:420px}
+  .stats{display:flex;gap:34px;margin-top:34px}
+  .stats div b{display:block;font-size:26px;letter-spacing:.5px}
+  .stats div span{font-size:12px;opacity:.6}
+
+  #v1{--c:#0f9d84;--sh:0 10px 24px rgba(15,157,132,.28);--glow:rgba(15,157,132,.14)}
+  #v1 .left{background:linear-gradient(160deg,#0d3b36 0%,#0f6b5c 55%,#12907a 100%);color:#eafff9}
+  #v1 .mark{background:linear-gradient(140deg,#16c1a3,#0e8d78)}
+  #v1 .ring{position:absolute;right:-90px;bottom:-110px;width:340px;height:340px;border-radius:50%;border:1px solid rgba(255,255,255,.14)}
+  #v1 .ring:after{content:"";position:absolute;inset:52px;border-radius:50%;border:1px dashed rgba(255,255,255,.16)}
+  #v1 .bolt{position:absolute;right:56px;top:64px;width:120px;height:120px;border-radius:26px;background:rgba(255,255,255,.08);display:grid;place-items:center}
+
+  #v2{--c:#00b578;--sh:0 12px 28px rgba(0,181,120,.3);--glow:rgba(0,181,120,.14)}
+  #v2 .wrap{min-height:640px}
+  #v2 .left{background:linear-gradient(150deg,#042f2a,#0a6b53 48%,#17c58c 100%);color:#f2fff9}
+  #v2 .left:after{content:"";position:absolute;inset:0;background:radial-gradient(120px 120px at 18% 82%,rgba(255,255,255,.10),transparent 70%),radial-gradient(180px 180px at 78% 18%,rgba(126,255,214,.18),transparent 70%);pointer-events:none}
+  #v2 .mark{background:linear-gradient(140deg,#5ff2c0,#00b578);color:#053b2f}
+  #v2 .flow{position:absolute;left:46px;right:46px;bottom:112px;display:flex;align-items:center;gap:8px}
+  #v2 .flow span{flex:1;height:3px;border-radius:3px;background:linear-gradient(90deg,rgba(255,255,255,.05),rgba(95,242,192,.7))}
+  #v2 .leaf{position:absolute;right:70px;top:70px;width:96px;height:96px;border-radius:50% 4px 50% 4px;background:linear-gradient(140deg,rgba(95,242,192,.35),rgba(95,242,192,.05));transform:rotate(18deg)}
+
+  #v3{--c:#1a73e8;--sh:0 10px 26px rgba(26,115,232,.28);--glow:rgba(26,115,232,.14)}
+  #v3 .left{background:#f2f6fd;color:#152238;padding:0;display:block}
+  #v3 .map{position:absolute;inset:0;background:linear-gradient(#e8f0fd 1px,transparent 1px) 0 0/28px 28px,linear-gradient(90deg,#e8f0fd 1px,transparent 1px) 0 0/28px 28px,radial-gradient(600px 380px at 78% 22%,#dbe9ff,transparent 70%),linear-gradient(150deg,#f7faff,#eaf1fc)}
+  #v3 .map svg{position:absolute;inset:0;width:100%;height:100%}
+  #v3 .leftIn{position:relative;padding:52px 46px;height:100%;display:flex;flex-direction:column;justify-content:space-between}
+  #v3 .panel{position:relative;background:rgba(255,255,255,.82);border:1px solid #dbe6f8;border-radius:16px;padding:18px 20px;backdrop-filter:blur(6px);max-width:330px;box-shadow:0 18px 40px rgba(30,60,120,.10)}
+  #v3 .panel h4{margin:0 0 12px;font-size:13px;color:#5a6b86;font-weight:600}
+  #v3 .kpis{display:flex;gap:10px}
+  #v3 .kpi{flex:1;background:#fff;border:1px solid #e6edf9;border-radius:12px;padding:10px 12px}
+  #v3 .kpi b{display:block;font-size:18px;color:#152238}
+  #v3 .kpi span{font-size:11px;color:#8595ae}
+  #v3 .dot{width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block;margin-right:5px;box-shadow:0 0 0 3px rgba(34,197,94,.16)}
+  #v3 .mark{background:linear-gradient(140deg,#3b8bff,#1a73e8)}
+  #v3 .left h2{color:#12203a}
+  #v3 .left .en{color:#1a73e8;opacity:.75}
+  #v3 .left p{color:#5b6b85}
+
+  @media(max-width:900px){
+    .wrap{flex-direction:column;min-height:0}
+    .left{padding:34px 26px;min-height:250px}
+    #v3 .leftIn{padding:34px 26px}
+    .left h2{font-size:23px}
+    .stats{margin-top:20px;gap:24px}
+    #v2 .flow,#v1 .bolt,#v2 .leaf{display:none}
+    .pane{padding:30px 22px 44px}
+    .frame{border-radius:14px}
+  }
+</style>
+</head>
+<body>
+
+<div class="switcher">
+  <span class="lab">登录页方案</span>
+  <button class="btn on" data-v="v1">A · 驭能智充</button>
+  <button class="btn" data-v="v2">B · 绿行充电云</button>
+  <button class="btn" data-v="v3">C · 充能云枢</button>
+  <span class="note">点击切换 · 表单仅作交互演示，不会真实提交</span>
+</div>
+
+<div class="stage">
+
+  <section class="view on" id="v1">
+    <div class="meta">
+      <div>
+        <h2>A · 驭能智充（专业运维型）</h2>
+        <div class="tags"><span>稳妥</span><span>简历安全牌</span><span>深绿 + 青绿</span><span>运营后台气质</span></div>
+      </div>
+      <p>最接近现有 B 方案配色，改动成本低、面试讲解最顺。左侧用能量环与数据说话，强调“设备运营平台”属性，适合 Java 全栈实习的稳重调性。</p>
+    </div>
+    <div class="frame"><div class="wrap">
+      <div class="left">
+        <div class="ring"></div>
+        <div class="bolt">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#eafff9" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4.5 13.5H11l-1 8.5 8.5-11.5H12l1-8.5Z"/></svg>
+        </div>
+        <div>
+          <div class="en">Yuneng Smart Charge</div>
+          <h2>让每一台充电桩<br>都稳定在线</h2>
+          <p>面向运营商与场站运维的充电桩管理平台，统一接入充电终端、站点、订单与结算数据。</p>
+          <div class="stats">
+            <div><b>7×24</b><span>设备状态监控</span></div>
+            <div><b>全链路</b><span>订单结算追溯</span></div>
+            <div><b>秒级</b><span>数据看板刷新</span></div>
+          </div>
+        </div>
+        <div style="font-size:12px;opacity:.55">数据为方案演示占位，不含真实运营指标</div>
+      </div>
+      <div class="pane"><div class="card">
+        <div class="brand">
+          <div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4.5 13.5H11l-1 8.5 8.5-11.5H12l1-8.5Z"/></svg></div>
+          <div class="btxt"><b>驭能智充</b><i>Yuneng Smart Charge</i></div>
+        </div>
+        <h1>欢迎登录</h1>
+        <div class="sub">请使用平台分配的账号进入运营后台</div>
+        <div class="fld"><label>账号</label><div class="inp"><svg viewBox="0 0 24 24" fill="none" stroke="#5b6579" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c1.4-3.6 4-5.4 7.5-5.4s6.1 1.8 7.5 5.4"/></svg><input placeholder="请输入账号" value="admin"></div></div>
+        <div class="fld"><label>密码</label><div class="inp"><svg viewBox="0 0 24 24" fill="none" stroke="#5b6579" stroke-width="1.7" stroke-linecap="round"><rect x="4.5" y="10" width="15" height="10" rx="2.5"/><path d="M8 10V7.5a4 4 0 0 1 8 0V10"/></svg><input type="password" placeholder="请输入密码" value="admin123"></div></div>
+        <div class="fld"><label>验证码</label><div class="inp"><svg viewBox="0 0 24 24" fill="none" stroke="#5b6579" stroke-width="1.7" stroke-linecap="round"><path d="M4 8c2-2 4 2 6 0s4 2 6 0 4 2 4 2M4 14c2-2 4 2 6 0s4 2 6 0 4 2 4 2"/></svg><input placeholder="请输入右侧验证码"><span class="cap">8F3K</span></div></div>
+        <div class="row"><label><span class="box on">✓</span>记住密码</label><span>忘记密码请联系管理员</span></div>
+        <button class="go">登 录</button>
+        <div class="foot">© 2026 驭能智充 · 充电桩运营管理平台<br>本页面为设计方案演示，数据均为示例</div>
+      </div></div>
+    </div></div>
+  </section>
+
+  <section class="view" id="v2">
+    <div class="meta">
+      <div>
+        <h2>B · 绿行充电云（绿色能源品牌型）</h2>
+        <div class="tags"><span>品牌感</span><span>偏 C 端友好</span><span>渐变绿青</span><span>视觉冲击强</span></div>
+      </div>
+      <p>更像面向车主的绿色出行品牌：渐变能源流线 + 轻玻璃质感 Logo，视觉记忆点最强，适合在作品集首页做首图展示，但与后台系统的稳重感略有落差。</p>
+    </div>
+    <div class="frame"><div class="wrap">
+      <div class="left">
+        <div class="leaf"></div>
+        <div>
+          <div class="en">GreenGo Charging Cloud</div>
+          <h2>绿色出行<br>从一次充电开始</h2>
+          <p>聚合站点查询、扫码充电、订单与碳积分服务，让每一次补能都更简单、更低碳。</p>
+          <div class="stats">
+            <div><b>绿</b><span>低碳出行</span></div>
+            <div><b>快</b><span>扫码即充</span></div>
+            <div><b>省</b><span>站点比价</span></div>
+          </div>
+        </div>
+        <div class="flow"><span></span><span></span><span></span><span></span><span></span></div>
+        <div style="font-size:12px;opacity:.55">视觉示意，非真实业务数据</div>
+      </div>
+      <div class="pane"><div class="card">
+        <div class="brand">
+          <div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19c-2.5-3 0-8 6.5-14C11.5 11 8 12.5 8 15.5c3 0 5 2 5 4-3.5 1.5-7 .5-8-2Z"/></svg></div>
+          <div class="btxt"><b>绿行充电云</b><i>GreenGo Charging Cloud</i></div>
+        </div>
+        <h1>欢迎回来</h1>
+        <div class="sub">登录后即可查看站点与充电订单</div>
+        <div class="fld"><label>账号</label><div class="inp"><svg viewBox="0 0 24 24" fill="none" stroke="#5b6579" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c1.4-3.6 4-5.4 7.5-5.4s6.1 1.8 7.5 5.4"/></svg><input placeholder="手机号 / 账号" value="admin"></div></div>
+        <div class="fld"><label>密码</label><div class="inp"><svg viewBox="0 0 24 24" fill="none" stroke="#5b6579" stroke-width="1.7" stroke-linecap="round"><rect x="4.5" y="10" width="15" height="10" rx="2.5"/><path d="M8 10V7.5a4 4 0 0 1 8 0V10"/></svg><input type="password" placeholder="请输入密码" value="admin123"></div></div>
+        <div class="fld"><label>验证码</label><div class="inp"><svg viewBox="0 0 24 24" fill="none" stroke="#5b6579" stroke-width="1.7" stroke-linecap="round"><path d="M4 8c2-2 4 2 6 0s4 2 6 0 4 2 4 2M4 14c2-2 4 2 6 0s4 2 6 0 4 2 4 2"/></svg><input placeholder="请输入右侧验证码"><span class="cap">L7Q2</span></div></div>
+        <div class="row"><label><span class="box on">✓</span>记住密码</label><span>未注册？<a href="#">立即注册</a></span></div>
+        <button class="go">登 录</button>
+        <div class="foot">© 2026 绿行充电云 · 绿色出行服务平台<br>本页面为设计方案演示，数据均为示例</div>
+      </div></div>
+    </div></div>
+  </section>
+
+  <section class="view" id="v3">
+    <div class="meta">
+      <div>
+        <h2>C · 充能云枢（智能调度科技型）</h2>
+        <div class="tags"><span>科技感</span><span>信息层级强</span><span>浅蓝白</span><span>技术岗偏好</span></div>
+      </div>
+      <p>用网格地图 + 设备点位 + 实时 KPI 卡片表达“智能充电中枢”，最贴合 Java 后端 / 全栈实习的技术气质，也最像真实运维大屏的产品语言。</p>
+    </div>
+    <div class="frame"><div class="wrap">
+      <div class="left">
+        <div class="map">
+          <svg>
+            <path d="M40 420 L200 300 L360 350 L520 210 L660 260" stroke="#1a73e8" stroke-width="2" fill="none" stroke-dasharray="6 6" opacity=".55"/>
+            <circle cx="40" cy="420" r="7" fill="#1a73e8"/><circle cx="200" cy="300" r="7" fill="#22c55e"/>
+            <circle cx="360" cy="350" r="7" fill="#22c55e"/><circle cx="520" cy="210" r="7" fill="#f59e0b"/>
+            <circle cx="660" cy="260" r="7" fill="#1a73e8"/>
+            <circle cx="200" cy="300" r="16" fill="none" stroke="#1a73e8" opacity=".25"/>
+            <circle cx="360" cy="350" r="16" fill="none" stroke="#22c55e" opacity=".25"/>
+          </svg>
+        </div>
+        <div class="leftIn">
+          <div>
+            <div class="en">ChargeHub Nexus</div>
+            <h2>智能充电调度中枢</h2>
+            <p>站点、终端、功率与订单一体化监控，为运营商提供可视化的充电网络运行视图。</p>
+          </div>
+          <div class="panel">
+            <h4>平台运行状态（演示占位）</h4>
+            <div class="kpis">
+              <div class="kpi"><b><span class="dot"></span>在线</b><span>终端心跳正常</span></div>
+              <div class="kpi"><b>— —</b><span>实时功率</span></div>
+              <div class="kpi"><b>— —</b><span>今日订单</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pane"><div class="card">
+        <div class="brand">
+          <div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 15l3.2-4 2.4 2.6L16.5 9"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg></div>
+          <div class="btxt"><b>充能云枢</b><i>ChargeHub Nexus</i></div>
+        </div>
+        <h1>登录控制台</h1>
+        <div class="sub">请使用管理员账号登录智能充电平台</div>
+        <div class="fld"><label>账号</label><div class="inp"><svg viewBox="0 0 24 24" fill="none" stroke="#5b6579" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c1.4-3.6 4-5.4 7.5-5.4s6.1 1.8 7.5 5.4"/></svg><input placeholder="请输入管理员账号" value="admin"></div></div>
+        <div class="fld"><label>密码</label><div class="inp"><svg viewBox="0 0 24 24" fill="none" stroke="#5b6579" stroke-width="1.7" stroke-linecap="round"><rect x="4.5" y="10" width="15" height="10" rx="2.5"/><path d="M8 10V7.5a4 4 0 0 1 8 0V10"/></svg><input type="password" placeholder="请输入密码" value="admin123"></div></div>
+        <div class="fld"><label>验证码</label><div class="inp"><svg viewBox="0 0 24 24" fill="none" stroke="#5b6579" stroke-width="1.7" stroke-linecap="round"><path d="M4 8c2-2 4 2 6 0s4 2 6 0 4 2 4 2M4 14c2-2 4 2 6 0s4 2 6 0 4 2 4 2"/></svg><input placeholder="请输入右侧验证码"><span class="cap">9D4X</span></div></div>
+        <div class="row"><label><span class="box on">✓</span>记住密码</label><span>安全审计已开启</span></div>
+        <button class="go">登 录</button>
+        <div class="foot">© 2026 充能云枢 · 智能充电运维平台<br>本页面为设计方案演示，数据均为示例</div>
+      </div></div>
+    </div></div>
+  </section>
+
+</div>
+
+<script>
+  document.querySelectorAll('.btn').forEach(function(b){
+    b.addEventListener('click', function(){
+      document.querySelectorAll('.btn').forEach(function(x){x.classList.remove('on')});
+      document.querySelectorAll('.view').forEach(function(x){x.classList.remove('on')});
+      b.classList.add('on');
+      document.getElementById(b.dataset.v).classList.add('on');
+    });
+  });
+</script>
+</body>
+</html>

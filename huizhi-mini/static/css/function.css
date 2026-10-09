@@ -1,0 +1,21 @@
+.f-db{
+	display: block;
+}
+.f-ib{
+	display: inline-block;
+}
+.f-fwb{
+	font-weight: bold;
+}
+.f-tac{
+	text-align: center;
+}
+.f-vat{
+	vertical-align: top;
+}
+.f-tar{
+	text-align: right;
+}
+.f-pr{
+	position: relative;
+}

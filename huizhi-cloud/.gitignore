@@ -1,0 +1,46 @@
+HELP.md
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**
+!**/src/test/**
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+file_basePath_IS_UNDEFINED
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+logs
+*.log
+hcp-mini/node_modules/
+hcp-mini/unpackage/
+
+# Local deployment output and data
+docker/hcp/**/jar/*.jar
+docker/mysql/data/
+docker/mysql/data8/
+docker/mysql/db/*.sql
+docker/redis/data/
+docker/nginx/html/dist/
+docker/vctgo/uploadPath/
+docker/.local/
+
