@@ -135,13 +135,19 @@ GET  /hcp-mp/fault/mine
 
 ## GitHub Pages 演示
 
-`site/index.html` 是不依赖后端的交互运营后台，可在 GitHub Pages 中发布。模拟接口支持工单查询、告警合并、分配、处理、解决和确认关闭；数据保存在浏览器 localStorage，可重置。设备与订单页面提供模拟记录展示。它不调用 Java 后端，也不会触发真实支付或设备操作。
+`site/` 由现有 `huizhi-admin` 后台源码构建，复用同一套登录页、布局、侧边菜单和业务页面；通过独立的 `.env.demo` 开关使用浏览器模拟接口。演示使用 hash 路由及相对资源路径，可部署在 GitHub Pages 的仓库子路径下。日常本地后台继续使用真实接口。
+
+模拟接口覆盖工单查询、告警合并、分配、处理、解决、确认关闭，以及站点等常规列表的查询和增改删。模拟充电桩按钮修改端口演示状态，不产生真实充电。数据保存在浏览器 localStorage，可从顶部“重置数据”恢复。未实现的特殊操作（如真实短信、云存储连接、部分导出）会明确提示，不会连接真实服务。
+
+其他系统菜单保留现有页面，部分列表提供示例记录，部分以空数据展示；不代表所有操作已完成模拟。
 
 已提供 `.github/workflows/pages.yml`。上传到自己的 GitHub 仓库后，在 Settings → Pages 中选择 GitHub Actions；推送到 master 或 main 时，工作流发布 site 目录。当前仅准备本地文件，尚未上传或生成公网地址。
 
-本地预览：在项目根目录运行 `python -m http.server 8010`，访问 `http://127.0.0.1:8010/site/`。页面使用 ES modules，需要通过 HTTP 访问。
+重新构建：`powershell -ExecutionPolicy Bypass -File scripts/build-pages.ps1`。先在同级 `huizhi-admin` 安装依赖。统一根仓库保留可直接发布的 site 构建产物；后台演示源码保存于独立的 huizhi-admin 仓库。
 
-演示自动化验收脚本：`node site/test-demo.cjs`（当前使用本机 Playwright 和 Edge，其他机器需调整依赖路径）。`site/assets` 中现有图片来自上游资源，是界面参考，不应作为当前二开版本测试截图。
+本地预览：在项目根目录运行 `python -m http.server 8010 --bind 127.0.0.1`，访问 `http://127.0.0.1:8010/site/`，不要用 file 地址直接打开。演示登录填任意非空账号密码即可，例如 `demo / Demo123456!`；只创建浏览器演示会话，无真实认证。
+
+演示自动化验收脚本：`node scripts/test-original-demo.cjs`（当前使用本机 Playwright 和 Edge，其他机器需调整依赖路径）。脚本验证原版页面路由、工单闭环和无外部服务请求；真实小程序功能截图待补充。
 
 ## 公开仓库注意事项
 
