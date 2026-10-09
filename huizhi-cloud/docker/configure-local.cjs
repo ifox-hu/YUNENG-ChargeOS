@@ -44,6 +44,9 @@ async function main() {
   const listing = JSON.parse(await request('GET', 'v1/cs/configs', {
     search: 'accurate', dataId: '', group: '', tenant: 'hcp', pageNo: 1, pageSize: 100
   }));
+  if (!listing.pageItems || !listing.pageItems.some(item => /^(application|hcp-.+)-dev\.yml$/.test(item.dataId))) {
+    throw new Error('No development configs found in Nacos namespace hcp. Check initial MySQL SQL import before starting application containers.');
+  }
   fs.mkdirSync(backup, { recursive: true });
   for (const item of listing.pageItems) {
     if (!/^(application|hcp-.+)-dev\.yml$/.test(item.dataId)) continue;
@@ -72,7 +75,7 @@ async function main() {
       }
     }
     if (config.file) {
-      config.file.domain = 'http://127.0.0.1:8001/prod-api/file';
+      config.file.domain = process.env.LOCAL_FILE_DOMAIN || 'http://127.0.0.1:8001/prod-api/file';
       config.file.path = '/home/hcp/uploadPath';
     }
     if (config.chargeServer) config.chargeServer.address = 'http://localhost:9250';

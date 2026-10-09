@@ -2,7 +2,7 @@
 
 项目仓库：[ifox-hu/YUNENG-ChargeOS](https://github.com/ifox-hu/YUNENG-ChargeOS)。
 
-在线演示：[驭能智充运营后台](https://ifox-hu.github.io/YUNENG-ChargeOS/)（首次 Pages 部署成功后可访问）。演示账号：`demo`，密码：`Demo123456!`。演示使用浏览器模拟接口，不连接后端。
+在线演示：[驭能智充运营后台](https://ifox-hu.github.io/YUNENG-ChargeOS/)。演示账号：`demo`，密码：`Demo123456!`。演示使用浏览器模拟接口，不连接后端。
 
 当前公开仓库包含统一说明、三个源码模块、静态演示产物及发布脚本。源码模块在本地仍保留独立 Git 历史，公开仓库中提供可直接浏览和修改的源文件。
 
@@ -45,11 +45,9 @@ huizhi/
 - Node.js、npm、HBuilderX 5.26、微信开发者工具
 - Git
 
-仓库中的配置使用相对路径或环境变量，不依赖维护者电脑上的 `D:\xiangmu` 路径。Docker 数据目录、构建产物和本地日志已排除在 Git 提交之外；首次运行请按下面的命令生成镜像或前端产物。
-
 ## 快速启动
 
-先启动 Docker Desktop，再运行后端服务：
+以下命令分别从仓库根目录执行。Windows 先启动 Docker Desktop，再运行后端服务；Linux 虚拟机部署见下一节。
 
 ```powershell
 Set-Location .\huizhi-cloud\docker
@@ -66,7 +64,97 @@ powershell -ExecutionPolicy Bypass -File .\start-local.ps1 -AllModules
 | Nacos | http://127.0.0.1:8848/nacos |
 | MySQL | 127.0.0.1:3307 |
 
+### Linux 虚拟机部署（Ubuntu 22.04/24.04，x86_64）
+
+建议分配 4 核 CPU、10 GB 内存、40 GB 可用磁盘。桥接网络可直接从宿主机访问虚拟机；NAT 网络需配置端口转发。Linux 内安装 Docker Engine，无需 Docker Desktop。
+
+#### 1. 安装环境
+
+参考 [Docker 官方 Ubuntu 安装说明](https://docs.docker.com/engine/install/ubuntu/)安装 Docker Engine 和 Compose 插件，确认 `docker compose version` 可用。安装构建工具：
+
+```bash
+sudo apt update
+sudo apt install -y git curl openjdk-17-jdk maven nodejs npm
+sudo systemctl enable --now docker
+sudo usermod -aG docker "$USER"
+# 注销并重新登录终端后继续，或在后续 Docker 命令前加 sudo。
+java -version
+mvn -version
+node -v
+docker compose version
+```
+
+Node.js 建议使用 18 或 20；Ubuntu 22.04 仓库可能提供较旧版本，需另行安装相应版本。现有后台是 Vue 2 / Vue CLI，编译时使用 `NODE_OPTIONS=--openssl-legacy-provider`。JDK 17 用于编译，业务容器使用仓库 Dockerfile 中的 Java 8 JRE。
+
+#### 2. 克隆并编译
+
+```bash
+git clone https://github.com/ifox-hu/YUNENG-ChargeOS.git
+cd YUNENG-ChargeOS
+bash huizhi-cloud/docker/prepare-linux.sh
+```
+
+脚本编译后端，将各模块 JAR 复制到对应 Docker 构建目录，再编译 `huizhi-admin` 并复制到 Nginx 静态目录。需要访问 Maven、npm 和 Docker 镜像仓库；源码中不包含预编译 JAR。
+
+#### 3. 首次启动
+
+```bash
+# 在仓库根目录执行；VM_IP 替换为虚拟机实际 IPv4，例如 192.168.1.100。
+export NETWORK_IP=192.168.1.100
+export LOCAL_FILE_DOMAIN="http://${NETWORK_IP}:8001/prod-api/file"
+bash huizhi-cloud/docker/start-linux.sh
+```
+
+脚本按顺序启动 MySQL、Redis、Nacos，等待健康检查，执行账户登录、故障工单、余额积分及 Nacos 兼容增量 SQL，发布容器内部数据库/Redis 地址，最后构建并启动业务模块（含 `extras` 和 `simulator`）。初次 MySQL 数据目录为空时，镜像会导入 `docker/mysql/db` 下的基础 SQL；已有数据库不会重复导入，勿删除数据目录或使用 `down -v` 来“重试”。
+
+```bash
+cd huizhi-cloud/docker
+docker compose ps
+docker compose logs --tail=100 hcp-gateway hcp-mp hcp-operator
+curl http://localhost:8001/prod-api/code
+```
+
+网关就绪后，最后一个请求应返回 `code: 200`。首次 Java 服务启动可能需要数分钟。宿主机访问 `http://虚拟机IP:8001`；Nacos 为 `http://虚拟机IP:8848/nacos`。虚拟机防火墙若已启用，按需允许宿主机访问 8001（后台）、38080（小程序 API）、39206（充电 WebSocket）；8848 仅用于管理。`hcp-*` 容器通过 Docker 网络互相通信。
+
+#### 4. 小程序连接虚拟机
+
+小程序仍在 Windows/macOS 的 HBuilderX 和微信开发者工具中编译、测试。修改 `huizhi-mini/App.vue` 的 `serverUrl` 为 `http://虚拟机IP:38080/hcp-mp/`、`wsurl` 为 `ws://虚拟机IP:39206/websocket/charge/`，使用自己的开发 AppID，重新编译后导入 `unpackage/dist/dev/mp-weixin`。开发者工具本地调试可勾选“不校验合法域名”；真机和正式发布需单独配置 HTTPS/WSS、证书及微信服务器域名。
+
+#### 5. 停止、更新与排错
+
+```bash
+# 在 huizhi-cloud/docker 下
+docker compose stop                   # 停止服务，保留数据库
+docker compose up -d                 # 再次启动核心服务
+docker compose --profile extras --profile simulator up -d  # 启动全部模块
+# 更新源码后，从仓库根目录重新执行 prepare-linux.sh 和 start-linux.sh。
+```
+
+常见问题：镜像或 Maven/npm 下载失败时检查虚拟机联网；端口冲突时检查 Compose 的 ports；后台 502 时检查 Nacos 健康状态和网关日志；数据库连接失败时检查 Nacos `hcp` 命名空间中的 datasource 是否指向 `hcp-mysql:3306/vctgo_platform`。现有开发数据、默认密码、模拟登录/充值开关仅用于本地演示，生产部署应更换凭据并关闭模拟入口。
+
+本方案按当前仓库脚本与 [慧知项目结构](https://doc.huizhidata.com/hcp-cloud/project-structure.html)、[上游 Docker 部署说明](https://doc.huizhidata.com/hcp-cloud/deploy/docker-deploy.html)整理；当前未在全新 Linux 虚拟机上执行完整部署，Linux 脚本语法与 Compose 配置检查结果见本次验证说明。
+
 本地演示账号：后台 `admin / admin123`；小程序 `demo / Demo123456!`。这些账号只适用于本地演示，不能直接用于公网环境。
+
+## 小程序界面预览
+
+以下截图来自仓库中的 **uni-app H5 构建产物**，使用本地演示账号连接本机开发接口生成，用于展示真实页面布局和交互入口；它们不是微信开发者工具模拟器截图。微信端导入 `unpackage/dist/dev/mp-weixin` 后页面结构保持一致。
+
+| 我的 | 余额 | 积分 |
+| --- | --- | --- |
+| ![我的页面](docs/screenshots/mini/profile-h5.png) | ![余额页面](docs/screenshots/mini/balance-h5.png) | ![积分页面](docs/screenshots/mini/points-h5.png) |
+
+| 账号登录 | 创建设备报修 | 我的报修 |
+| --- | --- | --- |
+| ![账号登录](docs/screenshots/mini/login-h5.png) | ![创建设备报修](docs/screenshots/mini/repair-create-h5.png) | ![我的报修](docs/screenshots/mini/repair-list-h5.png) |
+
+重新生成截图：先启动本地 API，在 HBuilderX 中将小程序运行到浏览器生成 H5 产物，并将产物目录用静态服务器提供在 `http://127.0.0.1:8421/`。安装 Playwright，确保本机有 Edge；若 Playwright 不在当前依赖目录，可用 `PLAYWRIGHT_MODULE` 指定模块位置。
+
+```powershell
+node .\scripts\capture-mini-h5.cjs
+```
+
+脚本不会创建真实支付、充电或工单，只读取演示账号已有数据。
 
 ## 编译与部署
 
@@ -131,10 +219,11 @@ GET  /hcp-mp/fault/mine
 
 ## 测试与验证
 
-小程序静态产物检查：
+小程序页面逻辑检查：
 
 ```powershell
-python .\scripts\validate_miniprogram_artifacts.py .\huizhi-mini
+node .\huizhi-mini\scripts\test-page-flows.cjs
+node .\huizhi-mini\scripts\test-repair-pages.cjs
 ```
 
 页面流程脚本位于 `huizhi-mini/scripts/`，覆盖登录刷新、页面跳转、报修分页、重复提交、积分/余额入口和返回键。当前已验证小程序编译产物 0 错误、0 警告，后端模块 Maven 构建通过，网关登录、余额查询、幂等充值和重复签到通过。
@@ -155,7 +244,7 @@ python .\scripts\validate_miniprogram_artifacts.py .\huizhi-mini
 
 本地预览：在项目根目录运行 `python -m http.server 8010 --bind 127.0.0.1`，访问 `http://127.0.0.1:8010/site/`，不要用 file 地址直接打开。演示登录填任意非空账号密码即可，例如 `demo / Demo123456!`；只创建浏览器演示会话，无真实认证。
 
-演示自动化验收脚本：`node scripts/test-original-demo.cjs`（当前使用本机 Playwright 和 Edge，其他机器需调整依赖路径）。脚本验证原版页面路由、工单闭环和无外部服务请求；真实小程序功能截图待补充。
+演示自动化验收脚本：`node scripts/test-original-demo.cjs`（当前使用本机 Playwright 和 Edge，其他机器需调整依赖路径）。脚本验证后台页面路由、工单闭环和无外部服务请求；小程序截图脚本见上方“界面预览”。
 
 ## 公开仓库注意事项
 

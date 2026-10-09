@@ -17,5 +17,5 @@ if (-not (Test-Path (Join-Path $outputPath 'app.json'))) { throw 'app.json was n
 $configPath = Join-Path $outputPath 'project.config.json'
 $config = Get-Content -Raw -LiteralPath $configPath | ConvertFrom-Json
 $config.miniprogramRoot = './'
-$config | ConvertTo-Json -Depth 30 | Set-Content -LiteralPath $configPath -Encoding utf8
+[System.IO.File]::WriteAllText($configPath, ($config | ConvertTo-Json -Depth 30), (New-Object System.Text.UTF8Encoding($false)))
 Write-Output "Open in WeChat DevTools: $outputPath"
