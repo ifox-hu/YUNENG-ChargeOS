@@ -141,7 +141,9 @@ GET  /hcp-mp/fault/mine
 
 其他系统菜单保留现有页面，部分列表提供示例记录，部分以空数据展示；不代表所有操作已完成模拟。
 
-已提供 `.github/workflows/pages.yml`。上传到自己的 GitHub 仓库后，在 Settings → Pages 中选择 GitHub Actions；推送到 master 或 main 时，工作流发布 site 目录。当前仅准备本地文件，尚未上传或生成公网地址。
+已提供 `.github/workflows/pages.yml`。源码推送到 GitHub 的 `master` 或 `main` 分支后，GitHub Actions 会自动发布 `site/` 静态演示。首次部署前，公网演示地址尚未生成；部署成功后可在仓库 Settings → Pages 或 Actions 的部署结果中查看。个人仓库的地址格式通常为 `https://<用户名>.github.io/<仓库名>/`，请以 Pages 设置中显示的地址为准。
+
+演示登录仅在浏览器中创建模拟会话，填写任意非空账号密码即可，例如 `demo / Demo123456!`。演示不连接后端，数据保存在当前浏览器；页面上的短信、微信支付、真实充电等功能不会实际调用外部服务。
 
 重新构建：`powershell -ExecutionPolicy Bypass -File scripts/build-pages.ps1`。先在同级 `huizhi-admin` 安装依赖。统一根仓库保留可直接发布的 site 构建产物；后台演示源码保存于独立的 huizhi-admin 仓库。
 
