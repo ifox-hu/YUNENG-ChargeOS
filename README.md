@@ -135,9 +135,13 @@ GET  /hcp-mp/fault/mine
 
 ## GitHub Pages 演示
 
-`site/index.html` 是不依赖后端的静态项目介绍页，可在 GitHub Pages 中发布。它用于展示项目定位、技术栈、工单闭环和小程序截图；真实接口仍需本地或部署后的后端地址。
+`site/index.html` 是不依赖后端的交互运营后台，可在 GitHub Pages 中发布。模拟接口支持工单查询、告警合并、分配、处理、解决和确认关闭；数据保存在浏览器 localStorage，可重置。设备与订单页面提供模拟记录展示。它不调用 Java 后端，也不会触发真实支付或设备操作。
 
-发布时在 GitHub 仓库设置 Pages：Source 选择 `Deploy from a branch`，Branch 选择 `main`，Folder 选择 `/site`。如果仓库不支持选择子目录，请把 `site` 内容复制到发布分支根目录。
+已提供 `.github/workflows/pages.yml`。上传到自己的 GitHub 仓库后，在 Settings → Pages 中选择 GitHub Actions；推送到 master 或 main 时，工作流发布 site 目录。当前仅准备本地文件，尚未上传或生成公网地址。
+
+本地预览：在项目根目录运行 `python -m http.server 8010`，访问 `http://127.0.0.1:8010/site/`。页面使用 ES modules，需要通过 HTTP 访问。
+
+演示自动化验收脚本：`node site/test-demo.cjs`（当前使用本机 Playwright 和 Edge，其他机器需调整依赖路径）。`site/assets` 中现有图片来自上游资源，是界面参考，不应作为当前二开版本测试截图。
 
 ## 公开仓库注意事项
 
