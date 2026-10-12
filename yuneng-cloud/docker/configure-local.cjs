@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
-const yaml = require('../../huizhi-admin/node_modules/js-yaml');
+const yaml = require('../../yuneng-admin/node_modules/js-yaml');
 
 const base = new URL(process.env.NACOS_URL || 'http://127.0.0.1:8848/nacos/');
 const backup = path.join(__dirname, '.local', 'nacos-backup', new Date().toISOString().replace(/[:.]/g, '-'));

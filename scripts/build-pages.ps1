@@ -1,7 +1,7 @@
 param([string]$NodeOptions='--openssl-legacy-provider')
 $ErrorActionPreference='Stop'
 $projectRoot=Split-Path -Parent $PSScriptRoot
-$adminPath=Join-Path $projectRoot 'huizhi-admin'
+$adminPath=Join-Path $projectRoot 'yuneng-admin'
 $demoOutput=Join-Path $projectRoot 'site'
 $env:NODE_OPTIONS=$NodeOptions
 Push-Location $adminPath

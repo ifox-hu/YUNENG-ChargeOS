@@ -22,9 +22,9 @@
 
 ```text
 huizhi/
-├─ huizhi-cloud/        Spring Cloud 后端与 Docker 编排
-├─ huizhi-admin/        Vue 2 + Element UI 运营管理后台
-├─ huizhi-mini/         uni-app Vue 3 微信小程序
+├─ yuneng-cloud/        Spring Cloud 后端与 Docker 编排
+├─ yuneng-admin/        Vue 2 + Element UI 运营管理后台
+├─ yuneng-mini/         uni-app Vue 3 微信小程序
 ├─ site/                GitHub Pages 静态演示页
 └─ README.md            项目统一说明
 ```
@@ -50,7 +50,7 @@ huizhi/
 以下命令分别从仓库根目录执行。Windows 先启动 Docker Desktop，再运行后端服务；Linux 虚拟机部署见下一节。
 
 ```powershell
-Set-Location .\huizhi-cloud\docker
+Set-Location .\yuneng-cloud\docker
 powershell -ExecutionPolicy Bypass -File .\start-local.ps1 -AllModules
 ```
 
@@ -91,10 +91,10 @@ Node.js 建议使用 18 或 20；Ubuntu 22.04 仓库可能提供较旧版本，�
 ```bash
 git clone https://github.com/ifox-hu/YUNENG-ChargeOS.git
 cd YUNENG-ChargeOS
-bash huizhi-cloud/docker/prepare-linux.sh
+bash yuneng-cloud/docker/prepare-linux.sh
 ```
 
-脚本编译后端，将各模块 JAR 复制到对应 Docker 构建目录，再编译 `huizhi-admin` 并复制到 Nginx 静态目录。需要访问 Maven、npm 和 Docker 镜像仓库；源码中不包含预编译 JAR。
+脚本编译后端，将各模块 JAR 复制到对应 Docker 构建目录，再编译 `yuneng-admin` 并复制到 Nginx 静态目录。需要访问 Maven、npm 和 Docker 镜像仓库；源码中不包含预编译 JAR。
 
 #### 3. 首次启动
 
@@ -102,13 +102,13 @@ bash huizhi-cloud/docker/prepare-linux.sh
 # 在仓库根目录执行；VM_IP 替换为虚拟机实际 IPv4，例如 192.168.1.100。
 export NETWORK_IP=192.168.1.100
 export LOCAL_FILE_DOMAIN="http://${NETWORK_IP}:8001/prod-api/file"
-bash huizhi-cloud/docker/start-linux.sh
+bash yuneng-cloud/docker/start-linux.sh
 ```
 
 脚本按顺序启动 MySQL、Redis、Nacos，等待健康检查，执行账户登录、故障工单、余额积分及 Nacos 兼容增量 SQL，发布容器内部数据库/Redis 地址，最后构建并启动业务模块（含 `extras` 和 `simulator`）。初次 MySQL 数据目录为空时，镜像会导入 `docker/mysql/db` 下的基础 SQL；已有数据库不会重复导入，勿删除数据目录或使用 `down -v` 来“重试”。
 
 ```bash
-cd huizhi-cloud/docker
+cd yuneng-cloud/docker
 docker compose ps
 docker compose logs --tail=100 hcp-gateway hcp-mp hcp-operator
 curl http://localhost:8001/prod-api/code
@@ -118,12 +118,12 @@ curl http://localhost:8001/prod-api/code
 
 #### 4. 小程序连接虚拟机
 
-小程序仍在 Windows/macOS 的 HBuilderX 和微信开发者工具中编译、测试。修改 `huizhi-mini/App.vue` 的 `serverUrl` 为 `http://虚拟机IP:38080/hcp-mp/`、`wsurl` 为 `ws://虚拟机IP:39206/websocket/charge/`，使用自己的开发 AppID，重新编译后导入 `unpackage/dist/dev/mp-weixin`。开发者工具本地调试可勾选“不校验合法域名”；真机和正式发布需单独配置 HTTPS/WSS、证书及微信服务器域名。
+小程序仍在 Windows/macOS 的 HBuilderX 和微信开发者工具中编译、测试。修改 `yuneng-mini/App.vue` 的 `serverUrl` 为 `http://虚拟机IP:38080/hcp-mp/`、`wsurl` 为 `ws://虚拟机IP:39206/websocket/charge/`，使用自己的开发 AppID，重新编译后导入 `unpackage/dist/dev/mp-weixin`。开发者工具本地调试可勾选“不校验合法域名”；真机和正式发布需单独配置 HTTPS/WSS、证书及微信服务器域名。
 
 #### 5. 停止、更新与排错
 
 ```bash
-# 在 huizhi-cloud/docker 下
+# 在 yuneng-cloud/docker 下
 docker compose stop                   # 停止服务，保留数据库
 docker compose up -d                 # 再次启动核心服务
 docker compose --profile extras --profile simulator up -d  # 启动全部模块
@@ -185,7 +185,7 @@ node .\scripts\capture-mini-h5.cjs
 ### 后端
 
 ```powershell
-Set-Location .\huizhi-cloud
+Set-Location .\yuneng-cloud
 mvn -pl hcp-modules/hcp-mp -am package -DskipTests
 Copy-Item hcp-modules\hcp-mp\target\hcp-mp.jar docker\hcp\modules\mp\jar\hcp-mp.jar -Force
 Set-Location docker
@@ -193,12 +193,12 @@ docker compose build hcp-mp
 docker compose up -d hcp-mp
 ```
 
-数据库增量脚本位于 `huizhi-cloud/docker/`，包括故障工单和余额积分表。公开仓库前请检查 SQL、Nacos 配置和日志中是否含有真实密码或令牌。
+数据库增量脚本位于 `yuneng-cloud/docker/`，包括故障工单和余额积分表。公开仓库前请检查 SQL、Nacos 配置和日志中是否含有真实密码或令牌。
 
 ### 管理后台
 
 ```powershell
-Set-Location .\huizhi-admin
+Set-Location .\yuneng-admin
 npm ci
 npm run build:prod
 ```
@@ -208,7 +208,7 @@ npm run build:prod
 ### 微信小程序
 
 ```powershell
-Set-Location .\huizhi-mini
+Set-Location .\yuneng-mini
 npm ci
 powershell -ExecutionPolicy Bypass -File .\scripts\compile-local.ps1
 ```
@@ -216,7 +216,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\compile-local.ps1
 在微信开发者工具导入：
 
 ```text
-huizhi-mini\unpackage\dist\dev\mp-weixin
+yuneng-mini\unpackage\dist\dev\mp-weixin
 ```
 
 如果页面出现旧内容或事件跳转错乱，先使用“工具 → 清除缓存 → 清除文件缓存”，再重新编译。
@@ -250,8 +250,8 @@ GET  /hcp-mp/fault/mine
 本地 Docker 回归（需部署最新 `hcp-operator`、`hcp-mp`）：
 
 ```powershell
-node .\huizhi-cloud\docker\test-settlement.cjs
-node .\huizhi-cloud\docker\test-order-identity.cjs
+node .\yuneng-cloud\docker\test-settlement.cjs
+node .\yuneng-cloud\docker\test-order-identity.cjs
 ```
 
 结算脚本创建并清理独立 TEST 订单，验证 8 个并发结算请求仅写一次完成日志、金额/时间准确、非法金额不修改订单，以及延迟回调不覆盖已结算数据；身份脚本验证未登录拒绝、伪造用户 ID 无效和非法下单参数拒绝。这是本地模拟结算，不代表真实支付或余额扣款。
@@ -263,7 +263,7 @@ node .\huizhi-cloud\docker\test-order-identity.cjs
 同端口下单用端口行锁和短事务预占订单；预占提交后才调用模拟设备，避免持锁等待跨服务调用造成死锁。启动调用异常保留待确认订单以防重复启动，暂需人工核对，不自动取消可能已经被设备接受的命令。此实现不保证跨服务原子性；MQ 积分补偿已实现，TCC 尚未实现。
 
 ```powershell
-node .\huizhi-cloud\docker\test-charge-validation.cjs
+node .\yuneng-cloud\docker\test-charge-validation.cjs
 ```
 
 该脚本创建独立 TEST 设备，验证非法参数、用户不存在、跨租户、故障/禁用端口、活动订单、未支持策略，以及模拟设备正常启动/停止和重复启动无新增订单；结束后清理测试夹具。
@@ -271,11 +271,11 @@ node .\huizhi-cloud\docker\test-charge-validation.cjs
 小程序页面逻辑检查：
 
 ```powershell
-node .\huizhi-mini\scripts\test-page-flows.cjs
-node .\huizhi-mini\scripts\test-repair-pages.cjs
+node .\yuneng-mini\scripts\test-page-flows.cjs
+node .\yuneng-mini\scripts\test-repair-pages.cjs
 ```
 
-页面流程脚本位于 `huizhi-mini/scripts/`，覆盖登录刷新、页面跳转、报修分页、重复提交、积分/余额入口和返回键。当前已验证小程序编译产物 0 错误、0 警告，后端模块 Maven 构建通过，网关登录、余额查询、幂等充值和重复签到通过。
+页面流程脚本位于 `yuneng-mini/scripts/`，覆盖登录刷新、页面跳转、报修分页、重复提交、积分/余额入口和返回键。当前已验证小程序编译产物 0 错误、0 警告，后端模块 Maven 构建通过，网关登录、余额查询、幂等充值和重复签到通过。
 
 ### 积分消息链路
 
@@ -284,7 +284,7 @@ node .\huizhi-mini\scripts\test-repair-pages.cjs
 本地启动会执行 `docker/points-mq.sql`，启动 RocketMQ NameServer/Broker 并创建 Topic。Windows 使用 `docker/start-local.ps1 -BuildImages`，Linux 虚拟机使用 `docker/start-linux.sh`。RocketMQ 数据在 `docker/rocketmq/data`，不要把该运行数据提交到 Git。完整故障恢复验收：
 
 ```powershell
-cd huizhi-cloud/docker
+cd yuneng-cloud/docker
 node test-points-mq.cjs
 node test-points-ops.cjs
 ```
@@ -311,7 +311,7 @@ MQ 的“发送成功”只代表 Broker 接收；只有事件变为 `CONSUMED` 
 
 ## GitHub Pages 演示
 
-`site/` 由现有 `huizhi-admin` 后台源码构建，复用同一套登录页、布局、侧边菜单和业务页面；通过独立的 `.env.demo` 开关使用浏览器模拟接口。演示使用 hash 路由及相对资源路径，可部署在 GitHub Pages 的仓库子路径下。日常本地后台继续使用真实接口。
+`site/` 由现有 `yuneng-admin` 后台源码构建，复用同一套登录页、布局、侧边菜单和业务页面；通过独立的 `.env.demo` 开关使用浏览器模拟接口。演示使用 hash 路由及相对资源路径，可部署在 GitHub Pages 的仓库子路径下。日常本地后台继续使用真实接口。
 
 模拟接口覆盖工单查询、告警合并、分配、处理、解决、确认关闭，以及站点等常规列表的查询和增改删。模拟充电桩按钮修改端口演示状态，不产生真实充电。数据保存在浏览器 localStorage，可从顶部“重置数据”恢复。未实现的特殊操作（如真实短信、云存储连接、部分导出）会明确提示，不会连接真实服务。
 
@@ -321,7 +321,7 @@ MQ 的“发送成功”只代表 Broker 接收；只有事件变为 `CONSUMED` 
 
 演示登录仅在浏览器中创建模拟会话，填写任意非空账号密码即可，例如 `demo / Demo123456!`。演示不连接后端，数据保存在当前浏览器；页面上的短信、微信支付、真实充电等功能不会实际调用外部服务。
 
-重新构建：`powershell -ExecutionPolicy Bypass -File scripts/build-pages.ps1`。先在同级 `huizhi-admin` 安装依赖。统一根仓库保留可直接发布的 site 构建产物；后台演示源码保存于独立的 huizhi-admin 仓库。
+重新构建：`powershell -ExecutionPolicy Bypass -File scripts/build-pages.ps1`。先在同级 `yuneng-admin` 安装依赖。统一根仓库保留可直接发布的 site 构建产物；后台演示源码保存于独立的 yuneng-admin 仓库。
 
 本地预览：在项目根目录运行 `python -m http.server 8010 --bind 127.0.0.1`，访问 `http://127.0.0.1:8010/site/`，不要用 file 地址直接打开。演示登录填任意非空账号密码即可，例如 `demo / Demo123456!`；只创建浏览器演示会话，无真实认证。
 

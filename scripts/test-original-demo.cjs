@@ -9,7 +9,7 @@ const root=path.resolve(__dirname,'../site');
   page.on('pageerror',e=>{errors.push(e.message);console.log('ERROR',e.message)});page.on('request',r=>{if(!r.url().startsWith('http://127.0.0.1:')&&!r.url().startsWith('data:'))remote.push(r.url())});
   const base='http://127.0.0.1:'+server.address().port;
   await page.goto(base+'/#/login');await page.locator('input').first().fill('demo');await page.locator('input[type="password"]').fill('Demo123456!');await page.locator('.login-form button').last().click();await page.waitForURL('**/#/index');await page.locator('.sidebar-container').waitFor();console.log('PASS login');
-  const fixtures=require('../huizhi-admin/src/demo/fixtures.json'),routes=[];
+  const fixtures=require('../yuneng-admin/src/demo/fixtures.json'),routes=[];
   function walk(items,prefix=''){for(const r of items){const p=r.path.startsWith('/')?r.path:prefix+'/'+r.path;if(r.children)walk(r.children,p);else if(!r.hidden)routes.push(p)}}walk(fixtures['/system/menu/getRouters'].data);
   async function goto(route){await page.evaluate(async p=>{const v=document.querySelector('#app').__vue__;await v.$router.push(p)},route);await page.waitForTimeout(1400);const actual=await page.evaluate(()=>document.querySelector('#app').__vue__.$route.path);assert.equal(actual,route)}
   for(const route of routes){await goto(route);const text=(await page.locator('.app-main').innerText()).slice(0,65).replace(/\s+/g,' ');console.log(route,text);
