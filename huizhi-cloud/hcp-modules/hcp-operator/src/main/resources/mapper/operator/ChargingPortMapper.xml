@@ -59,6 +59,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </where>
         ORDER BY t1.create_time DESC
     </select>
+    <select id="lockPort" resultType="com.hcp.system.api.domain.ChargingPort">
+        select * from c_charging_port where pile_id = #{pileId} and device_id = #{port} for update
+    </select>
     <select id="selectPort" resultType="com.hcp.system.api.domain.ChargingPort">
         <include refid="selectChargingPortVo"/> where pile_id = #{pileId} and device_id = #{port}
     </select>

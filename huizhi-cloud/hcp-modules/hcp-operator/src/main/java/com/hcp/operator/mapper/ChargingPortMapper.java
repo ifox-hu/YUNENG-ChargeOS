@@ -46,6 +46,8 @@ public interface ChargingPortMapper extends BaseMapperX<ChargingPort>
     @InterceptorIgnore(tenantLine = "1")
     ChargingPort selectPort(@Param("pileId") String pileId, @Param("port")String port);
     @InterceptorIgnore(tenantLine = "1")
+    ChargingPort lockPort(@Param("pileId") String pileId, @Param("port") String port);
+    @InterceptorIgnore(tenantLine = "1")
     List<PilePortVO> queryPortInfoVo(@Param("plotInfoReqVO") PlotInfoReqVO plotInfoReqVO);
 
     @InterceptorIgnore(tenantLine = "1")

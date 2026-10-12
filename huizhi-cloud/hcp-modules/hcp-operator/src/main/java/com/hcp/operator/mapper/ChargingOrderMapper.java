@@ -67,6 +67,8 @@ public interface ChargingOrderMapper extends BaseMapperX<ChargingOrder>
 
     @InterceptorIgnore(tenantLine = "1")
     ChargingOrder lockById(@Param("orderId") String orderId);
+    @InterceptorIgnore(tenantLine = "1")
+    long countActiveByPort(@Param("portId") Long portId);
 
 
     @InterceptorIgnore(tenantLine = "1")

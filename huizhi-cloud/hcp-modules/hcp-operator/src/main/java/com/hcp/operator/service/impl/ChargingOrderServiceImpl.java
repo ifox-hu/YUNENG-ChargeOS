@@ -30,10 +30,14 @@ import com.hcp.operator.domain.QueryChargePileVo;
 import com.hcp.operator.mapper.*;
 import com.hcp.operator.service.IChargingPileService;
 import com.hcp.operator.service.IChargingPortService;
+import com.hcp.operator.charging.ChargeStartContext;
+import com.hcp.operator.charging.ChargeStartValidationChain;
+import com.hcp.operator.charging.ChargingDeviceStrategies;
+import com.hcp.operator.charging.ChargeOrderReservation;
+import com.hcp.operator.charging.ChargingDeviceStrategy;
 import com.hcp.operator.utils.RandomUtil;
 import com.hcp.operator.websocket.WebSocket;
 import com.hcp.operator.websocket.bean.MessageDto;
-import com.hcp.system.api.RemoteSimulatorService;
 import com.hcp.system.api.domain.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -68,7 +72,11 @@ public class ChargingOrderServiceImpl implements IChargingOrderService
     @Autowired
     private MemberMapper memberMapper;
     @Autowired
-    private RemoteSimulatorService simulatorService;
+    private ChargeStartValidationChain chargeStartValidationChain;
+    @Autowired
+    private ChargingDeviceStrategies chargingDeviceStrategies;
+    @Autowired
+    private ChargeOrderReservation chargeOrderReservation;
 
     /**
      * 查询充电订单
@@ -203,7 +211,6 @@ public class ChargingOrderServiceImpl implements IChargingOrderService
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public ChargingOrder startChargeOrder(String pileId, String port,Long userId, BigDecimal amount,Integer hour) {
         ChargingPile chargingPile = chargingPileMapper.getById(pileId);
         Assert.notNull(chargingPile,"充电桩未录入");
@@ -212,47 +219,16 @@ public class ChargingOrderServiceImpl implements IChargingOrderService
         if (null==userId){
             userId = SecurityUtils.getUserId();
         }
-        ChargingOrder chargingOrder = new ChargingOrder();
-//        String orderId = pileId.concat(port).concat(LocalDateTimeUtil.format(LocalDateTime.now(),"yyyyMMddHHmmss")).concat(Seq.getId(new AtomicInteger(1),2));
-        String orderNumber = RandomUtil.getRandomNumber(32);
-        chargingOrder.setOrderId(orderNumber);
-
-        chargingOrder.setUserId(userId);
-        chargingOrder.setOrderNumber(orderNumber);
-        chargingOrder.setOrderState(OrderState.PLACE);
-        chargingOrder.setPileId(pileId);
-        chargingOrder.setDeviceType(4L);
-        chargingOrder.setPortId(chargingPort.getPortId());
-        chargingOrder.setStartTime(LocalDateTimeUtil.format(LocalDateTime.now(),"yyyy-MM-dd HH:mm:ss"));
-        chargingOrder.setChargeStatus(ChargeStatus.PRE_CHARGE);
-        chargingOrder.setIsFee(FeeConstant.FREE_FEE);
-        chargingOrder.setHour(String.valueOf(hour));
-        chargingOrder.setTenantId(chargingPort.getTenantId());
-        chargingOrderMapper.insertOrder(chargingOrder);
-        OrderLog orderLog = new OrderLog();
-        orderLog.setOrderNumber(orderNumber);
-        orderLog.setMainProcess(1L);
-        orderLog.setBriefInfo("客户下单");
-        orderLog.setLogContent("用户下单");
-        orderLog.setTenantId(chargingPort.getTenantId());
-        orderLog.setCreateTime(new Date());
-        orderLogMapper.insertOrderLog(orderLog);
-        // 本地模拟模式自动启动桩，避免订单先落库后因模拟桩未启动而卡在进行中。
-        R<String> bootResult = simulatorService.start(pileId);
-        if (bootResult == null || (bootResult.getCode() != 200 && !String.valueOf(bootResult.getMsg()).contains("已启动"))) {
-            throw new IllegalStateException("模拟桩未启动:" + (bootResult == null ? "服务无响应" : bootResult.getMsg()));
-        }
-        // 模拟器要求先插枪，再启动充电；否则第一次启动只会停留在启动中状态。
-        R<String> linkResult = simulatorService.link(pileId, port);
-        if (linkResult == null || linkResult.getCode() != 200) {
-            throw new IllegalStateException("模拟插枪失败:" + (linkResult == null ? "服务无响应" : linkResult.getMsg()));
-        }
-        //启动模拟器充电
-        chargingOrder.setDeviceId(port);
-        R<String> stringR = simulatorService.startCharge(chargingOrder);
-        log.info("模拟器启动结果:{}", JSONObject.toJSONString(stringR));
-        if (stringR == null || stringR.getCode() != 200) {
-            throw new IllegalStateException("模拟充电启动失败:" + (stringR == null ? "服务无响应" : stringR.getMsg()));
+        chargeStartValidationChain.validate(new ChargeStartContext(chargingPile, chargingPort, userId, amount, hour));
+        ChargingDeviceStrategy strategy = chargingDeviceStrategies.require(chargingPile.getDeviceType());
+        strategy.prepare(pileId);
+        ChargingOrder chargingOrder = chargeOrderReservation.reserve(pileId, port, userId, amount, hour);
+        try {
+            strategy.start(chargingOrder);
+        } catch (RuntimeException failure) {
+            // An RPC error can mean the device accepted the command but the response was lost.
+            chargeOrderReservation.markUncertain(chargingOrder.getOrderId());
+            throw new com.hcp.common.core.exception.ServiceException("设备启动结果待确认，请查看订单，勿重复下单");
         }
         return chargingOrder;
     }
@@ -272,8 +248,9 @@ public class ChargingOrderServiceImpl implements IChargingOrderService
         orderLog.setTenantId(chargingPort.getTenantId());
         orderLog.setCreateTime(new Date());
         orderLogMapper.insertOrderLog(orderLog);
-        R<String> stringR = simulatorService.stopCharge(pileId, port);
-        log.info("模拟器停止充电结果:{}", JSONObject.toJSONString(stringR));
+        ChargingPile pile = chargingPileMapper.getById(pileId);
+        Assert.notNull(pile, "充电桩信息为空");
+        chargingDeviceStrategies.require(pile.getDeviceType()).stop(pileId, port);
     }
 
     @Override
