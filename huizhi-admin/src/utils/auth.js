@@ -1,10 +1,11 @@
 import Cookies from 'js-cookie'
 
-const TokenKey = 'Admin-Token'
+const prefix = process.env.VUE_APP_DEMO === 'true' ? 'Demo-' : 'Admin-'
+const TokenKey = prefix + 'Token'
 
-const ExpiresInKey = 'Admin-Expires-In'
+const ExpiresInKey = prefix + 'Expires-In'
 
-const TenantKey = 'Admin-Tenant'
+const TenantKey = prefix + 'Tenant'
 
 export function getTenant() {
   return Cookies.get(TenantKey)
@@ -18,7 +19,15 @@ export function removeTenant() {
   return Cookies.remove(TenantKey)
 }
 export function getToken() {
-  return Cookies.get(TokenKey)
+  const token = Cookies.get(TokenKey)
+  // Format check only; signature and session validity remain server responsibilities.
+  if (token && process.env.VUE_APP_DEMO !== 'true' && !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token)) {
+    removeToken()
+    removeTenant()
+    removeExpiresIn()
+    return undefined
+  }
+  return token
 }
 
 export function setToken(token) {

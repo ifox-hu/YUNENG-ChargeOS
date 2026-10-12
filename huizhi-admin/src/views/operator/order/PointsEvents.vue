@@ -1,5 +1,5 @@
 <template>
-  <div v-if="Number($store.state.user.id) === 1" class="points-events">
+  <div v-if="!demoMode && Number($store.state.user.id) === 1" class="points-events">
     <el-button size="small" icon="el-icon-refresh" @click="open">积分发放监控</el-button>
     <el-dialog title="积分事件与补偿" :visible.sync="visible" width="90%" append-to-body>
       <div class="toolbar">
@@ -38,7 +38,7 @@ import request from '@/utils/request'
 export default {
   name: 'PointsEvents',
   data() {
-    return { visible: false, loading: false, retrying: false, rows: [], counts: [], page: 1, status: '',
+    return { demoMode: process.env.VUE_APP_DEMO === 'true', visible: false, loading: false, retrying: false, rows: [], counts: [], page: 1, status: '',
       labels: { PENDING: '待投递', PUBLISHING: '投递中', SENT: '等待到账', RETRY: '待重试', CONSUMED: '已到账', DEAD: '失败终止' } }
   },
   methods: {

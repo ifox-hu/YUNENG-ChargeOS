@@ -1,5 +1,5 @@
 import { login, logout, getInfo, refreshToken } from '@/api/login'
-import { getToken, setToken, setExpiresIn, removeToken,getTenant,setTenant,removeTenant } from '@/utils/auth'
+import { getToken, setToken, setExpiresIn, removeToken, removeExpiresIn,getTenant,setTenant,removeTenant } from '@/utils/auth'
 
 
 const user = {
@@ -99,28 +99,25 @@ const user = {
     },
 
     // 退出系统
-    LogOut({ commit, state }) {
-      return new Promise((resolve, reject) => {
-        logout(state.token).then(() => {
-          commit('SET_TOKEN', '')
-          commit('SET_ROLES', [])
-          commit('SET_PERMISSIONS', [])
-          commit('SET_TENANT_ID', '')
-          removeToken()
-          removeTenant()
-          resolve()
-        }).catch(error => {
-          reject(error)
-        })
-      })
+    LogOut({ dispatch, state }) {
+      // Failure to revoke an expired/offline session must never trap the browser.
+      return logout(state.token).catch(() => {}).then(() => dispatch('FedLogOut'))
     },
 
     // 前端 登出
     FedLogOut({ commit }) {
       return new Promise(resolve => {
         commit('SET_TOKEN', '')
+        commit('SET_ROLES', [])
+        commit('SET_PERMISSIONS', [])
+        commit('SET_TENANT_ID', '')
+        commit('SET_ID', '')
+        commit('SET_NAME', '')
+        commit('SET_AVATAR', '')
+        commit('SET_EXPIRES_IN', '')
         removeToken()
         removeTenant()
+        removeExpiresIn()
         resolve()
       })
     }
