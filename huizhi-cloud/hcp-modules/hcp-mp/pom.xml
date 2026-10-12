@@ -18,6 +18,11 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
     <dependencies>
+        <dependency>
+            <groupId>org.apache.rocketmq</groupId>
+            <artifactId>rocketmq-client</artifactId>
+            <version>4.9.8</version>
+        </dependency>
 
         <!-- SpringCloud Alibaba Nacos -->
         <dependency>

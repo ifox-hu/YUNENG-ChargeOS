@@ -35,6 +35,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Fault schema initialization failed.' }
 
     if ($Configure) {
+        # Wallet and outbox are required before applications start.
         docker cp nacos-compat.sql hcp-mysql:/tmp/nacos-compat.sql
         if ($LASTEXITCODE -ne 0) { throw 'Failed to copy Nacos compatibility SQL.' }
         docker exec -e MYSQL_PWD=password hcp-mysql mysql -uroot vctgo_platform -e 'source /tmp/nacos-compat.sql'
@@ -43,6 +44,22 @@ try {
         & $NodePath configure-local.cjs
         if ($LASTEXITCODE -ne 0) { throw 'Nacos development configuration failed.' }
     }
+
+    foreach ($migration in @('wallet-points.sql','points-mq.sql')) {
+        docker cp $migration "hcp-mysql:/tmp/$migration"
+        if ($LASTEXITCODE -ne 0) { throw "Copy failed: $migration" }
+        docker exec -e MYSQL_PWD=password hcp-mysql mysql --default-character-set=utf8mb4 -uroot vctgo_platform -e "source /tmp/$migration"
+        if ($LASTEXITCODE -ne 0) { throw "Migration failed: $migration" }
+    }
+    docker compose up -d hcp-mq-nameserver hcp-mq-broker
+    if ($LASTEXITCODE -ne 0) { throw 'RocketMQ startup failed.' }
+    $topicReady = $false
+    for ($attempt = 0; $attempt -lt 30; $attempt++) {
+        docker compose exec -T hcp-mq-broker sh mqadmin updateTopic -n hcp-mq-nameserver:9876 -b 172.18.0.18:10911 -t CHARGE_POINTS_V1 -r 4 -w 4
+        if ($LASTEXITCODE -eq 0) { $topicReady = $true; break }
+        Start-Sleep -Seconds 2
+    }
+    if (-not $topicReady) { throw 'RocketMQ topic initialization failed.' }
 
     if ($BuildImages) {
         docker compose build hcp-gateway hcp-auth hcp-system hcp-file hcp-operator hcp-mp

@@ -1,5 +1,6 @@
 <template>
   <div class="app-container">
+    <points-events />
     <el-form :model="queryParams" ref="queryForm" size="small" :inline="true" v-show="showSearch" label-width="68px">
 
       <el-form-item label="" prop="userId">
@@ -249,9 +250,11 @@
 import {listOrder, getOrder, delOrder, addOrder, updateOrder} from "@/api/operator/order";
 import {parseTime} from "@/utils/hcp";
 import {getUserList} from "@/api/system/user";
+import PointsEvents from './PointsEvents.vue';
 
 export default {
   name: "Order",
+  components: { PointsEvents },
   dicts: ['charging_order_status', 'charging_order_billing_type','charging_order_type', 'charging_status', 'charging_is_free', 'device_type'],
   data() {
     return {

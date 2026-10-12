@@ -19,7 +19,8 @@ public class WalletPointsService {
     private final ZoneId zone = ZoneId.of("Asia/Shanghai");
     @Value("${hcp.wallet.local-recharge.enabled:false}") private boolean localRechargeEnabled;
 
-    public WalletPointsService(JdbcTemplate jdbc) { this.jdbc = jdbc; }
+    private final org.springframework.transaction.PlatformTransactionManager transactions;
+    public WalletPointsService(JdbcTemplate jdbc,org.springframework.transaction.PlatformTransactionManager transactions) { this.jdbc = jdbc; this.transactions=transactions; }
 
     private Map<String,Object> one(String sql, Object... args) {
         List<Map<String,Object>> rows = jdbc.queryForList(sql,args);
@@ -53,11 +54,48 @@ public class WalletPointsService {
         return new LinkedHashMap<String,Object>(){{put("amount",next);put("idempotent",false);}};
     }
     public Map<String,Object> points(long id) { member(id); ensurePoints(id); return one("select member_id,credit from c_user_credit where member_id=?",id); }
-    private void ensurePoints(long id) { List<Map<String,Object>> x=jdbc.queryForList("select id from c_user_credit where member_id=? limit 1",id); if(x.isEmpty()){String open="ACCOUNT_"+id; jdbc.update("insert into c_user_credit(user_id,open_id,credit,member_id) values(null,?,?,?)",open,0,id);} }
+    private void ensurePoints(long id) {
+        // Member row is the stable mutex, including first-time account creation.
+        new org.springframework.transaction.support.TransactionTemplate(transactions).execute(status -> {
+            jdbc.queryForObject("select member_id from c_member where member_id=? for update",Long.class,id);
+            List<Map<String,Object>> accounts=jdbc.queryForList("select id from c_user_credit where member_id=?",id);
+            if(accounts.size()>1) throw new ServiceException("积分账户数据异常");
+            if(accounts.isEmpty()) jdbc.update("insert into c_user_credit(user_id,open_id,credit,member_id) values(null,?,0,?)","ACCOUNT_"+id,id);
+            return null;
+        });
+    }
     public List<Map<String,Object>> pointsLedger(long id,int page,int size) { member(id); ensurePoints(id); int off=Math.max(page-1,0)*Math.min(size,50); return jdbc.queryForList("select type,points,balance_after,remark,create_time,business_key from c_member_points_ledger where member_id=? order by id desc limit ? offset ?",id,Math.min(size,50),off); }
     @Transactional(isolation=Isolation.READ_COMMITTED)
     public Map<String,Object> sign(long id) { member(id); ensurePoints(id); String day=LocalDate.now(zone).toString(), key="SIGN:"+day; List<Map<String,Object>> e=jdbc.queryForList("select balance_after from c_member_points_ledger where member_id=? and business_key=?",id,key); if(!e.isEmpty()) return new LinkedHashMap<String,Object>(){{put("signed",true);put("points",e.get(0).get("balance_after"));put("already",true);}}; jdbc.queryForObject("select id from c_user_credit where member_id=? for update",Long.class,id); int cur=jdbc.queryForObject("select credit from c_user_credit where member_id=?",Integer.class,id); int next=cur+5; jdbc.update("update c_user_credit set credit=? where member_id=?",next,id); jdbc.update("insert into c_member_points_ledger(member_id,business_key,type,points,balance_after,remark) values(?,?,?,?,?,?)",id,key,"DAILY_SIGN",5,next,"每日签到"); return new LinkedHashMap<String,Object>(){{put("signed",true);put("points",next);put("already",false);}}; }
     public List<Map<String,Object>> eligibleOrders(long id) { member(id); return jdbc.queryForList("select order_id,order_number,ordergold,pay_time,create_time from c_charging_order where user_id=? and order_state='3' and pay_time is not null and cast(ordergold as decimal(18,2))>0 and not exists (select 1 from c_member_points_ledger p where p.member_id=? and p.business_key=concat('ORDER:',order_id)) order by pay_time desc limit 20",id,id); }
     @Transactional(isolation=Isolation.READ_COMMITTED)
-    public Map<String,Object> claimOrder(long id,String orderId) { member(id); if(orderId==null||orderId.length()>64) throw new ServiceException("订单号无效"); Map<String,Object> o=one("select order_id,ordergold from c_charging_order where order_id=? and user_id=? and order_state='3' and pay_time is not null",orderId,id); if(o.isEmpty()) throw new ServiceException("订单不存在或尚未完成"); BigDecimal fee; try{fee=new BigDecimal(String.valueOf(o.get("ordergold"))).setScale(2,RoundingMode.DOWN);}catch(Exception ex){throw new ServiceException("订单金额无效");} int add=fee.intValue(); if(add<=0) throw new ServiceException("该订单暂无可领取积分"); ensurePoints(id); String key="ORDER:"+orderId; List<Map<String,Object>> e=jdbc.queryForList("select balance_after from c_member_points_ledger where member_id=? and business_key=?",id,key); if(!e.isEmpty()) return new LinkedHashMap<String,Object>(){{put("points",e.get(0).get("balance_after"));put("already",true);}}; jdbc.queryForObject("select id from c_user_credit where member_id=? for update",Long.class,id); int cur=jdbc.queryForObject("select credit from c_user_credit where member_id=?",Integer.class,id); int next=cur+add; jdbc.update("update c_user_credit set credit=? where member_id=?",next,id); jdbc.update("insert into c_member_points_ledger(member_id,business_key,type,points,balance_after,remark) values(?,?,?,?,?,?)",id,key,"ORDER_REWARD",add,next,"完成充电订单奖励"); return new LinkedHashMap<String,Object>(){{put("points",next);put("added",add);put("already",false);}}; }
+    public Map<String,Object> claimOrder(long id,String orderId) {
+        member(id);
+        if(orderId==null || orderId.length()>64) throw new ServiceException("订单号无效");
+        // Shared by manual claim and MQ: lock member before account and recheck ledger under lock.
+        ensurePoints(id);
+        jdbc.queryForObject("select id from c_user_credit where member_id=? for update",Long.class,id);
+        String key="ORDER:"+orderId;
+        List<Map<String,Object>> existing=jdbc.queryForList("select balance_after from c_member_points_ledger where member_id=? and business_key=?",id,key);
+        if(!existing.isEmpty()) {
+            Map<String,Object> result=new LinkedHashMap<>();
+            result.put("points",existing.get(0).get("balance_after")); result.put("already",true); return result;
+        }
+        Map<String,Object> order=one("select ordergold from c_charging_order where order_id=? and user_id=? and order_state='3' and pay_time is not null",orderId,id);
+        if(order.isEmpty()) throw new ServiceException("订单不存在或尚未完成");
+        int add;
+        try {
+            BigDecimal fee=new BigDecimal(String.valueOf(order.get("ordergold")));
+            if(fee.signum()<0) throw new IllegalArgumentException();
+            add=fee.setScale(0,RoundingMode.DOWN).intValueExact();
+        } catch(Exception ex) { throw new ServiceException("订单金额无效或超出积分范围"); }
+        Integer current=jdbc.queryForObject("select credit from c_user_credit where member_id=?",Integer.class,id);
+        int next=Math.addExact(current,add);
+        jdbc.update("update c_user_credit set credit=? where member_id=?",next,id);
+        // A zero-point receipt is durable too, preventing endless compensation for fees below 1.
+        jdbc.update("insert into c_member_points_ledger(member_id,business_key,type,points,balance_after,remark) values(?,?,?,?,?,?)",
+            id,key,"ORDER_REWARD",add,next,"完成充电订单奖励");
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("points",next); result.put("added",add); result.put("already",false); return result;
+    }
 }

@@ -16,7 +16,7 @@
 - **故障工单闭环**：模拟设备告警、用户扫码/手动报修、工单分配、处理日志、解决结果、用户确认关闭、近七天统计。
 - **小程序充电**：站点浏览、端口选择、模拟开始/结束充电、实时状态、订单和个人中心。
 - **账户能力**：余额摘要、余额流水、本地模拟充值；每日签到、订单奖励积分、积分明细和重复操作保护。
-- **可靠性设计**：登录会话身份校验、租户隔离、事务状态流转、同设备同类活动工单合并、充值和积分业务幂等。
+- **可靠性设计**：登录会话身份校验、租户隔离、事务状态流转、同设备同类活动工单合并、充值和积分业务幂等；订单结算通过 RocketMQ Outbox 发放积分，支持消费失败重试、定时补偿、失效租约恢复和管理员人工重投。
 
 ## 项目结构
 
@@ -260,7 +260,7 @@ node .\huizhi-cloud\docker\test-order-identity.cjs
 
 `hcp-operator/charging` 按顺序执行参数、用户/租户归属、设备/端口可用性、活动订单四类独立校验节点。新增校验可实现 `ChargeStartValidator` 并注册为组件；设备启动/停止通过 `ChargingDeviceStrategy` 分发，当前只有模拟器策略（设备类型 4），未接入类型明确拒绝，尚无真实运营商适配。
 
-同端口下单用端口行锁和短事务预占订单；预占提交后才调用模拟设备，避免持锁等待跨服务调用造成死锁。启动调用异常保留待确认订单以防重复启动，暂需人工核对，不自动取消可能已经被设备接受的命令。此实现不保证跨服务原子性，MQ 积分补偿和 TCC 尚未完成。
+同端口下单用端口行锁和短事务预占订单；预占提交后才调用模拟设备，避免持锁等待跨服务调用造成死锁。启动调用异常保留待确认订单以防重复启动，暂需人工核对，不自动取消可能已经被设备接受的命令。此实现不保证跨服务原子性；MQ 积分补偿已实现，TCC 尚未实现。
 
 ```powershell
 node .\huizhi-cloud\docker\test-charge-validation.cjs
@@ -276,6 +276,38 @@ node .\huizhi-mini\scripts\test-repair-pages.cjs
 ```
 
 页面流程脚本位于 `huizhi-mini/scripts/`，覆盖登录刷新、页面跳转、报修分页、重复提交、积分/余额入口和返回键。当前已验证小程序编译产物 0 错误、0 警告，后端模块 Maven 构建通过，网关登录、余额查询、幂等充值和重复签到通过。
+
+### 积分消息链路
+
+订单进入完成状态时，在同一个数据库事务写入 `c_points_event` Outbox 事件；运营服务定时扫描待投递、发送租约过期和“已发送但未到账”的事件，再向 RocketMQ `CHARGE_POINTS_V1` 发布 `ORDER_SETTLED` 消息。小程序服务消费消息时只信任数据库中的订单和会员关系，先锁积分账户，再按 `ORDER:<orderId>` 唯一业务键写入积分流水，因此重复消息、并发手动领取和自动发放都只会到账一次。消费异常返回 `RECONSUME_LATER`，同时记录失败次数；达到上限后转为 `DEAD`，后台订单页的“积分发放监控”可以查询并人工重新投递。
+
+本地启动会执行 `docker/points-mq.sql`，启动 RocketMQ NameServer/Broker 并创建 Topic。Windows 使用 `docker/start-local.ps1 -BuildImages`，Linux 虚拟机使用 `docker/start-linux.sh`。RocketMQ 数据在 `docker/rocketmq/data`，不要把该运行数据提交到 Git。完整故障恢复验收：
+
+```powershell
+cd huizhi-cloud/docker
+node test-points-mq.cjs
+node test-points-ops.cjs
+```
+
+第一份脚本用临时会员和订单验证并发结算、重复投递、Broker 停机恢复、消费者停机补偿、消费异常回滚以及发布租约恢复；第二份脚本验证手动领取与 MQ 并发、失败上限、后台真实按钮重新投递。两者结束时清理测试数据；请在本地演示环境串行执行，测试会短暂停止 Broker/小程序服务。第二份脚本需 Playwright 和 Edge，其他机器可通过 `PLAYWRIGHT_MODULE` 指定依赖位置。
+
+MQ 的“发送成功”只代表 Broker 接收；只有事件变为 `CONSUMED` 才代表积分实际到账。奖励按已完成订单结算金额向下取整，低于 1 元记 0 分流水。新版本只对升级后的结算生成事件，历史订单仍可手动领取；这里的结算是本地模拟，没有新增真实微信支付或余额扣款。
+
+| 配置项（运营服务与小程序服务） | 默认值 | 用途 |
+| --- | --- | --- |
+| `hcp.points.mq.enabled` | false，Compose 开启 | MQ 开关；关闭后仍保存结算事件 |
+| `hcp.points.mq.nameserver` | hcp-mq-nameserver:9876 | NameServer 地址 |
+| `hcp.points.mq.topic` | CHARGE_POINTS_V1 | 两服务需一致，并预先创建 Topic |
+| `hcp.points.mq.scan-ms` | 5000 | 补偿扫描间隔，每批 20 条 |
+| `hcp.points.mq.receipt-timeout-seconds` | 120 | 已投递未到账的重投间隔 |
+| `hcp.points.mq.max-attempts` | 12 | 投递/缺失回执补偿次数上限 |
+| `hcp.points.mq.max-consume-failures` | 12 | 消费失败次数上限 |
+
+发送失败退避为 5、10、20、40、80、160、300 秒，最高 300 秒；发送租约 30 秒，用随机令牌防止旧任务覆盖新任务状态。消费使用 RocketMQ 集群模式的失败重投，积分变更、流水和 `CONSUMED` 回执在同一事务提交。平台管理员在“运营管理 → 充电订单 → 积分发放监控”查看状态；修复错误后可重投 `DEAD`，已到账事件禁止重投，操作会记录审计日志。
+
+接口走后台认证：`GET /operator/points/events?page=1&size=20&status=DEAD` 查询，`POST /operator/points/events/{eventId}/retry` 人工恢复。仅平台管理员允许使用，不接受前端指定用户发放积分。
+
+本地 RocketMQ 使用单 Broker、同步刷盘和目录持久化，未部署高可用集群与 ACL；消息服务仅开放在 Docker 内部网络，不映射公网端口。Broker 固定内部 IP 与 Compose 网段一致；改网段时同步修改 `rocketmq/broker.conf` 和初始化脚本地址。镜像旧 JDK 在部分 Docker cgroup 环境需要 `-XX:-UseContainerSupport`，本项目显式限制 JVM 堆并设置该参数。生产部署需独立的认证、备份、高可用和失败告警方案；当前保证业务幂等，不宣称消息绝对不丢或端到端 exactly-once。
 
 ## GitHub Pages 演示
 

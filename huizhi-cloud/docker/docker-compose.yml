@@ -6,6 +6,31 @@ networks:
       config:
         - subnet: 172.18.0.0/16
 services:
+  hcp-mq-nameserver:
+    container_name: hcp-mq-nameserver
+    image: apache/rocketmq:4.9.7
+    command: sh mqnamesrv
+    restart: unless-stopped
+    environment:
+      JAVA_OPT_EXT: -Xms128m -Xmx128m -Xmn64m -XX:-UseContainerSupport
+    networks:
+      cloud-net:
+        ipv4_address: 172.18.0.17
+  hcp-mq-broker:
+    container_name: hcp-mq-broker
+    image: apache/rocketmq:4.9.7
+    command: sh mqbroker -c /home/rocketmq/broker.conf
+    restart: unless-stopped
+    depends_on:
+      - hcp-mq-nameserver
+    environment:
+      JAVA_OPT_EXT: -Xms256m -Xmx256m -Xmn128m -XX:-UseContainerSupport
+    volumes:
+      - ./rocketmq/broker.conf:/home/rocketmq/broker.conf:ro
+      - ./rocketmq/data:/home/rocketmq/store
+    networks:
+      cloud-net:
+        ipv4_address: 172.18.0.18
   hcp-nacos:
     container_name: hcp-nacos
     image: nacos/nacos-server:2.0.3-slim
@@ -243,6 +268,8 @@ services:
       - hcp-mysql
       - hcp-redis
     environment:
+      - HCP_POINTS_MQ_ENABLED=true
+      - HCP_POINTS_MQ_NAMESERVER=hcp-mq-nameserver:9876
       - NACOS_HOST=hcp-nacos
       - NACOS_PORT=8848
     networks:
@@ -260,6 +287,8 @@ services:
       - hcp-mysql
       - hcp-redis
     environment:
+      - HCP_POINTS_MQ_ENABLED=true
+      - HCP_POINTS_MQ_NAMESERVER=hcp-mq-nameserver:9876
       - NACOS_HOST=hcp-nacos
       - NACOS_PORT=8848
       - SPRING_CLOUD_NACOS_CONFIG_NAMESPACE=hcp

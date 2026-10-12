@@ -77,6 +77,8 @@ public class ChargingOrderServiceImpl implements IChargingOrderService
     private ChargingDeviceStrategies chargingDeviceStrategies;
     @Autowired
     private ChargeOrderReservation chargeOrderReservation;
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate pointsJdbc;
 
     /**
      * 查询充电订单
@@ -290,6 +292,9 @@ public class ChargingOrderServiceImpl implements IChargingOrderService
         orderLog.setTenantId(order.getTenantId());
         orderLog.setCreateTime(new Date());
         orderLogMapper.insertOrderLog(orderLog);
+        // Outbox and settlement commit together; no network call inside this transaction.
+        pointsJdbc.update("insert into c_points_event(event_id,order_id,member_id,tenant_id) values(?,?,?,?)",
+                java.util.UUID.randomUUID().toString(), orderId, order.getUserId(), order.getTenantId());
     }
 
     @Override

@@ -14,10 +14,12 @@ wait_health() {
 }
 wait_health hcp-mysql
 wait_health hcp-nacos
-for migration in nacos-compat.sql account-login.sql fault-work-order.sql wallet-points.sql; do
+for migration in nacos-compat.sql account-login.sql fault-work-order.sql wallet-points.sql points-mq.sql; do
   docker exec -i -e MYSQL_PWD=password hcp-mysql mysql --default-character-set=utf8mb4 -uroot vctgo_platform < "$migration"
 done
 node configure-local.cjs
+docker compose up -d hcp-mq-nameserver hcp-mq-broker
+sh ./init-points-mq.sh
 docker compose build
 docker compose up -d
 echo 'Services started. Check docker compose ps and access http://<VM-IP>:8001'
