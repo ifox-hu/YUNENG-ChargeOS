@@ -16,28 +16,28 @@
 		</view>
 		<view class='card'>
 			<text class='card-title f-db'>订单信息</text>
-			<text class='card-info f-db'>充电时长：{{form.hour}}小时</text>
+			<text class='card-info f-db'>实际充电时长：{{form.realHour || '0'}}小时</text>
 			<text class='card-info f-db'>订单编号：{{form.orderNumber}}</text>
 			<text class='card-info f-db'>开始时间：{{form.startTime}}</text>
-			<text class='card-info f-db'>结束时间：{{form.endTime}}</text>
+			<text class='card-info f-db'>结束时间：{{form.endTime || form.realEndTime || '暂无'}}</text>
 		</view>
 		<view class='card'>
 			<text class='card-title f-db'>支付信息</text>
 			<view class='pay'>
 				<text class='pay-label'>电费</text>
-				<text class='pay-value f-tar'>¥{{form.chargeFee || 0 }}</text>
+				<text class='pay-value f-tar'>¥{{money(form.chargeFee || 0)}}</text>
 			</view>
 			<view class='pay'>
 				<text class='pay-label'>服务费</text>
-				<text class='pay-value f-tar'>¥{{form.serviceFee || 0}}</text>
+				<text class='pay-value f-tar'>¥{{money(form.serviceFee || 0)}}</text>
 			</view>
 			<view class='pay'>
 				<text class='pay-label'>支付金额</text>
-				<text class='pay-value f-tar'>¥{{form.ordergold || 0}}</text>
+				<text class='pay-value f-tar'>¥{{money(form.ordergold || 0)}}</text>
 			</view>
 			<view class='pay'>
 				<text class='pay-label'>支付方式</text>
-				<text class='pay-value f-tar' style='color: #666;'>{{form.payType || '账户余额扣款'}}</text>
+				<text class='pay-value f-tar' style='color: #666;'>{{form.payType || '本地模拟结算'}}</text>
 			</view>
 		</view>
 		<view class='card'>
@@ -158,6 +158,7 @@
 	import { onLoad } from '@dcloudio/uni-app'
 	import navbar from '../../components/navbar/index.vue'
 	import request from '../../components/js/request.js'
+	import { money } from '../../components/js/order-format.js'
 	
 	const app = getApp()
 	const form = reactive({})

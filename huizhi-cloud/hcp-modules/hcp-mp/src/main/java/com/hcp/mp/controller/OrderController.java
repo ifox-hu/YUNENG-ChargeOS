@@ -40,11 +40,16 @@ public class OrderController {
     @Resource
     private RedisService redisService;
 
-    private ChargingOrder ownedOrder(String orderNumber) {
+    private long currentMember() {
         String token = ServletUtils.getRequest().getHeader("token");
         Object member = token == null ? null : redisService.getCacheObject(
             MpConstant.USER_TOKEN + token.replaceFirst("^Bearer ", ""));
         if (member == null) throw new ServiceException("登录已失效，请重新登录");
+        return Long.parseLong(String.valueOf(member));
+    }
+
+    private ChargingOrder ownedOrder(String orderNumber) {
+        long member = currentMember();
         R<ChargingOrder> result = remoteChargeOrderService.getOrderByOrderNumber(orderNumber, SecurityConstants.INNER);
         if (result == null || result.getCode() != 200 || result.getData() == null) {
             throw new ServiceException("订单查询失败或订单不存在");
@@ -66,7 +71,10 @@ public class OrderController {
             @RequestParam("userId") Long userId
     ) {
 
-//        Long userId = SecurityUtils.getUserId();
+        userId = currentMember();
+        if (hour == null || hour < 0 || hour > 24 || amount == null || amount.signum() < 0) {
+            throw new ServiceException("充电时长或金额无效");
+        }
         R<ChargingPort> chargingPortR = remoteChargePortService.getChargePortByPortId(portId);
         if (ObjectUtil.isEmpty(chargingPortR) || ObjectUtil.isEmpty(chargingPortR.getData())) {
             throw new ServiceException("端口查询失败!");
@@ -91,7 +99,7 @@ public class OrderController {
                                              @RequestParam(value = "pageNo") Integer pageNo,
                                              @RequestParam(value = "pageSize") Integer pageSize,
                                              @RequestParam("userId") Long userId) {
-//        Long userId = SecurityUtils.getUserId();
+        userId = currentMember();
         ChargingOrder chargingOrder = new ChargingOrder();
         chargingOrder.setOrderState(orderStatus);
         chargingOrder.setUserId(userId);
@@ -111,7 +119,7 @@ public class OrderController {
     @GetMapping("/orderTrace")
     public R<List<OrderLog>> orderTrace(
                                         @RequestParam("orderNumber") String orderNumber) {
-
+        ownedOrder(orderNumber);
         List<OrderLog> orderLogs = remoteChargeOrderService.queryOrderLogByOrderNumber(orderNumber).getData();
         return R.ok(orderLogs);
     }

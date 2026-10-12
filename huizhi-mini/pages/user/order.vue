@@ -28,7 +28,7 @@
 				</view>
 				<view class='order-info'>
 					<text class='order-label'>结束时间：</text>
-					<text class='order-value f-tar'>{{item.endTime}}</text>
+					<text class='order-value f-tar'>{{item.endTime || item.realEndTime || '暂无'}}</text>
 				</view>
 				<view class='order-info'>
 					<text class='order-label'>已充电量：</text>
@@ -36,7 +36,7 @@
 				</view>
 				<view class='order-info'>
 					<text class='order-label'>充电时长：</text>
-					<text class='order-value f-tar'>{{item.hour}}小时</text>
+					<text class='order-value f-tar'>{{item.realHour || '0'}}小时</text>
 				</view>
 				<view class='order-info'>
 					<text class='order-label'>充电用户：</text>
@@ -45,7 +45,7 @@
 			</view>
 			<view class='order-footer f-tar'>
 				<text class='money-label'>金额：</text>
-				<text class='money-value f-fwb'>{{item.ordergold || 0}}元</text>
+				<text class='money-value f-fwb'>{{money(item.ordergold || 0)}}元</text>
 			</view>
 		</view>
 		<text class='more f-tac f-db'>{{ moreText }}</text>
@@ -136,6 +136,7 @@
 	import { onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app'
 	import navbar from '../../components/navbar/index.vue'
 	import request from '../../components/js/request.js'
+	import { money } from '../../components/js/order-format.js'
 	
 	const app = getApp()
 	const query = reactive({

@@ -65,6 +65,9 @@ public interface ChargingOrderMapper extends BaseMapperX<ChargingOrder>
     @InterceptorIgnore(tenantLine = "1")
     ChargingOrder getById(@Param("orderId") String orderId);
 
+    @InterceptorIgnore(tenantLine = "1")
+    ChargingOrder lockById(@Param("orderId") String orderId);
+
 
     @InterceptorIgnore(tenantLine = "1")
     int deleteByPrimaryKey(Long id);

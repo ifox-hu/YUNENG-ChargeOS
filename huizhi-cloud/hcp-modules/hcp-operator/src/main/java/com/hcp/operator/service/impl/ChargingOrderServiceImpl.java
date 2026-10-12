@@ -277,35 +277,51 @@ public class ChargingOrderServiceImpl implements IChargingOrderService
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void handleOrderInfo(String orderId, Double totalPower, BigDecimal totalAmount, BigDecimal electricFee, BigDecimal serviceFee, String startTime, String endTime, String stopReason) {
-        ChargingOrder order = chargingOrderMapper.getById(orderId);
+        ChargingOrder order = chargingOrderMapper.lockById(orderId);
         Assert.notNull(order,"订单信息为空");
-        order.setConsumePower(new BigDecimal(totalPower));
-        order.setOrdergold(String.valueOf(totalAmount));
-        order.setPrice(String.valueOf(electricFee));
-        order.setServiceFee(serviceFee);
-        order.setRealEndTime(DateUtil.parseDateTime(endTime));
-        long realHour = DateUtil.between(DateUtil.parseDateTime(startTime), DateUtil.parseDateTime(endTime), DateUnit.HOUR);
-        order.setRealHour(String.valueOf(realHour));
+        if (terminal(order)) return;
+        if (totalPower == null || !Double.isFinite(totalPower) || totalPower < 0) {
+            throw new IllegalArgumentException("结算电量无效");
+        }
+        BigDecimal powerFee = money(electricFee), fee = money(serviceFee), amount = money(totalAmount);
+        if (amount.subtract(powerFee.add(fee)).abs().compareTo(new BigDecimal("0.01")) > 0) {
+            throw new IllegalArgumentException("结算金额与电费、服务费不一致");
+        }
+        Date started = DateUtil.parseDateTime(order.getStartTime());
+        Date ended = DateUtil.parseDateTime(endTime);
+        if (ended.before(started)) throw new IllegalArgumentException("结束时间早于开始时间");
+        order.setConsumePower(BigDecimal.valueOf(totalPower).setScale(4, RoundingMode.HALF_UP));
+        order.setOrdergold(amount.toPlainString());
+        order.setChargeFee(powerFee);
+        order.setServiceFee(fee);
+        order.setEndTime(DateUtil.formatDateTime(ended));
+        order.setRealEndTime(ended);
+        order.setStopReason(stopReason);
+        order.setRealHour(BigDecimal.valueOf(ended.getTime() - started.getTime())
+                .divide(new BigDecimal("3600000"), 4, RoundingMode.HALF_UP).toPlainString());
         order.setOrderState(OrderState.PAYED);
         order.setChargeStatus(ChargeStatus.FINISH_CHARGE);
         order.setPayTime(new Date());
-        order.setRealEndTime(DateUtil.parseDateTime(endTime));
         chargingOrderMapper.updateByPrimaryKey(order);
         OrderLog orderLog = new OrderLog();
         orderLog.setOrderNumber(order.getOrderNumber());
         orderLog.setMainProcess(1L);
         orderLog.setBriefInfo("完成订单");
-        orderLog.setLogContent("已完成订单,消费金额:"+totalAmount);
+        orderLog.setLogContent("已完成订单,消费金额:"+amount.toPlainString());
         orderLog.setTenantId(order.getTenantId());
         orderLog.setCreateTime(new Date());
         orderLogMapper.insertOrderLog(orderLog);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void updateOrderStart(String orderId, String pileId, String port, String startResult, String failReason) {
-        ChargingOrder order = chargingOrderMapper.getById(orderId);
+        ChargingOrder order = chargingOrderMapper.lockById(orderId);
         Assert.notNull(order,"订单信息为空");
+        if (terminal(order) || OrderState.SETTLE.equals(order.getOrderState())
+                || ChargeStatus.CHARGING.equals(order.getChargeStatus())) return;
         order.setChargeStatus(ChargeStatus.CHARGING);
         chargingOrderMapper.updateByPrimaryKey(order);
         OrderLog orderLog = new OrderLog();
@@ -319,11 +335,14 @@ public class ChargingOrderServiceImpl implements IChargingOrderService
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void updateOrderStop(String pileId, String port, String stopResult, String failReason) {
         ChargingPort chargingPort = chargingPortMapper.selectPort(pileId, port);
         Assert.notNull(chargingPort,"充电口信息为空");
         ChargingOrder  order = chargingOrderMapper.findChargingOrder(pileId,chargingPort.getPortId(),ChargeStatus.CHARGING);
-        Assert.notNull(order,"充电中订单信息未找到");
+        if (order == null) return;
+        order = chargingOrderMapper.lockById(order.getOrderId());
+        if (terminal(order) || OrderState.SETTLE.equals(order.getOrderState())) return;
         order.setEndTime(LocalDateTimeUtil.format(LocalDateTime.now(),"yyyy-MM-dd HH:mm:ss"));
         order.setOrderState(OrderState.SETTLE);
         chargingOrderMapper.updateByPrimaryKey(order);
@@ -338,14 +357,16 @@ public class ChargingOrderServiceImpl implements IChargingOrderService
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void handleChargingHeartBeat(String orderId, Double voltage, Double electric, String soc, Double chargePower, BigDecimal chargeFee, BigDecimal serviceFee,BigDecimal chargePrice) {
         log.info("收到实时充电数据:订单号:{},电压:{},电流:{},soc:{},已充电量:{},已充金额:{}",orderId,voltage,electric,soc,chargePower,chargePrice);
-        ChargingOrder order = chargingOrderMapper.getById(orderId);
+        ChargingOrder order = chargingOrderMapper.lockById(orderId);
         Assert.notNull(order,"订单信息为空");
+        if (terminal(order) || OrderState.SETTLE.equals(order.getOrderState())) return;
         order.setChargeStatus(ChargeStatus.CHARGING);
-        order.setChargeFee(chargeFee);
-        order.setServiceFee(serviceFee);
-        order.setOrdergold(String.valueOf(chargePrice));
+        order.setChargeFee(money(chargeFee));
+        order.setServiceFee(money(serviceFee));
+        order.setOrdergold(money(chargePrice).toPlainString());
         order.setChargingCurrent(String.valueOf(electric));
         order.setConsumePower(BigDecimal.valueOf(chargePower));
         // 保留下单时选择的订单时长；实时已充时长由 realHour/chargeMin 表示，不能覆盖 hour。
@@ -366,5 +387,15 @@ public class ChargingOrderServiceImpl implements IChargingOrderService
     public Page<ChargingOrder> queryOrderList(ChargingOrder chargingOrder) {
         Page mpPage =new Page(chargingOrder.getPageNo(),chargingOrder.getPageSize());
         return chargingOrderMapper.selectChargingOrderListPage(mpPage,chargingOrder);
+    }
+
+    private static boolean terminal(ChargingOrder order) {
+        return OrderState.PAYED.equals(order.getOrderState()) || OrderState.FINISH.equals(order.getOrderState())
+                || OrderState.CANCEL.equals(order.getOrderState()) || OrderState.REFUND.equals(order.getOrderState());
+    }
+
+    private static BigDecimal money(BigDecimal value) {
+        if (value == null || value.signum() < 0) throw new IllegalArgumentException("费用不能为空或负数");
+        return value.setScale(2, RoundingMode.HALF_UP);
     }
 }

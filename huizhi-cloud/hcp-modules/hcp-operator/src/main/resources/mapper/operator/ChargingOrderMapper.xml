@@ -208,6 +208,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="findChargingOrder" resultType="com.hcp.system.api.domain.ChargingOrder">
         <include refid="selectChargingOrderVo"/> where pile_id = #{pileId} and port_id = #{portId} and charge_status = #{chargingStatus} order by create_time desc limit 1
     </select>
+    <select id="lockById" resultMap="ChargingOrderResult">
+        select * from c_charging_order where order_id = #{orderId} for update
+    </select>
     <select id="getById" resultType="com.hcp.system.api.domain.ChargingOrder">
         <include refid="selectChargingOrderVo"/> where order_id = #{orderId}
     </select>
