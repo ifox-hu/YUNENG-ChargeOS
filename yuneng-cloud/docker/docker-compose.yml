@@ -6,28 +6,23 @@ networks:
       config:
         - subnet: 172.18.0.0/16
 services:
-  hcp-mq-nameserver:
-    container_name: hcp-mq-nameserver
-    image: apache/rocketmq:4.9.7
-    command: sh mqnamesrv
+  hcp-rabbitmq:
+    container_name: hcp-rabbitmq
+    image: rabbitmq:3.13-management
     restart: unless-stopped
     environment:
-      JAVA_OPT_EXT: -Xms128m -Xmx128m -Xmn64m -XX:-UseContainerSupport
-    networks:
-      cloud-net:
-        ipv4_address: 172.18.0.17
-  hcp-mq-broker:
-    container_name: hcp-mq-broker
-    image: apache/rocketmq:4.9.7
-    command: sh mqbroker -c /home/rocketmq/broker.conf
-    restart: unless-stopped
-    depends_on:
-      - hcp-mq-nameserver
-    environment:
-      JAVA_OPT_EXT: -Xms256m -Xmx256m -Xmn128m -XX:-UseContainerSupport
+      RABBITMQ_DEFAULT_USER: hcp
+      RABBITMQ_DEFAULT_PASS: hcp123456
+      RABBITMQ_DEFAULT_VHOST: /
+    ports:
+      - "15672:15672"
     volumes:
-      - ./rocketmq/broker.conf:/home/rocketmq/broker.conf:ro
-      - ./rocketmq/data:/home/rocketmq/store
+      - ./rabbitmq/data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
     networks:
       cloud-net:
         ipv4_address: 172.18.0.18
@@ -267,9 +262,15 @@ services:
       - hcp-nacos
       - hcp-mysql
       - hcp-redis
+      - hcp-rabbitmq
     environment:
       - HCP_POINTS_MQ_ENABLED=true
-      - HCP_POINTS_MQ_NAMESERVER=hcp-mq-nameserver:9876
+      - SPRING_RABBITMQ_HOST=hcp-rabbitmq
+      - SPRING_RABBITMQ_PORT=5672
+      - SPRING_RABBITMQ_USERNAME=hcp
+      - SPRING_RABBITMQ_PASSWORD=hcp123456
+      # Confirmed publishes: the outbox waits for a broker ack before marking an event SENT.
+      - SPRING_RABBITMQ_PUBLISHER_CONFIRM_TYPE=correlated
       - NACOS_HOST=hcp-nacos
       - NACOS_PORT=8848
     networks:
@@ -286,9 +287,15 @@ services:
       - hcp-nacos
       - hcp-mysql
       - hcp-redis
+      - hcp-rabbitmq
     environment:
       - HCP_POINTS_MQ_ENABLED=true
-      - HCP_POINTS_MQ_NAMESERVER=hcp-mq-nameserver:9876
+      - SPRING_RABBITMQ_HOST=hcp-rabbitmq
+      - SPRING_RABBITMQ_PORT=5672
+      - SPRING_RABBITMQ_USERNAME=hcp
+      - SPRING_RABBITMQ_PASSWORD=hcp123456
+      # Confirmed publishes: the outbox waits for a broker ack before marking an event SENT.
+      - SPRING_RABBITMQ_PUBLISHER_CONFIRM_TYPE=correlated
       - NACOS_HOST=hcp-nacos
       - NACOS_PORT=8848
       - SPRING_CLOUD_NACOS_CONFIG_NAMESPACE=hcp

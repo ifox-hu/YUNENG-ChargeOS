@@ -18,8 +18,12 @@ for migration in nacos-compat.sql account-login.sql fault-work-order.sql wallet-
   docker exec -i -e MYSQL_PWD=password hcp-mysql mysql --default-character-set=utf8mb4 -uroot vctgo_platform < "$migration"
 done
 node configure-local.cjs
-docker compose up -d hcp-mq-nameserver hcp-mq-broker
-sh ./init-points-mq.sh
+docker compose up -d hcp-rabbitmq
+for ((attempt=0; attempt<40; attempt++)); do
+  if docker compose exec -T hcp-rabbitmq rabbitmq-diagnostics -q ping >/dev/null 2>&1; then break; fi
+  if [[ "$attempt" -eq 39 ]]; then echo 'RabbitMQ is not ready.' >&2; exit 1; fi
+  sleep 3
+done
 docker compose build
 docker compose up -d
 echo 'Services started. Check docker compose ps and access http://<VM-IP>:8001'

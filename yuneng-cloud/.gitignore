@@ -40,6 +40,7 @@ docker/mysql/data/
 docker/mysql/data8/
 docker/mysql/db/*.sql
 docker/redis/data/
+docker/rabbitmq/data/
 docker/nginx/html/dist/
 docker/vctgo/uploadPath/
 docker/.local/

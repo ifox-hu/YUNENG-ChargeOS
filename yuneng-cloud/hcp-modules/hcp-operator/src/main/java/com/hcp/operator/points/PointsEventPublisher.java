@@ -2,12 +2,11 @@ package com.hcp.operator.points;
 
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import javax.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.rocketmq.client.producer.DefaultMQProducer;
-import org.apache.rocketmq.client.producer.SendResult;
-import org.apache.rocketmq.client.producer.SendStatus;
-import org.apache.rocketmq.common.message.Message;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.MessageProperties;
+import org.springframework.amqp.rabbit.connection.CorrelationData;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -20,25 +19,14 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(name="hcp.points.mq.enabled", havingValue="true")
 public class PointsEventPublisher {
     private final JdbcTemplate jdbc;
-    private DefaultMQProducer producer;
-    @Value("${hcp.points.mq.nameserver:hcp-mq-nameserver:9876}") private String nameserver;
-    @Value("${hcp.points.mq.topic:CHARGE_POINTS_V1}") private String topic;
+    private final RabbitTemplate rabbit;
+    @Value("${hcp.points.mq.exchange:charge.points.exchange}") private String exchange;
+    @Value("${hcp.points.mq.routing-key:charge.points.order.settled}") private String routingKey;
     @Value("${hcp.points.mq.max-attempts:12}") private int maxAttempts;
     @Value("${hcp.points.mq.receipt-timeout-seconds:120}") private int receiptTimeout;
+    @Value("${hcp.points.mq.confirm-timeout-seconds:5}") private int confirmTimeout;
 
-    public PointsEventPublisher(JdbcTemplate jdbc) { this.jdbc=jdbc; }
-    private DefaultMQProducer producer() throws Exception {
-        if (producer == null) {
-            DefaultMQProducer candidate=new DefaultMQProducer("charge_points_outbox_v1");
-            candidate.setNamesrvAddr(nameserver);
-            candidate.setSendMsgTimeout(5000);
-            candidate.setRetryTimesWhenSendFailed(0);
-            candidate.setVipChannelEnabled(false);
-            try { candidate.start(); producer=candidate; }
-            catch (Exception ex) { candidate.shutdown(); throw ex; }
-        }
-        return producer;
-    }
+    public PointsEventPublisher(JdbcTemplate jdbc, RabbitTemplate rabbit) { this.jdbc=jdbc; this.rabbit=rabbit; }
 
     @Scheduled(fixedDelayString="${hcp.points.mq.scan-ms:5000}", initialDelay=10000)
     public void compensate() {
@@ -57,19 +45,26 @@ public class PointsEventPublisher {
                 +"where event_id=? and publish_attempts>=? and status in ('PENDING','RETRY','PUBLISHING','SENT') and next_retry_at<=now()",id,maxAttempts);
             return;
         }
-        // Lease exceeds send timeout. Token fences delayed senders after recovery/requeue.
+        // Lease exceeds publisher confirm timeout. Token fences delayed senders after recovery/requeue.
         int claimed=jdbc.update("update c_points_event set status='PUBLISHING',lease_token=?,publish_attempts=publish_attempts+1,"
             +"next_retry_at=date_add(now(),interval 30 second) where event_id=? and publish_attempts=? "
             +"and status in ('PENDING','RETRY','PUBLISHING','SENT') and next_retry_at<=now()",lease,id,attempts);
         if(claimed==0) return;
         try {
-            Message message=new Message(topic,"ORDER_SETTLED",id,id.getBytes(StandardCharsets.UTF_8));
-            SendResult result=producer().send(message);
-            if(result.getSendStatus()!=SendStatus.SEND_OK) throw new IllegalStateException("Broker status "+result.getSendStatus());
+            MessageProperties props=new MessageProperties();
+            props.setContentType(MessageProperties.CONTENT_TYPE_TEXT_PLAIN);
+            props.setMessageId(id);
+            props.setHeader("event_id",id);
+            Message message=new Message(id.getBytes(StandardCharsets.UTF_8),props);
+            CorrelationData correlation=new CorrelationData(id);
+            rabbit.send(exchange,routingKey,message,correlation);
+            // A broker ack only means the exchange accepted the message; confirmation separates that from a 404/drop.
+            CorrelationData.Confirm confirm=correlation.getFuture().get(confirmTimeout,java.util.concurrent.TimeUnit.SECONDS);
+            if(!confirm.isAck()) throw new IllegalStateException("Publisher confirm nack: "+confirm.getReason());
             // Consumer may already have committed CONSUMED: never overwrite that receipt.
             jdbc.update("update c_points_event set status='SENT',message_id=?,last_error=null,lease_token=null,"
                 +"next_retry_at=date_add(now(),interval ? second) where event_id=? and status='PUBLISHING' and lease_token=?",
-                result.getMsgId(),receiptTimeout,id,lease);
+                id,receiptTimeout,id,lease);
         } catch(Exception ex) {
             int delay=(int)Math.min(300,5L<<Math.min(attempts,6));
             String error=ex.getClass().getSimpleName()+": "+ex.getMessage();
@@ -79,5 +74,4 @@ public class PointsEventPublisher {
             log.warn("Points publish failed event={} attempt={}",id,attempts+1);
         }
     }
-    @PreDestroy public void shutdown() { if(producer!=null) producer.shutdown(); }
 }

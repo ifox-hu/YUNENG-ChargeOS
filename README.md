@@ -16,7 +16,7 @@
 - **故障工单闭环**：模拟设备告警、用户扫码/手动报修、工单分配、处理日志、解决结果、用户确认关闭、近七天统计。
 - **小程序充电**：站点浏览、端口选择、模拟开始/结束充电、实时状态、订单和个人中心。
 - **账户能力**：余额摘要、余额流水、本地模拟充值；每日签到、订单奖励积分、积分明细和重复操作保护。
-- **可靠性设计**：登录会话身份校验、租户隔离、事务状态流转、同设备同类活动工单合并、充值和积分业务幂等；订单结算通过 RocketMQ Outbox 发放积分，支持消费失败重试、定时补偿、失效租约恢复和管理员人工重投。
+- **可靠性设计**：登录会话身份校验、租户隔离、事务状态流转、同设备同类活动工单合并、充值和积分业务幂等；订单结算通过 RabbitMQ Outbox 发放积分，支持消费失败重试、定时补偿、失效租约恢复和管理员人工重投。
 
 ## 项目结构
 
@@ -279,9 +279,9 @@ node .\yuneng-mini\scripts\test-repair-pages.cjs
 
 ### 积分消息链路
 
-订单进入完成状态时，在同一个数据库事务写入 `c_points_event` Outbox 事件；运营服务定时扫描待投递、发送租约过期和“已发送但未到账”的事件，再向 RocketMQ `CHARGE_POINTS_V1` 发布 `ORDER_SETTLED` 消息。小程序服务消费消息时只信任数据库中的订单和会员关系，先锁积分账户，再按 `ORDER:<orderId>` 唯一业务键写入积分流水，因此重复消息、并发手动领取和自动发放都只会到账一次。消费异常返回 `RECONSUME_LATER`，同时记录失败次数；达到上限后转为 `DEAD`，后台订单页的“积分发放监控”可以查询并人工重新投递。
+订单进入完成状态时，在同一个数据库事务写入 `c_points_event` Outbox 事件；运营服务定时扫描待投递、发送租约过期和“已发送但未到账”的事件，再向 RabbitMQ 的 `charge.points.exchange` 以路由键 `charge.points.order.settled` 发布消息。运营服务启用发布确认（publisher confirm），只有 Broker 确认接收才把事件标记为 `SENT`。小程序服务消费消息时只信任数据库中的订单和会员关系，先锁积分账户，再按 `ORDER:<orderId>` 唯一业务键写入积分流水，因此重复消息、并发手动领取和自动发放都只会到账一次。消费异常时 `basicNack` 不重回原队列，由死信交换机送入 TTL 重试队列延迟后重新入队，同时累加数据库中的失败次数；达到上限后转为 `DEAD`，后台订单页的“积分发放监控”可以查询并人工重新投递。
 
-本地启动会执行 `docker/points-mq.sql`，启动 RocketMQ NameServer/Broker 并创建 Topic。Windows 使用 `docker/start-local.ps1 -BuildImages`，Linux 虚拟机使用 `docker/start-linux.sh`。RocketMQ 数据在 `docker/rocketmq/data`，不要把该运行数据提交到 Git。完整故障恢复验收：
+本地启动会执行 `docker/points-mq.sql` 并启动 RabbitMQ（`rabbitmq:3.13-management`），交换机、队列和绑定由服务启动时声明，无需手工创建。Windows 使用 `docker/start-local.ps1 -BuildImages`，Linux 虚拟机使用 `docker/start-linux.sh`。RabbitMQ 数据在 `docker/rabbitmq/data`，不要把该运行数据提交到 Git。管理界面为 http://127.0.0.1:15672 ，账号密码与 Compose 中的 `hcp/hcp123456` 一致。完整故障恢复验收：
 
 ```powershell
 cd yuneng-cloud/docker
@@ -289,25 +289,29 @@ node test-points-mq.cjs
 node test-points-ops.cjs
 ```
 
-第一份脚本用临时会员和订单验证并发结算、重复投递、Broker 停机恢复、消费者停机补偿、消费异常回滚以及发布租约恢复；第二份脚本验证手动领取与 MQ 并发、失败上限、后台真实按钮重新投递。两者结束时清理测试数据；请在本地演示环境串行执行，测试会短暂停止 Broker/小程序服务。第二份脚本需 Playwright 和 Edge，其他机器可通过 `PLAYWRIGHT_MODULE` 指定依赖位置。
+两份脚本使用 `fetch` 和 `crypto.randomUUID()`，需要 Node.js 18 或更高版本运行。第一份脚本用临时会员和订单验证并发结算、重复投递、Broker 停机恢复、消费者停机补偿、消费异常回滚以及发布租约恢复；第二份脚本验证手动领取与 MQ 并发、失败上限、后台真实按钮重新投递。两者结束时清理测试数据；请在本地演示环境串行执行，测试会短暂停止 Broker/小程序服务。第二份脚本需 Playwright 和 Edge，其他机器可通过 `PLAYWRIGHT_MODULE` 指定依赖位置。
 
 MQ 的“发送成功”只代表 Broker 接收；只有事件变为 `CONSUMED` 才代表积分实际到账。奖励按已完成订单结算金额向下取整，低于 1 元记 0 分流水。新版本只对升级后的结算生成事件，历史订单仍可手动领取；这里的结算是本地模拟，没有新增真实微信支付或余额扣款。
 
 | 配置项（运营服务与小程序服务） | 默认值 | 用途 |
 | --- | --- | --- |
 | `hcp.points.mq.enabled` | false，Compose 开启 | MQ 开关；关闭后仍保存结算事件 |
-| `hcp.points.mq.nameserver` | hcp-mq-nameserver:9876 | NameServer 地址 |
-| `hcp.points.mq.topic` | CHARGE_POINTS_V1 | 两服务需一致，并预先创建 Topic |
+| `hcp.points.mq.exchange` | charge.points.exchange | 两服务需一致，主题交换机（direct） |
+| `hcp.points.mq.routing-key` | charge.points.order.settled | 结算消息路由键 |
+| `hcp.points.mq.queue` | charge.points.award.queue | 积分发放队列，失败后死信到 TTL 重试队列 |
+| （不支持配置） | charge.points.award.queue.parked | 无法匹配事件的消息停放队列，供人工排查 |
+| `hcp.points.mq.retry-ttl-ms` | 5000 | 消费失败后延迟重新入队的毫秒数 |
+| `hcp.points.mq.confirm-timeout-seconds` | 5 | 等待 Broker 发布确认的超时时间 |
 | `hcp.points.mq.scan-ms` | 5000 | 补偿扫描间隔，每批 20 条 |
 | `hcp.points.mq.receipt-timeout-seconds` | 120 | 已投递未到账的重投间隔 |
 | `hcp.points.mq.max-attempts` | 12 | 投递/缺失回执补偿次数上限 |
 | `hcp.points.mq.max-consume-failures` | 12 | 消费失败次数上限 |
 
-发送失败退避为 5、10、20、40、80、160、300 秒，最高 300 秒；发送租约 30 秒，用随机令牌防止旧任务覆盖新任务状态。消费使用 RocketMQ 集群模式的失败重投，积分变更、流水和 `CONSUMED` 回执在同一事务提交。平台管理员在“运营管理 → 充电订单 → 积分发放监控”查看状态；修复错误后可重投 `DEAD`，已到账事件禁止重投，操作会记录审计日志。
+发送失败退避为 5、10、20、40、80、160、300 秒，最高 300 秒；发送租约 30 秒，用随机令牌防止旧任务覆盖新任务状态。消费失败通过死信交换机进入 TTL 重试队列，延迟后重新投递到积分队列，失败次数上限由 `c_points_event` 控制；积分变更、流水和 `CONSUMED` 回执在同一事务提交。平台管理员在“运营管理 → 充电订单 → 积分发放监控”查看状态；修复错误后可重投 `DEAD`，已到账事件禁止重投，操作会记录审计日志。
 
 接口走后台认证：`GET /operator/points/events?page=1&size=20&status=DEAD` 查询，`POST /operator/points/events/{eventId}/retry` 人工恢复。仅平台管理员允许使用，不接受前端指定用户发放积分。
 
-本地 RocketMQ 使用单 Broker、同步刷盘和目录持久化，未部署高可用集群与 ACL；消息服务仅开放在 Docker 内部网络，不映射公网端口。Broker 固定内部 IP 与 Compose 网段一致；改网段时同步修改 `rocketmq/broker.conf` 和初始化脚本地址。镜像旧 JDK 在部分 Docker cgroup 环境需要 `-XX:-UseContainerSupport`，本项目显式限制 JVM 堆并设置该参数。生产部署需独立的认证、备份、高可用和失败告警方案；当前保证业务幂等，不宣称消息绝对不丢或端到端 exactly-once。
+本地 RabbitMQ 使用单节点、持久化队列和目录挂载，未部署镜像队列集群与 TLS；5672 仅开放在 Docker 内部网络，管理界面 15672 映射到宿主机便于本地排查。RabbitMQ 固定内部 IP 与 Compose 网段一致，改网段时同步修改 `docker-compose.yml`。生产部署需独立的认证、备份、高可用和失败告警方案；当前保证业务幂等，不宣称消息绝对不丢或端到端 exactly-once。
 
 ## GitHub Pages 演示
 

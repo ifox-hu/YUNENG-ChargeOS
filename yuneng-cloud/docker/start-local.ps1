@@ -51,15 +51,16 @@ try {
         docker exec -e MYSQL_PWD=password hcp-mysql mysql --default-character-set=utf8mb4 -uroot vctgo_platform -e "source /tmp/$migration"
         if ($LASTEXITCODE -ne 0) { throw "Migration failed: $migration" }
     }
-    docker compose up -d hcp-mq-nameserver hcp-mq-broker
-    if ($LASTEXITCODE -ne 0) { throw 'RocketMQ startup failed.' }
-    $topicReady = $false
-    for ($attempt = 0; $attempt -lt 30; $attempt++) {
-        docker compose exec -T hcp-mq-broker sh mqadmin updateTopic -n hcp-mq-nameserver:9876 -b 172.18.0.18:10911 -t CHARGE_POINTS_V1 -r 4 -w 4
-        if ($LASTEXITCODE -eq 0) { $topicReady = $true; break }
-        Start-Sleep -Seconds 2
+    docker compose up -d hcp-rabbitmq
+    if ($LASTEXITCODE -ne 0) { throw 'RabbitMQ startup failed.' }
+    # Topology is declared by the consumer on startup; only wait for a ready broker here.
+    $mqReady = $false
+    for ($attempt = 0; $attempt -lt 40; $attempt++) {
+        docker compose exec -T hcp-rabbitmq rabbitmq-diagnostics -q ping | Out-Null
+        if ($LASTEXITCODE -eq 0) { $mqReady = $true; break }
+        Start-Sleep -Seconds 3
     }
-    if (-not $topicReady) { throw 'RocketMQ topic initialization failed.' }
+    if (-not $mqReady) { throw 'RabbitMQ is not ready.' }
 
     if ($BuildImages) {
         docker compose build hcp-gateway hcp-auth hcp-system hcp-file hcp-operator hcp-mp
