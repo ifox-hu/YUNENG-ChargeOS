@@ -31,7 +31,7 @@
 
       <el-dropdown class="avatar-container right-menu-item hover-effect" trigger="click">
         <div class="avatar-wrapper">
-          <img :src="avatar" class="user-avatar">
+          <img :src="brandAvatar" alt="驭能智充" class="user-avatar">
           <i class="el-icon-caret-bottom" />
         </div>
         <el-dropdown-menu slot="dropdown">
@@ -74,6 +74,7 @@ export default {
     Search
   },
   computed: {
+    brandAvatar() { return require('@/assets/logo/yuneng.svg') },
     demoMode() { return process.env.VUE_APP_DEMO === 'true' },
     ...mapGetters([
       'sidebar',
