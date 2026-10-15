@@ -9,8 +9,26 @@ $ErrorActionPreference = 'Stop'
 if ($AllModules) { $env:COMPOSE_PROFILES = 'extras,simulator' }
 Push-Location $PSScriptRoot
 try {
-    docker info --format '{{.ServerVersion}}'
-    if ($LASTEXITCODE -ne 0) { throw 'Start Docker Desktop, wait for the engine, then rerun this script.' }
+    docker info --format '{{.ServerVersion}}' 2>$null | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        # Every container stops when the engine stops, so bring Docker Desktop up first.
+        $dockerDesktop = Join-Path ${env:ProgramFiles} 'Docker\Docker\Docker Desktop.exe'
+        if (-not (Test-Path -LiteralPath $dockerDesktop)) {
+            throw "Docker Desktop not found at $dockerDesktop. Start it manually, then rerun this script."
+        }
+        Write-Host 'Docker engine is not running; starting Docker Desktop...'
+        Start-Process -FilePath $dockerDesktop -WindowStyle Hidden | Out-Null
+        $engineUp = $false
+        for ($attempt = 0; $attempt -lt 60; $attempt++) {
+            Start-Sleep -Seconds 5
+            docker info --format '{{.ServerVersion}}' 2>$null | Out-Null
+            if ($LASTEXITCODE -eq 0) { $engineUp = $true; break }
+        }
+        if (-not $engineUp) {
+            throw 'Docker engine did not start within 5 minutes. Open Docker Desktop manually, then rerun this script.'
+        }
+        Write-Host 'Docker engine is up.'
+    }
 
     docker compose up -d hcp-mysql hcp-redis hcp-nacos
     if ($LASTEXITCODE -ne 0) { throw 'Infrastructure startup failed.' }
