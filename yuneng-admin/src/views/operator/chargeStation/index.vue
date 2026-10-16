@@ -101,28 +101,28 @@
               <div class="metric">
                 <span class="metric-value">
                   {{
-                    item.chargingCdgl ? Number(item.chargingCdgl).toFixed(2) : 0
-                  }}<em>KW</em>
+                    item.chargingCdgl ? (Number(item.chargingCdgl) / 1000).toFixed(2) : 0
+                  }}<em>kW</em>
                 </span>
                 <span class="metric-label">功率</span>
               </div>
               <div class="metric">
                 <span class="metric-value">{{ item.useCount || 0 }}</span>
-                <span class="metric-label">次数</span>
+                <span class="metric-label">累计次数</span>
               </div>
               <div class="metric">
                 <span class="metric-value">
                   {{ item.realHour ? (item.realHour * 60).toFixed(2) : 0
                   }}<em>分钟</em>
                 </span>
-                <span class="metric-label">时间</span>
+                <span class="metric-label">本次时长</span>
               </div>
               <div class="metric">
                 <span class="metric-value">
                   {{ item.consumePower ? Number(item.consumePower).toFixed(2) : 0
                   }}<em>度</em>
                 </span>
-                <span class="metric-label">电量</span>
+                <span class="metric-label">本次电量</span>
               </div>
             </div>
 

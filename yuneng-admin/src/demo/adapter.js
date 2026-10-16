@@ -1,4 +1,5 @@
 import fixtures from './fixtures.json'
+import { seedDemoPorts, refreshDemoPorts, simulateDemoPorts } from './telemetry'
 const key = 'yuneng-original-ui-demo-v1'
 const clone = value => JSON.parse(JSON.stringify(value))
 const now = () => new Date().toLocaleString('sv-SE')
@@ -6,7 +7,22 @@ const initial = () => ({ lists: clone(fixtures), faults: ['NEW','ASSIGNED','PROC
 let db
 try { db=JSON.parse(localStorage.getItem(key)) || initial() } catch(e) { db=initial() }
 const persist=()=>localStorage.setItem(key,JSON.stringify(db))
-export function resetDemo(){db=initial();persist();location.reload()}
+function prepareTelemetry() {
+  const collection = db.lists['/operator/port/list']
+  const ports = collection.rows || collection.data || []
+  if (db.portTelemetryVersion !== 1) {
+    seedDemoPorts(ports)
+    db.portTelemetryVersion = 1
+  } else {
+    // Continue saved sessions from their last readings when reopening the demo.
+    ports.forEach(port => { if (port._demoTelemetry) port._demoTelemetry.at = Date.now() })
+  }
+  collection.data = ports
+  if (collection.rows) collection.rows = ports
+  persist()
+}
+prepareTelemetry()
+export function resetDemo(){db=initial();prepareTelemetry();location.reload()}
 const user={userId:1,userName:'demo',nickName:'演示管理员',avatar:'',deptId:100,tenantId:9999,status:'0',phonenumber:'13800000000',email:'demo@example.com',dept:{deptName:'运营部'}}
 const samples={
  '/system/user/list':[user],
@@ -44,9 +60,14 @@ function handle(config) {
  if(url.includes('/fault'))return fault(url,method,b,q)
  if(url.startsWith('/simulator/evcs/sim/v1/')){
   const args={...q,...b},action=url.split('/').pop(),ports=db.lists['/operator/port/list'].rows||db.lists['/operator/port/list'].data
-  const target=ports.filter(r=>r.pileId===args.pileId&&(!args.deviceId||String(r.deviceId)===String(args.deviceId)))
-  if(!target.length)return fail('没有匹配的模拟端口')
-  target.forEach(r=>{if(action==='start')r.runningStatus=2;else if(action==='stop'){r.runningStatus=1;r.gunStatus=0}else if(action==='link')r.gunInsert=1;else if(action==='unlink'){r.gunInsert=0;r.gunStatus=0}else if(action==='startCharge')r.gunStatus=1;else if(action==='endCharge')r.gunStatus=0});persist();return ok('模拟状态已更新')
+  const error=simulateDemoPorts(ports,action,args)
+  if(error)return fail(error)
+  persist();return ok('模拟状态已更新')
+ }
+ if(url==='/operator/port/list'&&method==='get'){
+  const collection=db.lists[url]
+  refreshDemoPorts(collection.rows||collection.data||[])
+  persist()
  }
  if(db.lists[url]&&method==='get'){const r=clone(db.lists[url]);if(Array.isArray(r.rows)||url.endsWith('/list'))return listResponse(r.rows||r.data||[],q,r);return r}
  if(db.lists[url]&&url.includes('/total/'))return clone(db.lists[url])
