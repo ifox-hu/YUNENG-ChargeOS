@@ -10,7 +10,7 @@ const roleKey='qaf_'+crypto.randomBytes(5).toString('hex');
 const handlerName=roleKey+'_h', otherName=roleKey+'_o', readerName=roleKey+'_r';
 const operatorTokens=[];
 const rollbackTrigger='qaf_rollback_'+crypto.randomBytes(5).toString('hex');
-let adminToken,memberToken,checks=0;
+let adminToken,memberToken,checks=0,illegalTransitions=0;
 function sql(query){return execFileSync('docker',['exec','-e','MYSQL_PWD=password','hcp-mysql','mysql','--default-character-set=utf8mb4','-uroot','vctgo_platform','-Nse',query],{encoding:'utf8'}).trim()}
 function redis(...args){return execFileSync('docker',['exec','hcp-redis','redis-cli','-n','5',...args],{encoding:'utf8'}).trim()}
 function pass(name){checks++;console.log('PASS '+name)}
@@ -25,6 +25,19 @@ async function req(url,headers={},method='GET',data){
 }
 const admin=(path,method='GET',data)=>req(base+'operator/fault/'+path,{Authorization:'Bearer '+adminToken},method,data);
 const member=(path,method='GET',data,token=memberToken)=>req(mp+'fault/'+path,token?{token:'Bearer '+token}:{},method,data);
+async function rejectStateTransitions(id,status,actions){
+ const snapshot=()=>sql('SELECT status,IFNULL(assignee_id,0),IFNULL(resolved_at,0),IFNULL(closed_at,0),IFNULL(updated_at,0) FROM c_fault_ticket WHERE id='+id);
+ assert.equal(sql('SELECT status FROM c_fault_ticket WHERE id='+id),status);
+ const before=snapshot(),logs=sql('SELECT COUNT(*) FROM c_fault_ticket_log WHERE ticket_id='+id);
+ for(const action of actions){
+  const result=await admin(id+'/action','POST',{action,assigneeId:1,note:'QA illegal state matrix'});
+  assert.equal(result.code,500,status+' -> '+action+': '+JSON.stringify(result));
+  assert.equal(snapshot(),before,'rejected transition must not mutate ticket');
+  assert.equal(sql('SELECT COUNT(*) FROM c_fault_ticket_log WHERE ticket_id='+id),logs);
+  illegalTransitions++;
+ }
+ pass(status+' illegal transition matrix: '+actions.join(',')+'; no ticket/log mutation');
+}
 async function main(){
  try{
   const captcha=await req(base+'code');
@@ -61,6 +74,7 @@ async function main(){
   results.forEach(x=>assert.equal(x.code,200,JSON.stringify(x)));
   const ids=new Set(results.map(x=>x.data.ticket.id));assert.equal(ids.size,1);
   const id=results[0].data.ticket.id;
+  await rejectStateTransitions(id,'NEW',['START','RESOLVE','CONFIRM']);
   r=await op(readerToken,'list?pileId='+pile);assert.equal(r.code,200);assert.equal(r.data.total,1);
   r=await op(readerToken,'simulate-alarm','POST',{pileId:pile,faultType:'POWER',description:'QA forbidden'});assert.notEqual(r.code,200);
   r=await op(readerToken,id+'/action','POST',{action:'ASSIGN',assigneeId:handlerId,note:'QA forbidden'});assert.notEqual(r.code,200);pass('read-only role cannot create or assign tickets');
@@ -96,8 +110,10 @@ async function main(){
   assert.equal(sql('SELECT COUNT(*) FROM c_fault_ticket_log WHERE ticket_id='+id),logCount);pass('failed assignment preserves status and log count');
   r=await admin(id+'/assignees');assert.equal(r.code,200);assert(r.data.some(x=>x.userId===1));pass('assignee list scoped to ticket tenant');
   r=await admin(id+'/action','POST',{action:'ASSIGN',assigneeId:handlerId,note:'QA assignment'});assert.equal(r.code,200);
+  await rejectStateTransitions(id,'ASSIGNED',['RESOLVE','CONFIRM']);
   r=await op(otherToken,id+'/action','POST',{action:'START',note:'QA unauthorized operator'});assert.notEqual(r.code,200);pass('only assigned operator can start processing');
   r=await op(handlerToken,id+'/action','POST',{action:'START',note:'QA start'});assert.equal(r.code,200);
+  await rejectStateTransitions(id,'PROCESSING',['ASSIGN','START','CONFIRM']);
   const beforeResolveLog=sql('SELECT COUNT(*) FROM c_fault_ticket_log WHERE ticket_id='+id);
   sql("CREATE TRIGGER "+rollbackTrigger+" BEFORE INSERT ON c_fault_ticket_log FOR EACH ROW SET NEW.note=IF(NEW.ticket_id="+id+" AND NEW.action='RESOLVE',NULL,NEW.note)");
   r=await op(handlerToken,id+'/action','POST',{action:'RESOLVE',note:'QA failed transaction'});assert.notEqual(r.code,200);
@@ -107,13 +123,16 @@ async function main(){
   sql('DROP TRIGGER '+rollbackTrigger);pass('timeline write failure rolls back status and resolution timestamp');
   r=await op(handlerToken,id+'/action','POST',{action:'RESOLVE',note:'QA resolved'});assert.equal(r.code,200,JSON.stringify(r));
   assert.equal(r.data.ticket.status,'RESOLVED');pass('assignment, processing and resolution flow');
+  await rejectStateTransitions(id,'RESOLVED',['ASSIGN','START','RESOLVE']);
   r=await member(id+'/confirm','POST',{});assert.equal(r.code,200);assert.equal(r.data.ticket.status,'CLOSED');pass('reporter confirms closure');
+  await rejectStateTransitions(id,'CLOSED',['ASSIGN','START','RESOLVE','CONFIRM']);
   r=await member(id+'/confirm','POST',{});assert.notEqual(r.code,200);pass('repeated close rejected');
   r=await member('report','POST',body);assert.equal(r.code,200);assert.notEqual(r.data.ticket.id,id);pass('closed ticket releases active key for new fault');
   r=await admin('stats');assert.equal(r.code,200);assert(r.data.total>=2);assert(r.data.byType.length);assert(r.data.trend.length);pass('statistics query uses persisted tickets');
   const attack=await req(base+'operator/fault/internal/mine?memberId='+memberId+'&pageNum=1&pageSize=10',{Authorization:'Bearer '+adminToken,from:'inner'});
   assert.notEqual(attack.code,200);pass('gateway blocks spoofed internal service header');
   console.log('TOTAL '+checks+' checks passed');
+  assert.equal(illegalTransitions,15);console.log('STATE_MATRIX '+illegalTransitions+'/15 invalid transitions rejected without mutation');
  }finally{
   sql('DROP TRIGGER IF EXISTS '+rollbackTrigger);
   sql("START TRANSACTION; DELETE a FROM c_device_alarm a JOIN c_fault_ticket t ON t.id=a.ticket_id WHERE t.pile_id='"+pile+"'; DELETE l FROM c_fault_ticket_log l JOIN c_fault_ticket t ON t.id=l.ticket_id WHERE t.pile_id='"+pile+"'; DELETE r FROM c_fault_report r JOIN c_fault_ticket t ON t.id=r.ticket_id WHERE t.pile_id='"+pile+"'; DELETE FROM c_fault_ticket WHERE pile_id='"+pile+"'; DELETE FROM c_charging_pile WHERE pile_id='"+pile+"' AND remark='isolated fault integration fixture'; COMMIT;");

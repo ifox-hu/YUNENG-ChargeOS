@@ -11,7 +11,7 @@ import com.hcp.system.api.domain.vo.ChargingPileVO;
 import com.hcp.system.api.domain.vo.PlotDetailVo;
 import com.hcp.system.api.domain.vo.PlotInfoReqVO;
 import com.hcp.system.api.domain.vo.PlotVO;
-import com.hcp.system.api.factory.RemoteMpFallbackFactory;
+import com.hcp.system.api.factory.RemoteChargingFallbackFactory;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,7 +26,7 @@ import java.util.List;
  *
  * @author vctgo
  */
-@FeignClient(contextId = "remoteChargeService", value = ServiceNameConstants.OPERATOR_SERVICE, fallbackFactory = RemoteMpFallbackFactory.class)
+@FeignClient(contextId = "remoteChargeService", value = ServiceNameConstants.OPERATOR_SERVICE, fallbackFactory = RemoteChargingFallbackFactory.class)
 public interface RemoteChargingService {
     /**
      * 更新设备心跳

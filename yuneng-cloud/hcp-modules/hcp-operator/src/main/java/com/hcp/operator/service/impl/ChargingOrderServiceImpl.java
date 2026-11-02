@@ -236,7 +236,9 @@ public class ChargingOrderServiceImpl implements IChargingOrderService
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
+    // Persist the stop-request log in autocommit before device RPC. A synchronous
+    // simulator settlement callback needs its own connection from the same pool.
+    // The request log also survives an uncertain RPC result; it is not a completion log.
     public void stopChargingOrder(String pileId, String port) {
         ChargingPort chargingPort = chargingPortMapper.selectPort(pileId, port);
         Assert.notNull(chargingPort,"充电口信息为空");
