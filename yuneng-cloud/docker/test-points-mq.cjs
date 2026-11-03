@@ -47,12 +47,12 @@ async function main() {
     assert.equal(sql(`select points from c_member_points_ledger where member_id=${member} and business_key='ORDER:${zero}'`),'0');
     console.log('PASS sub-yuan reward is processed without infinite retry');
 
-    // Stop RabbitMQ; order must still commit, attempts must fail, and scheduled scan must recover.
-    docker('stop','hcp-rabbitmq');
+    // Stop RocketMQ broker; settlement must commit and the outbox must recover.
+    docker('stop','hcp-rocketmq-broker');
     const outage=create('outage'); await settle(outage);
     await until(()=>status(outage)==='RETRY','durable publish failure');
     assert.equal(count(outage),0);
-    docker('start','hcp-rabbitmq'); await receipt(outage);
+    docker('start','hcp-rocketmq-broker'); await receipt(outage);
     assert.ok(Number(sql(`select publish_attempts from c_points_event where order_id='${outage}'`))>=2);
     console.log('PASS broker outage preserves settlement; timed publisher retries after recovery');
 
@@ -89,7 +89,7 @@ async function main() {
     assert.equal(sql(`select credit from c_user_credit where member_id=${member}`),'40');
     console.log('PASS expired worker lease recovery; all rewards total exactly 40');
   } finally {
-    docker('start','hcp-rabbitmq','hcp-mp');
+    docker('start','hcp-rocketmq-broker','hcp-mp');
     // Stop delivering fixture events before deleting their member/account.
     sql(`update c_points_event set status='DEAD' where order_id like '${prefix}%';`);
     sql(`delete from c_member_points_ledger where member_id=${member}; delete from c_user_credit where member_id=${member};

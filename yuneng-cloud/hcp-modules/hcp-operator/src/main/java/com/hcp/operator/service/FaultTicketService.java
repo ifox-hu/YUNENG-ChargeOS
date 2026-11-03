@@ -9,6 +9,7 @@ import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Propagation;
 import javax.annotation.Resource;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
@@ -70,6 +71,16 @@ public class FaultTicketService {
     /** Pile row lock serializes competing reports; generated unique key is a second DB invariant. */
     @Transactional(rollbackFor=Exception.class,isolation=Isolation.READ_COMMITTED)
     public Map<String,Object> create(FaultRequest request,Long memberId,Scope scope) {
+        return createInternal(request,memberId,scope,"SIM-"+UUID.randomUUID());
+    }
+
+    /** Only the event processor may invoke this inside its existing transaction. */
+    @Transactional(propagation=Propagation.MANDATORY,rollbackFor=Exception.class)
+    public Map<String,Object> createDeviceAlarm(FaultRequest request,Long tenant,Long actorId,String actorName,String alarmId) {
+        return createInternal(request,null,new Scope(actorId,tenant,actorName,false),alarmId);
+    }
+
+    private Map<String,Object> createInternal(FaultRequest request,Long memberId,Scope scope,String alarmId) {
         String pileId=text(request.getPileId(),64,"设备编号");
         String type=text(request.getFaultType(),24,"故障类型");
         if (!TYPES.contains(type)) throw new ServiceException("故障类型不合法");
@@ -84,10 +95,12 @@ public class FaultTicketService {
         if (scope!=null && !scope.root && !String.valueOf(scope.tenant).equals(String.valueOf(tenant)))
             throw new ServiceException("无权操作该租户设备",403);
         List<Map<String,Object>> active=jdbc.queryForList(
-            "SELECT id,status FROM c_fault_ticket WHERE pile_id=? AND fault_type=? AND status<>'CLOSED' FOR UPDATE",pileId,type);
+            "SELECT id,status,tenant_id FROM c_fault_ticket WHERE pile_id=? AND fault_type=? AND status<>'CLOSED' FOR UPDATE",pileId,type);
         boolean merged=!active.isEmpty();
         Long id; String status;
         if (merged) {
+            if (!String.valueOf(tenant).equals(String.valueOf(active.get(0).get("tenant_id"))))
+                throw new ServiceException("设备存在原租户活动工单，请先处理后再关联告警",409);
             id=((Number)active.get(0).get("id")).longValue(); status=String.valueOf(active.get(0).get("status"));
         } else {
             final String finalPriority=priority;
@@ -111,9 +124,11 @@ public class FaultTicketService {
                 merged?"用户报修已合并到当前工单":"用户提交故障报修");
         } else {
             jdbc.update("INSERT INTO c_device_alarm(event_id,ticket_id,pile_id,fault_type) VALUES(?,?,?,?)",
-                "SIM-"+UUID.randomUUID(),id,pileId,type);
+                alarmId,id,pileId,type);
+            String note=(merged?"模拟告警合并：":"模拟设备告警：")+description;
+            // The complete description remains on the durable event and initial ticket.
             log(id,merged?"MERGE_ALARM":"ALARM",merged?status:null,status,"OPERATOR",scope.id,scope.name,
-                (merged?"模拟告警合并：":"模拟设备告警：")+description);
+                note.substring(0,Math.min(1000,note.length())));
         }
         Map<String,Object> result=new LinkedHashMap<>();
         result.put("ticket",jdbc.queryForMap(SELECT+"WHERE t.id=?",id));

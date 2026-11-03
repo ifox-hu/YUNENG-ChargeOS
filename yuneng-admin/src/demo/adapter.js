@@ -1,5 +1,6 @@
 import fixtures from './fixtures.json'
 import { seedDemoPorts, refreshDemoPorts, simulateDemoPorts } from './telemetry'
+import { handleDemoAlarms } from './alarms'
 const key = 'yuneng-original-ui-demo-v1'
 const clone = value => JSON.parse(JSON.stringify(value))
 const now = () => new Date().toLocaleString('sv-SE')
@@ -57,6 +58,7 @@ function handle(config) {
  if(url.includes('/config/configKey/'))return ok('false')
  if(url==='/system/user/profile')return {...ok(user),roleGroup:'演示管理员',postGroup:'运营'}
  if(url==='/demo/operation-logs')return ok(db.faults.flatMap(t=>t.logs.map(l=>({...l,ticketNo:t.ticketNo}))))
+ if(url==='/operator/fault/alarms'||url.startsWith('/operator/fault/alarms/')){const result=handleDemoAlarms(db,url,method,b,q);persist();return result}
  if(url.includes('/fault'))return fault(url,method,b,q)
  if(url.startsWith('/simulator/evcs/sim/v1/')){
   const args={...q,...b},action=url.split('/').pop(),ports=db.lists['/operator/port/list'].rows||db.lists['/operator/port/list'].data

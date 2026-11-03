@@ -63,22 +63,23 @@ try {
         if ($LASTEXITCODE -ne 0) { throw 'Nacos development configuration failed.' }
     }
 
-    foreach ($migration in @('wallet-points.sql','points-mq.sql')) {
+    foreach ($migration in @('wallet-points.sql','points-mq.sql','device-alarm.sql')) {
         docker cp $migration "hcp-mysql:/tmp/$migration"
         if ($LASTEXITCODE -ne 0) { throw "Copy failed: $migration" }
         docker exec -e MYSQL_PWD=password hcp-mysql mysql --default-character-set=utf8mb4 -uroot vctgo_platform -e "source /tmp/$migration"
         if ($LASTEXITCODE -ne 0) { throw "Migration failed: $migration" }
     }
-    docker compose up -d hcp-rabbitmq
-    if ($LASTEXITCODE -ne 0) { throw 'RabbitMQ startup failed.' }
-    # Topology is declared by the consumer on startup; only wait for a ready broker here.
+    docker compose up -d hcp-rocketmq-namesrv hcp-rocketmq-broker
+    if ($LASTEXITCODE -ne 0) { throw 'RocketMQ startup failed.' }
     $mqReady = $false
     for ($attempt = 0; $attempt -lt 40; $attempt++) {
-        docker compose exec -T hcp-rabbitmq rabbitmq-diagnostics -q ping | Out-Null
+        docker compose exec -T hcp-rocketmq-broker sh mqadmin brokerStatus -n hcp-rocketmq-namesrv:9876 -b 172.18.0.19:10911 | Out-Null
         if ($LASTEXITCODE -eq 0) { $mqReady = $true; break }
         Start-Sleep -Seconds 3
     }
-    if (-not $mqReady) { throw 'RabbitMQ is not ready.' }
+    if (-not $mqReady) { throw 'RocketMQ is not ready.' }
+    docker compose run --rm hcp-rocketmq-init
+    if ($LASTEXITCODE -ne 0) { throw 'RocketMQ topic initialization failed.' }
 
     if ($BuildImages) {
         docker compose build hcp-gateway hcp-auth hcp-system hcp-file hcp-operator hcp-mp

@@ -1,0 +1,243 @@
+{
+  "date": "2026-11-04",
+  "scope": "Local single instance, finite batches, logical device records; not hardware or sustained capacity. HTTP acceptance differs from async completion.",
+  "environment": {
+    "cpu": "Intel Core i7-13620H",
+    "logicalCpus": 16,
+    "hostMemoryBytes": 16961822720,
+    "dockerMemoryBytes": 8216260608,
+    "mysql": "8.0.36",
+    "java": "8",
+    "alarmConsumerThreads": 4
+  },
+  "measurements": [
+    {
+      "directory": "QA_ALARM_1793727963159_b7c8bf-burst",
+      "summary": {
+        "run": "QA_ALARM_1793727963159_b7c8bf",
+        "scenario": "burst",
+        "devices": 100,
+        "events": 300,
+        "concurrency": 32,
+        "acceptance": {
+          "requests": 300,
+          "success": 300,
+          "failed": 0,
+          "seconds": 1.0222048,
+          "successQps": 293.4832628451755,
+          "errorRate": 0,
+          "p50Ms": 93.69119999999975,
+          "p95Ms": 236.1253999999999,
+          "p99Ms": 259.0509000000002,
+          "percentileMethod": "nearest-rank; all HTTP attempts"
+        },
+        "processing": {
+          "requests": 300,
+          "success": 300,
+          "failed": 0,
+          "seconds": 8.107,
+          "successQps": 37.00505735783891,
+          "errorRate": 0,
+          "p50Ms": 3733,
+          "p95Ms": 6841,
+          "p99Ms": 7089,
+          "percentileMethod": "nearest-rank; unique persisted events; received_at to processed_at",
+          "rateMeaning": "unique events completed / first receipt to last completion"
+        },
+        "recoveryObservedSeconds": null,
+        "recoveryMeasurement": "Broker start command began to first polling confirmation all persisted events PROCESSED; includes startup and polling, excludes subsequent reconciliation",
+        "reconciliationPassed": true,
+        "finishedAt": "2026-11-03T17:46:15.390Z"
+      },
+      "cleanup": {
+        "passed": true,
+        "finishedAt": "2026-11-03T17:46:16.139Z"
+      }
+    },
+    {
+      "directory": "QA_ALARM_1793727976276_48cc15-burst",
+      "summary": {
+        "run": "QA_ALARM_1793727976276_48cc15",
+        "scenario": "burst",
+        "devices": 1000,
+        "events": 1000,
+        "concurrency": 64,
+        "acceptance": {
+          "requests": 1000,
+          "success": 1000,
+          "failed": 0,
+          "seconds": 2.1553668,
+          "successQps": 463.9581532015804,
+          "errorRate": 0,
+          "p50Ms": 126.85429999999997,
+          "p95Ms": 218.1270000000004,
+          "p99Ms": 270.08539999999994,
+          "percentileMethod": "nearest-rank; all HTTP attempts"
+        },
+        "processing": {
+          "requests": 1000,
+          "success": 1000,
+          "failed": 0,
+          "seconds": 29.199,
+          "successQps": 34.24774821055515,
+          "errorRate": 0,
+          "p50Ms": 14431,
+          "p95Ms": 26318,
+          "p99Ms": 26951,
+          "percentileMethod": "nearest-rank; unique persisted events; received_at to processed_at",
+          "rateMeaning": "unique events completed / first receipt to last completion"
+        },
+        "recoveryObservedSeconds": null,
+        "recoveryMeasurement": "Broker start command began to first polling confirmation all persisted events PROCESSED; includes startup and polling, excludes subsequent reconciliation",
+        "reconciliationPassed": true,
+        "finishedAt": "2026-11-03T17:46:51.133Z"
+      },
+      "cleanup": {
+        "passed": true,
+        "finishedAt": "2026-11-03T17:46:51.874Z"
+      }
+    },
+    {
+      "directory": "QA_ALARM_1793728012005_110a83-duplicate",
+      "summary": {
+        "run": "QA_ALARM_1793728012005_110a83",
+        "scenario": "duplicate",
+        "devices": 1,
+        "events": 1000,
+        "concurrency": 32,
+        "acceptance": {
+          "requests": 1000,
+          "success": 1000,
+          "failed": 0,
+          "seconds": 2.8046829,
+          "successQps": 356.54654577884725,
+          "errorRate": 0,
+          "p50Ms": 82.5924,
+          "p95Ms": 145.60649999999987,
+          "p99Ms": 184.3451,
+          "percentileMethod": "nearest-rank; all HTTP attempts"
+        },
+        "processing": {
+          "requests": 1,
+          "success": 1,
+          "failed": 0,
+          "seconds": 0.93,
+          "successQps": 1.075268817204301,
+          "errorRate": 0,
+          "p50Ms": 930,
+          "p95Ms": 930,
+          "p99Ms": 930,
+          "percentileMethod": "nearest-rank; unique persisted events; received_at to processed_at",
+          "rateMeaning": "unique events completed / first receipt to last completion"
+        },
+        "recoveryObservedSeconds": null,
+        "recoveryMeasurement": "Broker start command began to first polling confirmation all persisted events PROCESSED; includes startup and polling, excludes subsequent reconciliation",
+        "reconciliationPassed": true,
+        "finishedAt": "2026-11-03T17:46:59.290Z"
+      },
+      "cleanup": {
+        "passed": true,
+        "finishedAt": "2026-11-03T17:46:59.822Z"
+      }
+    },
+    {
+      "directory": "QA_ALARM_1793728019947_ae8fde-backlog",
+      "summary": {
+        "run": "QA_ALARM_1793728019947_ae8fde",
+        "scenario": "backlog",
+        "devices": 100,
+        "events": 100,
+        "concurrency": 16,
+        "acceptance": {
+          "requests": 100,
+          "success": 100,
+          "failed": 0,
+          "seconds": 0.2518756000000003,
+          "successQps": 397.0213867480609,
+          "errorRate": 0,
+          "p50Ms": 32.39360000000033,
+          "p95Ms": 70.60509999999977,
+          "p99Ms": 78.33520000000044,
+          "percentileMethod": "nearest-rank; all HTTP attempts"
+        },
+        "processing": {
+          "requests": 100,
+          "success": 100,
+          "failed": 0,
+          "seconds": 26.729,
+          "successQps": 3.741254816865577,
+          "errorRate": 0,
+          "p50Ms": 26459,
+          "p95Ms": 26623,
+          "p99Ms": 26665,
+          "percentileMethod": "nearest-rank; unique persisted events; received_at to processed_at",
+          "rateMeaning": "unique events completed / first receipt to last completion"
+        },
+        "recoveryObservedSeconds": 28.107,
+        "recoveryMeasurement": "Broker start command began to first polling confirmation all persisted events PROCESSED; includes startup and polling, excludes subsequent reconciliation",
+        "reconciliationPassed": true,
+        "finishedAt": "2026-11-03T17:47:35.441Z"
+      },
+      "cleanup": {
+        "passed": true,
+        "finishedAt": "2026-11-03T17:47:35.903Z"
+      }
+    },
+    {
+      "directory": "QA_ALARM_1793728056087_901930-restart",
+      "summary": {
+        "run": "QA_ALARM_1793728056087_901930",
+        "scenario": "restart",
+        "devices": 100,
+        "events": 100,
+        "concurrency": 16,
+        "acceptance": {
+          "requests": 100,
+          "success": 100,
+          "failed": 0,
+          "seconds": 0.21596280000000023,
+          "successQps": 463.04270920732597,
+          "errorRate": 0,
+          "p50Ms": 28.916699999999764,
+          "p95Ms": 62.49369999999999,
+          "p99Ms": 64.67109999999957,
+          "percentileMethod": "nearest-rank; all HTTP attempts"
+        },
+        "processing": {
+          "requests": 100,
+          "success": 100,
+          "failed": 0,
+          "seconds": 30.881,
+          "successQps": 3.2382371037207345,
+          "errorRate": 0,
+          "p50Ms": 19769,
+          "p95Ms": 20624,
+          "p99Ms": 20669,
+          "percentileMethod": "nearest-rank; unique persisted events; received_at to processed_at",
+          "rateMeaning": "unique events completed / first receipt to last completion"
+        },
+        "recoveryObservedSeconds": 27.209,
+        "recoveryMeasurement": "Broker start command began to first polling confirmation all persisted events PROCESSED; includes startup and polling, excludes subsequent reconciliation",
+        "reconciliationPassed": true,
+        "finishedAt": "2026-11-03T17:48:13.530Z"
+      },
+      "cleanup": {
+        "passed": true,
+        "finishedAt": "2026-11-03T17:48:14.110Z"
+      }
+    }
+  ],
+  "mqDuplicateVerification": {
+    "run": "QA_ALARM_1793727840887_f76815",
+    "realMessagesSent": 1000,
+    "allTargetOffsetsConsumed": true,
+    "seconds": 7.531072192,
+    "reconciliation": {
+      "logs": 1,
+      "alarms": 1,
+      "events": 1,
+      "tickets": 1
+    },
+    "passed": true
+  }
+}

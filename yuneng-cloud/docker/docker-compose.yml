@@ -6,26 +6,73 @@ networks:
       config:
         - subnet: 172.18.0.0/16
 services:
-  hcp-rabbitmq:
-    container_name: hcp-rabbitmq
-    image: rabbitmq:3.13-management
-    restart: unless-stopped
-    environment:
-      RABBITMQ_DEFAULT_USER: hcp
-      RABBITMQ_DEFAULT_PASS: hcp123456
-      RABBITMQ_DEFAULT_VHOST: /
-    ports:
-      - "15672:15672"
+  hcp-rocketmq-permissions:
+    image: apache/rocketmq:4.9.7
+    user: root
+    restart: "no"
+    command: sh -c 'chown rocketmq:rocketmq /data/namesrv-logs /data/broker-logs /data/broker-store'
     volumes:
-      - ./rabbitmq/data:/var/lib/rabbitmq
+      - rocketmq-namesrv-logs:/data/namesrv-logs
+      - rocketmq-broker-logs:/data/broker-logs
+      - rocketmq-broker-store:/data/broker-store
+    network_mode: none
+  hcp-rocketmq-namesrv:
+    container_name: hcp-rocketmq-namesrv
+    image: apache/rocketmq:4.9.7
+    restart: unless-stopped
+    depends_on:
+      hcp-rocketmq-permissions:
+        condition: service_completed_successfully
+    environment:
+      JAVA_OPT_EXT: "-Xms128m -Xmx128m -Xmn64m"
+    command: sh mqnamesrv
+    volumes:
+      - rocketmq-namesrv-logs:/home/rocketmq/logs
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/9876'"]
       interval: 10s
       timeout: 5s
       retries: 12
     networks:
       cloud-net:
-        ipv4_address: 172.18.0.18
+        ipv4_address: 172.18.0.20
+  hcp-rocketmq-broker:
+    container_name: hcp-rocketmq-broker
+    image: apache/rocketmq:4.9.7
+    restart: unless-stopped
+    depends_on:
+      hcp-rocketmq-permissions:
+        condition: service_completed_successfully
+      hcp-rocketmq-namesrv:
+        condition: service_healthy
+    environment:
+      # JDK 8u372 in this image misreads cgroup v2 on recent Docker Desktop.
+      JAVA_OPT_EXT: "-Xms256m -Xmx256m -Xmn128m -XX:-UseContainerSupport"
+    command: sh mqbroker -c /home/rocketmq/broker.conf
+    volumes:
+      - ./rocketmq/broker.conf:/home/rocketmq/broker.conf:ro
+      - rocketmq-broker-store:/home/rocketmq/store
+      - rocketmq-broker-logs:/home/rocketmq/logs
+    healthcheck:
+      test: ["CMD-SHELL", "sh mqadmin brokerStatus -n hcp-rocketmq-namesrv:9876 -b 172.18.0.19:10911 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 18
+    networks:
+      cloud-net:
+        ipv4_address: 172.18.0.19
+  hcp-rocketmq-init:
+    image: apache/rocketmq:4.9.7
+    restart: "no"
+    depends_on:
+      hcp-rocketmq-broker:
+        condition: service_healthy
+    environment:
+      JAVA_OPT_EXT: "-Xms64m -Xmx128m"
+    command: sh -c 'sh mqadmin updateTopic -n hcp-rocketmq-namesrv:9876 -b 172.18.0.19:10911 -t charge-points -r 4 -w 4 && sh mqadmin updateTopic -n hcp-rocketmq-namesrv:9876 -b 172.18.0.19:10911 -t charge-device-alarm -r 4 -w 4'
+    networks:
+      cloud-net:
+        ipv4_address: 172.18.0.22
   hcp-nacos:
     container_name: hcp-nacos
     image: nacos/nacos-server:2.0.3-slim
@@ -259,18 +306,19 @@ services:
     ports:
       - "39206:39206"
     depends_on:
-      - hcp-nacos
-      - hcp-mysql
-      - hcp-redis
-      - hcp-rabbitmq
+      hcp-nacos:
+        condition: service_healthy
+      hcp-mysql:
+        condition: service_healthy
+      hcp-redis:
+        condition: service_started
+      hcp-rocketmq-init:
+        condition: service_completed_successfully
     environment:
+      - HCP_ALARM_MQ_ENABLED=true
+      - HCP_ALARM_MQ_NAME_SERVER=hcp-rocketmq-namesrv:9876
       - HCP_POINTS_MQ_ENABLED=true
-      - SPRING_RABBITMQ_HOST=hcp-rabbitmq
-      - SPRING_RABBITMQ_PORT=5672
-      - SPRING_RABBITMQ_USERNAME=hcp
-      - SPRING_RABBITMQ_PASSWORD=hcp123456
-      # Confirmed publishes: the outbox waits for a broker ack before marking an event SENT.
-      - SPRING_RABBITMQ_PUBLISHER_CONFIRM_TYPE=correlated
+      - HCP_POINTS_MQ_NAME_SERVER=hcp-rocketmq-namesrv:9876
       - NACOS_HOST=hcp-nacos
       - NACOS_PORT=8848
     networks:
@@ -284,18 +332,17 @@ services:
     ports:
       - "39207:39207"
     depends_on:
-      - hcp-nacos
-      - hcp-mysql
-      - hcp-redis
-      - hcp-rabbitmq
+      hcp-nacos:
+        condition: service_healthy
+      hcp-mysql:
+        condition: service_healthy
+      hcp-redis:
+        condition: service_started
+      hcp-rocketmq-init:
+        condition: service_completed_successfully
     environment:
       - HCP_POINTS_MQ_ENABLED=true
-      - SPRING_RABBITMQ_HOST=hcp-rabbitmq
-      - SPRING_RABBITMQ_PORT=5672
-      - SPRING_RABBITMQ_USERNAME=hcp
-      - SPRING_RABBITMQ_PASSWORD=hcp123456
-      # Confirmed publishes: the outbox waits for a broker ack before marking an event SENT.
-      - SPRING_RABBITMQ_PUBLISHER_CONFIRM_TYPE=correlated
+      - HCP_POINTS_MQ_NAME_SERVER=hcp-rocketmq-namesrv:9876
       - NACOS_HOST=hcp-nacos
       - NACOS_PORT=8848
       - SPRING_CLOUD_NACOS_CONFIG_NAMESPACE=hcp
@@ -319,3 +366,7 @@ services:
     networks:
       cloud-net:
         ipv4_address: 172.18.0.16
+volumes:
+  rocketmq-namesrv-logs:
+  rocketmq-broker-store:
+  rocketmq-broker-logs:

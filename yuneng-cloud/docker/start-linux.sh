@@ -14,16 +14,17 @@ wait_health() {
 }
 wait_health hcp-mysql
 wait_health hcp-nacos
-for migration in nacos-compat.sql account-login.sql fault-work-order.sql wallet-points.sql points-mq.sql; do
+for migration in nacos-compat.sql account-login.sql fault-work-order.sql wallet-points.sql points-mq.sql device-alarm.sql; do
   docker exec -i -e MYSQL_PWD=password hcp-mysql mysql --default-character-set=utf8mb4 -uroot vctgo_platform < "$migration"
 done
 node configure-local.cjs
-docker compose up -d hcp-rabbitmq
+docker compose up -d hcp-rocketmq-namesrv hcp-rocketmq-broker
 for ((attempt=0; attempt<40; attempt++)); do
-  if docker compose exec -T hcp-rabbitmq rabbitmq-diagnostics -q ping >/dev/null 2>&1; then break; fi
-  if [[ "$attempt" -eq 39 ]]; then echo 'RabbitMQ is not ready.' >&2; exit 1; fi
+  if docker compose exec -T hcp-rocketmq-broker sh mqadmin brokerStatus -n hcp-rocketmq-namesrv:9876 -b 172.18.0.19:10911 >/dev/null 2>&1; then break; fi
+  if [[ "$attempt" -eq 39 ]]; then echo 'RocketMQ is not ready.' >&2; exit 1; fi
   sleep 3
 done
+docker compose run --rm hcp-rocketmq-init
 docker compose build
 docker compose up -d
 echo 'Services started. Check docker compose ps and access http://<VM-IP>:8001'

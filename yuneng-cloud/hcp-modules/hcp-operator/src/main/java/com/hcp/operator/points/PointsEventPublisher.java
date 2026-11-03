@@ -3,10 +3,10 @@ package com.hcp.operator.points;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.core.Message;
-import org.springframework.amqp.core.MessageProperties;
-import org.springframework.amqp.rabbit.connection.CorrelationData;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.apache.rocketmq.client.producer.DefaultMQProducer;
+import org.apache.rocketmq.client.producer.SendResult;
+import org.apache.rocketmq.client.producer.SendStatus;
+import org.apache.rocketmq.common.message.Message;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -19,14 +19,13 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(name="hcp.points.mq.enabled", havingValue="true")
 public class PointsEventPublisher {
     private final JdbcTemplate jdbc;
-    private final RabbitTemplate rabbit;
-    @Value("${hcp.points.mq.exchange:charge.points.exchange}") private String exchange;
-    @Value("${hcp.points.mq.routing-key:charge.points.order.settled}") private String routingKey;
+    private final DefaultMQProducer producer;
+    @Value("${hcp.points.mq.topic:charge-points}") private String topic;
+    @Value("${hcp.points.mq.tag:ORDER_SETTLED}") private String tag;
     @Value("${hcp.points.mq.max-attempts:12}") private int maxAttempts;
     @Value("${hcp.points.mq.receipt-timeout-seconds:120}") private int receiptTimeout;
-    @Value("${hcp.points.mq.confirm-timeout-seconds:5}") private int confirmTimeout;
 
-    public PointsEventPublisher(JdbcTemplate jdbc, RabbitTemplate rabbit) { this.jdbc=jdbc; this.rabbit=rabbit; }
+    public PointsEventPublisher(JdbcTemplate jdbc, DefaultMQProducer producer) { this.jdbc=jdbc; this.producer=producer; }
 
     @Scheduled(fixedDelayString="${hcp.points.mq.scan-ms:5000}", initialDelay=10000)
     public void compensate() {
@@ -45,26 +44,21 @@ public class PointsEventPublisher {
                 +"where event_id=? and publish_attempts>=? and status in ('PENDING','RETRY','PUBLISHING','SENT') and next_retry_at<=now()",id,maxAttempts);
             return;
         }
-        // Lease exceeds publisher confirm timeout. Token fences delayed senders after recovery/requeue.
+        // Lease exceeds the bounded send timeout. Tokens fence delayed senders after recovery/requeue.
         int claimed=jdbc.update("update c_points_event set status='PUBLISHING',lease_token=?,publish_attempts=publish_attempts+1,"
             +"next_retry_at=date_add(now(),interval 30 second) where event_id=? and publish_attempts=? "
             +"and status in ('PENDING','RETRY','PUBLISHING','SENT') and next_retry_at<=now()",lease,id,attempts);
         if(claimed==0) return;
         try {
-            MessageProperties props=new MessageProperties();
-            props.setContentType(MessageProperties.CONTENT_TYPE_TEXT_PLAIN);
-            props.setMessageId(id);
-            props.setHeader("event_id",id);
-            Message message=new Message(id.getBytes(StandardCharsets.UTF_8),props);
-            CorrelationData correlation=new CorrelationData(id);
-            rabbit.send(exchange,routingKey,message,correlation);
-            // A broker ack only means the exchange accepted the message; confirmation separates that from a 404/drop.
-            CorrelationData.Confirm confirm=correlation.getFuture().get(confirmTimeout,java.util.concurrent.TimeUnit.SECONDS);
-            if(!confirm.isAck()) throw new IllegalStateException("Publisher confirm nack: "+confirm.getReason());
+            Message message=new Message(topic,tag,id,id.getBytes(StandardCharsets.UTF_8));
+            SendResult result=producer.send(message);
+            if(result.getSendStatus()!=SendStatus.SEND_OK) {
+                throw new IllegalStateException("RocketMQ send status: "+result.getSendStatus());
+            }
             // Consumer may already have committed CONSUMED: never overwrite that receipt.
             jdbc.update("update c_points_event set status='SENT',message_id=?,last_error=null,lease_token=null,"
                 +"next_retry_at=date_add(now(),interval ? second) where event_id=? and status='PUBLISHING' and lease_token=?",
-                id,receiptTimeout,id,lease);
+                result.getMsgId(),receiptTimeout,id,lease);
         } catch(Exception ex) {
             int delay=(int)Math.min(300,5L<<Math.min(attempts,6));
             String error=ex.getClass().getSimpleName()+": "+ex.getMessage();

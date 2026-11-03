@@ -1,0 +1,43 @@
+const assert=require('node:assert/strict');
+const {chromium}=require('C:/Users/Lenovo/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const {sql,literal:q,login,prefix,cleanup,until}=require('./lib/device-alarm-testkit.cjs');
+const run=prefix();let browser,created=false;
+(async()=>{try{
+ const token=await login();browser=await chromium.launch({channel:'msedge',headless:true});
+ const context=await browser.newContext({viewport:{width:1440,height:1000}});
+ await context.addCookies([{name:'Admin-Token',value:token,url:'http://127.0.0.1:8001'},{name:'Admin-Tenant',value:'9999',url:'http://127.0.0.1:8001'}]);
+ const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ page.on('console',msg=>{if(msg.type()==='warning'||msg.type()==='error')console.log('BROWSER '+msg.type()+': '+msg.text())});
+ await page.goto('http://127.0.0.1:8001/operate/fault');
+ await page.getByRole('heading',{name:'故障工单',exact:true}).waitFor();
+ const panel=page.locator('[data-testid="alarm-events"]');await panel.waitFor({timeout:5000});
+ sql('INSERT INTO c_charging_pile(pile_id,name,user_id,tenant_id) VALUES('+q(run+'_0')+",'alarm UI fixture',1,9999)");created=true;
+ const sent=[];let first=true;
+ await page.route('**/operator/fault/alarms',async route=>{
+  if(route.request().method()!=='POST')return route.continue();
+  sent.push(route.request().postDataJSON());
+  if(first){first=false;await route.fetch();return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({code:500,msg:'模拟首次响应丢失，请重试'})})}
+  return route.continue();
+ });
+ await panel.getByRole('button',{name:'新建异步告警'}).click();
+ const dialog=page.locator('.el-dialog:visible').filter({hasText:'异步告警模拟'});
+ await dialog.getByPlaceholder('告警设备编号').fill(run+'_0');await dialog.locator('textarea').fill('browser alarm fixture');
+ await dialog.getByRole('button',{name:'提交告警',exact:true}).click();
+ await page.getByText('模拟首次响应丢失，请重试',{exact:false}).waitFor();
+ await dialog.getByRole('button',{name:'提交告警',exact:true}).click();
+ await dialog.waitFor({state:'hidden'});
+ assert.equal(sent.length,2);assert.equal(sent[0].eventId,sent[1].eventId);assert.equal(sent[0].occurredAt,sent[1].occurredAt);
+ assert.equal(sql('SELECT COUNT(*) FROM c_device_alarm_event WHERE pile_id='+q(run+'_0')),'1');
+ await panel.getByPlaceholder('筛选告警设备').fill(run+'_0');await panel.getByRole('button',{name:'查询告警',exact:true}).click();
+ await panel.getByText(run+'_0',{exact:true}).waitFor();
+ sql('INSERT INTO c_device_alarm_event(tenant_id,event_id,pile_id,fault_type,priority,description,occurred_at,actor_id,actor_name,status) VALUES(9999,'+q(run+'-dead')+','+q(run+'_0')+",'POWER','NORMAL','UI replay fixture','2026-11-04T00:00:00.000Z',1,'admin','DEAD')");
+ await panel.getByRole('button',{name:'刷新告警',exact:true}).click();
+ const dead=panel.locator('.el-table__row').filter({hasText:run+'-dead'});await dead.waitFor();
+ await dead.getByRole('button',{name:'重放',exact:true}).click();
+ await page.locator('.el-message-box').getByRole('button',{name:'确定',exact:true}).click();
+ await until(()=>sql('SELECT status FROM c_device_alarm_event WHERE event_id='+q(run+'-dead'))==='PROCESSED');
+ assert.equal(sql('SELECT COUNT(*) FROM c_device_alarm_event_audit WHERE event_pk IN (SELECT id FROM c_device_alarm_event WHERE event_id='+q(run+'-dead')+')'),'1');
+ await panel.getByRole('button',{name:'刷新告警',exact:true}).click();
+ await panel.scrollIntoViewIfNeeded();await panel.screenshot({path:'outputs/alarm-events-ui.png'});
+ assert.deepEqual(errors,[]);console.log('PASS event panel, real durable submission, lost-response retry reuses event/time, filter, DEAD replay button and audit, no page errors');
+}finally{if(browser)await browser.close();if(created)cleanup(run)}})().catch(e=>{console.error(e);process.exitCode=1});

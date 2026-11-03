@@ -30,6 +30,7 @@
     <pagination v-show="total>0" :total="total" :page.sync="query.pageNum" :limit.sync="query.pageSize" @pagination="load" />
     <p class="muted">累计告警 {{stats.alarmCount || 0}} 次 · 平均解决耗时 {{stats.avgResolveMinutes == null ? '暂无' : stats.avgResolveMinutes+' 分钟'}}。统计来自实际工单记录。</p>
 
+    <alarm-events @open-ticket="openDetail" @accepted="refresh" />
     <el-dialog title="模拟设备告警" :visible.sync="alarmVisible" width="500px">
       <el-alert title="用于本地演示，会生成告警记录及工单，不改变设备充电状态。" type="info" :closable="false" />
       <el-form :model="alarm" label-width="90px" class="dialog-form">
@@ -74,10 +75,12 @@
   </div>
 </template>
 <script>
+import AlarmEvents from './AlarmEvents.vue';
 import * as api from '@/api/operator/fault'
 import * as echarts from 'echarts'
 export default {
   name: 'FaultWorkOrders',
+  components: { AlarmEvents },
   data() { return {
     statuses: {NEW:'待分配',ASSIGNED:'已分配',PROCESSING:'处理中',RESOLVED:'待确认',CLOSED:'已关闭'},
     types: {OFFLINE:'设备离线',CONNECTOR:'充电枪故障',POWER:'供电异常',OTHER:'其他故障'},
