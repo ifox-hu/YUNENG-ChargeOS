@@ -51,6 +51,7 @@ services:
       hcp-nacos:
         condition: service_healthy
     environment:
+      HCP_DEMO_TENANT_ENABLED: 'true'
       SPRING_CLOUD_NACOS_CONFIG_NAMESPACE: hcp
       JAVA_TOOL_OPTIONS: -Xms64m -Xmx384m -XX:MaxMetaspaceSize=256m
   hcp-file:
@@ -67,6 +68,7 @@ services:
       hcp-nacos:
         condition: service_healthy
     environment:
+      HCP_DEMO_TENANT_ENABLED: 'true'
       SPRING_CLOUD_NACOS_CONFIG_NAMESPACE: hcp
       JAVA_TOOL_OPTIONS: -Xms64m -Xmx384m -XX:MaxMetaspaceSize=256m
   hcp-mp:
@@ -75,6 +77,7 @@ services:
       hcp-nacos:
         condition: service_healthy
     environment:
+      HCP_DEMO_TENANT_ENABLED: 'true'
       SPRING_APPLICATION_JSON: '{"hcp":{"test-login":{"enabled":true},"wallet":{"local-recharge":{"enabled":true}}}}'
       SPRING_CLOUD_NACOS_CONFIG_NAMESPACE: hcp
       JAVA_TOOL_OPTIONS: -Xms64m -Xmx256m -XX:MaxMetaspaceSize=192m

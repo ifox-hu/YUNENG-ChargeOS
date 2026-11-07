@@ -44,6 +44,7 @@ public interface ISysTenantService
      * @return 结果
      */
     AjaxResult insertSysTenant(SysTenant sysTenant);
+    AjaxResult onboard(SysTenant tenant, String initialPassword);
 
     /**
      * 修改租户管理

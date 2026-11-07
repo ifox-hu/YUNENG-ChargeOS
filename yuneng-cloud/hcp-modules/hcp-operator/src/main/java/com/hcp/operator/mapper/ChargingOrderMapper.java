@@ -35,7 +35,6 @@ public interface ChargingOrderMapper extends BaseMapperX<ChargingOrder>
      * @param chargingOrder 充电订单
      * @return
      */
-    @InterceptorIgnore(tenantLine = "1")
     Page<ChargingOrder> selectChargingOrderListPage(Page page,@Param("query") ChargingOrder chargingOrder);
 
     /**

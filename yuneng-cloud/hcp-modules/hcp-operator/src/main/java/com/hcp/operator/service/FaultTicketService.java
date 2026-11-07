@@ -92,6 +92,8 @@ public class FaultTicketService {
             "SELECT pile_id,tenant_id FROM c_charging_pile WHERE pile_id=? AND deleted=0 FOR UPDATE",pileId);
         if (piles.isEmpty()) throw new ServiceException("设备不存在，请检查桩编号");
         Object tenant=piles.get(0).get("tenant_id");
+        if (memberId != null && jdbc.queryForObject("SELECT COUNT(*) FROM c_member WHERE member_id=? AND tenant_id=?",Long.class,memberId,tenant) != 1L)
+            throw new ServiceException("无权报修其他运营商设备",403);
         if (scope!=null && !scope.root && !String.valueOf(scope.tenant).equals(String.valueOf(tenant)))
             throw new ServiceException("无权操作该租户设备",403);
         List<Map<String,Object>> active=jdbc.queryForList(

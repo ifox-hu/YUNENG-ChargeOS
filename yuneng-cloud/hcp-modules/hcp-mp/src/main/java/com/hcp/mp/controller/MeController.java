@@ -35,12 +35,26 @@ public class MeController extends BaseController {
     private UserCreditService userCreditService;
     @Autowired
     private CreditDetailService creditDetailService;
+    @Autowired private com.hcp.common.redis.service.RedisService redis;
+
+    private long currentMember() {
+        String token=com.hcp.common.core.utils.ServletUtils.getRequest().getHeader("token");
+        Object id=token==null?null:redis.getCacheObject(com.hcp.mp.constant.MpConstant.USER_TOKEN+token.replaceFirst("^Bearer ",""));
+        if(id==null) throw new com.hcp.common.core.exception.ServiceException("登录已失效，请重新登录");
+        return Long.parseLong(String.valueOf(id));
+    }
+    private void requireSelf(Long requested) {
+        if(requested==null || requested.longValue()!=currentMember())
+            throw new com.hcp.common.core.exception.ServiceException("无权访问其他会员信息");
+    }
 
 
     @ApiOperation("getMemberInfoByOpenId")
     @GetMapping("/getMemberInfoByOpenId")
     public R<Member> getMemberInfoByOpenId(@RequestParam("openId") String openId) {
-        Member user = remoteMemberService.getMemberInfoByOpenId(openId).getData();
+        Member user = remoteMemberService.getMemberInfo(currentMember()).getData();
+        if(user==null || !java.util.Objects.equals(openId,user.getWeixinOpenid()))
+            throw new com.hcp.common.core.exception.ServiceException("无权访问其他会员信息");
         return R.ok(user);
     }
 
@@ -50,6 +64,7 @@ public class MeController extends BaseController {
      */
     @GetMapping("/getMemberBalanceByUserId")
     public R<MenberBalance> getMemberBalance(@RequestParam("userId") Long userId) {
+        requireSelf(userId);
 //        Long userId = SecurityUtils.getUserId();
         MenberBalance menberBalance = remoteMemberBalanceService.getMenberBalanceByUserId(userId).getData();
 
@@ -61,6 +76,7 @@ public class MeController extends BaseController {
     @GetMapping("/getUserCredit")
     @InterceptorIgnore(tenantLine = "1")
     public R<UserCredit> getUserCredit(@RequestParam("userId") Long userId) {
+        requireSelf(userId);
 //        Long userId = SecurityUtils.getUserId();
         LambdaQueryWrapper<UserCredit> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(UserCredit::getMemberId,userId);
@@ -75,6 +91,7 @@ public class MeController extends BaseController {
      */
     @GetMapping("/creditDetail")
     public R<List<CreditDetail>> creditDetail(@RequestParam("userId") Long userId) {
+        requireSelf(userId);
 //        Long userId = SecurityUtils.getUserId();
         LambdaQueryWrapper<CreditDetail> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(CreditDetail::getMemberId,userId);
@@ -85,6 +102,7 @@ public class MeController extends BaseController {
     @GetMapping("/queryMonthTotalByUserId")
     @ApiOperation( "根据userId查看用户当月数据")
     public R<MonthTotalRspVO> queryMonthTotalByUserId(@RequestParam("userId") Long userId){
+        requireSelf(userId);
 
         MonthTotalRspVO vo = remoteMemberBalanceService.queryMonthTotalByUserId(userId).getData();
         return R.ok(vo);

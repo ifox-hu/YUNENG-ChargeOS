@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
  */
 @EnableTransactionManagement(proxyTargetClass = true)
 @Configuration
+@org.springframework.context.annotation.Import(com.hcp.common.mybatisplus.tenant.TenantLifecycle.class)
 @AllArgsConstructor
 @EnableConfigurationProperties(MyTenantProperties.class)
 public class MybatisPlusConfig

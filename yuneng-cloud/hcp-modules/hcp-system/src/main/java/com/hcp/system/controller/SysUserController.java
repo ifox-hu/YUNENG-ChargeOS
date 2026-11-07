@@ -67,6 +67,7 @@ public class SysUserController extends BaseController
 
     @Autowired
     private ISysTenantService sysTenantService;
+    @Autowired private com.hcp.common.mybatisplus.tenant.TenantLifecycle tenantLifecycle;
 
     /**
      * 获取用户列表
@@ -121,6 +122,10 @@ public class SysUserController extends BaseController
             return R.fail("用户名或密码错误");
         }
         // 角色集合
+        if (!SecurityUtils.isAdmin(sysUser.getUserId())) {
+            try { tenantLifecycle.requireActive(sysUser.getTenantId()); }
+            catch (com.hcp.common.core.exception.ServiceException ex) { return R.fail(ex.getMessage()); }
+        }
         Set<String> roles = permissionService.getRolePermission(sysUser);
         // 权限集合
         Set<String> permissions = permissionService.getMenuPermission(sysUser);

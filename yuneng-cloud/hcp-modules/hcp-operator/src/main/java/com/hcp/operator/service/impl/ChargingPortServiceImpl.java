@@ -24,6 +24,7 @@ import com.hcp.common.mybatisplus.constant.MybatisPageConstants;
 @Service
 public class ChargingPortServiceImpl implements IChargingPortService
 {
+    @Autowired private com.hcp.operator.rule.OperatorResourceScope scope;
     @Autowired
     private ChargingPortMapper chargingPortMapper;
 
@@ -92,6 +93,8 @@ public class ChargingPortServiceImpl implements IChargingPortService
     @Override
     public int insertChargingPort(ChargingPort chargingPort)
     {
+        chargingPort.setTenantId(scope.bind(chargingPort.getTenantId()));
+        scope.pile(chargingPort.getPileId(),chargingPort.getTenantId());
         return chargingPortMapper.insert(chargingPort);
     }
 
@@ -104,6 +107,9 @@ public class ChargingPortServiceImpl implements IChargingPortService
     @Override
     public int updateChargingPort(ChargingPort chargingPort)
     {
+        chargingPort.setTenantId(scope.bind(chargingPort.getTenantId()));
+        scope.port(chargingPort.getPortId(),chargingPort.getTenantId());
+        if (chargingPort.getPileId() != null) scope.pile(chargingPort.getPileId(),chargingPort.getTenantId());
         return chargingPortMapper.updateById(chargingPort);
     }
 

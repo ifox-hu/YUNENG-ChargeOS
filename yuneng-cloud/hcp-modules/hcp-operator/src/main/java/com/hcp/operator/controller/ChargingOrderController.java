@@ -48,12 +48,8 @@ public class ChargingOrderController extends BaseController
     @GetMapping("/list")
     public AjaxResult list(ChargingOrder chargingOrder)
     {
-        Long userId = SecurityUtils.getUserId();
-        // 非管理员或未选择用户 则查询当前用户数据
-        if (!SysUser.isAdmin(userId))
-        {
-            chargingOrder.setUserId(userId);
-        }
+        // Operator accounts manage member orders within their authenticated tenant.
+        // Backend account IDs and terminal member IDs belong to different identities.
         IPage<ChargingOrder> list = chargingOrderService.selectChargingOrderPage(chargingOrder);
         return AjaxResult.success(list);
     }
@@ -66,12 +62,6 @@ public class ChargingOrderController extends BaseController
     @PostMapping("/export")
     public void export(HttpServletResponse response, ChargingOrder chargingOrder)
     {
-        Long userId = SecurityUtils.getUserId();
-        // 非管理员或未选择用户 则查询当前用户数据
-        if (!SysUser.isAdmin(userId))
-        {
-            chargingOrder.setUserId(userId);
-        }
         List<ChargingOrder> list = chargingOrderService.selectChargingOrderList(chargingOrder);
         ExcelUtil<ChargingOrder> util = new ExcelUtil<ChargingOrder>(ChargingOrder.class);
         util.exportExcel(response, list, "充电订单数据");
@@ -91,7 +81,11 @@ public class ChargingOrderController extends BaseController
     @GetMapping(value = "getOrderByOrderNumber/{orderNumber}")
         public AjaxResult getOrderByOrderNumber(@PathVariable("orderNumber") String orderNumber)
     {
-        return chargingOrderService.selectChargingOrderByOrderNumber(orderNumber);
+        AjaxResult result = chargingOrderService.selectChargingOrderByOrderNumber(orderNumber);
+        Object data=result.get("data");
+        if(data instanceof ChargingOrder && !java.util.Objects.equals(((ChargingOrder)data).getTenantId(),SecurityUtils.getTenantId()))
+            throw new com.hcp.common.core.exception.ServiceException("无权访问其他运营商订单");
+        return result;
     }
 
     @InnerAuth

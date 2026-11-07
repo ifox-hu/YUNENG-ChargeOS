@@ -65,6 +65,7 @@ public class ChargingPortController extends BaseController
     @GetMapping(value = "/{portId}")
     public AjaxResult getInfo(@PathVariable("portId") Long portId)
     {
+        resourceScope.port(portId,resourceScope.bind(null));
         return success(chargingPortService.selectChargingPortByPortId(portId));
     }
 
@@ -114,8 +115,10 @@ public class ChargingPortController extends BaseController
      * 获取充电桩端口详细信息
      */
     @GetMapping(value = "/info/{portId}")
+    @com.hcp.common.security.annotation.InnerAuth
     public AjaxResult portInfo(@PathVariable("portId") Long portId)
     {
         return AjaxResult.success(chargingPortService.selectChargingPortByPortId(portId));
     }
+    @Autowired private com.hcp.operator.rule.OperatorResourceScope resourceScope;
 }

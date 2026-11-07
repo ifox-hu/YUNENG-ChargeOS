@@ -24,6 +24,7 @@ public class AccountLoginService {
     @Resource private RedisService redis;
     @Resource private RemoteMemberService members;
     @Value("${hcp.test-login.enabled:false}") private boolean localTest;
+    @Resource private com.hcp.common.mybatisplus.tenant.TenantLifecycle lifecycle;
 
     @PostConstruct
     public void seedLocalDemo() {
@@ -49,6 +50,7 @@ public class AccountLoginService {
         }
         R<Member> result = members.getMemberInfo(((Number) rows.get(0).get("member_id")).longValue());
         if (result == null || result.getCode() != 200 || result.getData() == null) return R.fail("用户信息查询失败");
+        lifecycle.requireActive(result.getData().getTenantId());
         redis.deleteObject(attemptsKey);
         String token = UUID.randomUUID().toString();
         redis.setCacheObject(MpConstant.USER_TOKEN + token, result.getData().getMemberId(), 2L, TimeUnit.HOURS);
@@ -76,7 +78,15 @@ public class AccountLoginService {
 
     @Transactional
     public R<String> register(String username, String password, String mobile, String code) {
+        return register(username,password,mobile,code,null);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public R<String> register(String username, String password, String mobile, String code, Long tenantCode) {
         if (!localTest) return R.fail("短信服务尚未配置，暂不能注册");
+        if (tenantCode == null && !lifecycle.isDemoEnabled()) return R.fail("请选择运营商编码");
+        Long tenantId = tenantCode == null ? 9999L : tenantCode;
+        lifecycle.requireActive(tenantId);
         if (username == null || !username.matches("[A-Za-z0-9_]{3,32}")) return R.fail("账号须为3至32位字母、数字或下划线");
         if (password == null || !password.matches("(?=.*[A-Za-z])(?=.*[0-9])[\\x21-\\x7e]{8,32}")) return R.fail("密码须为8至32位，并包含字母和数字");
         if (mobile == null || !mobile.matches("1[3-9][0-9]{9}")) return R.fail("请输入正确的手机号");
@@ -86,10 +96,10 @@ public class AccountLoginService {
         if (jdbc.queryForObject("SELECT COUNT(*) FROM c_app_account WHERE username=? OR mobile=?", Integer.class, username, mobile) > 0 ||
                 jdbc.queryForObject("SELECT COUNT(*) FROM c_member WHERE mobile=?", Integer.class, mobile) > 0) return R.fail("账号或手机号已注册");
         String openid = "ACCOUNT_" + UUID.randomUUID().toString();
-        jdbc.update("INSERT INTO c_member(weixin_openid,mobile,user_name,tenant_id,create_time) VALUES(?,?,?,?,NOW())", openid, mobile, username, 9999L);
+        jdbc.update("INSERT INTO c_member(weixin_openid,mobile,user_name,tenant_id,create_time) VALUES(?,?,?,?,NOW())", openid, mobile, username, tenantId);
         Long id = jdbc.queryForObject("SELECT member_id FROM c_member WHERE weixin_openid=?", Long.class, openid);
         jdbc.update("INSERT INTO c_app_account(username,mobile,password_hash,member_id) VALUES(?,?,?,?)", username, mobile, SecurityUtils.encryptPassword(password), id);
-        jdbc.update("INSERT INTO c_menber_balance(member_id,amount,tenant_id,create_time) VALUES(?,0,9999,NOW())", id);
+        jdbc.update("INSERT INTO c_menber_balance(member_id,amount,tenant_id,create_time) VALUES(?,0,?,NOW())", id,tenantId);
         redis.deleteObject(key);
         return R.ok("注册成功，请用账号密码登录");
     }

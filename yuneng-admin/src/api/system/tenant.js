@@ -20,9 +20,9 @@ export function getTenant(id) {
 // 新增租户管理
 export function addTenant(data) {
   return request({
-    url: '/system/tenant',
+    url: '/system/tenant/onboard',
     method: 'post',
-    data: data
+    data: { tenant: data, initialPassword: data.initialPassword }
   })
 }
 

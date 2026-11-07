@@ -23,8 +23,9 @@ public class AccountLoginController {
     }
     @PostMapping("/register")
     public R<String> register(@RequestParam String username, @RequestParam String password,
-                              @RequestParam String mobile, @RequestParam String code) {
-        try { return accounts.register(username, password, mobile, code); }
+                              @RequestParam String mobile, @RequestParam String code,
+                              @RequestParam(required=false) Long tenantCode) {
+        try { return accounts.register(username, password, mobile, code, tenantCode); }
         catch (DuplicateKeyException ex) { return R.fail("账号或手机号已注册"); }
     }
     @PostMapping("/logout")

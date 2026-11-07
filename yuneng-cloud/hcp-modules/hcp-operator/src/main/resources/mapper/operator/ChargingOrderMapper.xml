@@ -83,7 +83,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         LEFT JOIN c_charging_port t4 on t4.port_id = t1.port_id
         <where>
             <if test="query.userId != null "> and t1.user_Id = #{query.userId}</if>
-            <if test="query.ordernumber != null  and query.ordernumber != ''"> and t1.ordernumber = #{query.ordernumber}</if>
+            <if test="query.orderNumber != null  and query.orderNumber != ''"> and t1.order_number = #{query.orderNumber}</if>
             <if test="query.stationName != null  and query.stationName != ''"> and t3.station_name = #{query.stationName}</if>
             <if test="query.pileId != null  and query.pileId != ''"> and t1.pile_id = #{query.pileId}</if>
             <if test="query.mobile != null  and query.mobile!=''"> and t1.mobile = #{query.mobile}</if>

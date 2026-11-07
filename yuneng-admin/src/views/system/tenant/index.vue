@@ -1,7 +1,7 @@
 <template>
   <div class="app-container">
     <div class="tenanttip" style="padding: 8px 16px;background-color: #ecf8ff;border-radius: 4px;border-left: 5px solid #ef8708;margin: 20px 0;">
-      <p style="font-weight: 400;color: #1f2f3d;">特别提醒,租户管理员初始密码采用邮件通知方式发放,保证安全性,请填写正确的邮箱!</p>
+      <p style="font-weight: 400;color: #1f2f3d;">开户时设置管理员初始密码，请通过安全渠道交付账号，并提醒管理员首次登录后修改密码。</p>
     </div>
     <el-form :model="queryParams" ref="queryForm" size="small" :inline="true" v-show="showSearch" label-width="100px">
                   <el-form-item label="租户名称" prop="tenantName">
@@ -54,7 +54,7 @@
             size="mini"
             @click="handleAdd"
             v-hasPermi="['system:tenant:add']"
-        >新增</el-button>
+        >运营商开户</el-button>
       </el-col>
       <el-col :span="1.5">
         <el-button
@@ -147,10 +147,13 @@
                           <el-input v-model="form.id" placeholder="请输入租户编码" :disabled="this.updateOrAdd"  />
                         </el-form-item>
                         <el-form-item label="租户名称" prop="tenantName" >
-                          <el-input v-model="form.tenantName" placeholder="请输入租户名称" :disabled="this.updateOrAdd" />
+                          <el-input v-model="form.tenantName" maxlength="20" placeholder="请输入租户名称" :disabled="this.updateOrAdd" />
                         </el-form-item>
                         <el-form-item label="管理员账号" prop="userName">
-                          <el-input v-model="form.userName" placeholder="请输入管理员账号" :disabled="this.updateOrAdd" />
+                          <el-input v-model="form.userName" maxlength="20" placeholder="请输入管理员账号" :disabled="this.updateOrAdd" />
+                        </el-form-item>
+                        <el-form-item v-if="!updateOrAdd" label="初始密码" prop="initialPassword" :rules="[{ required: true, pattern: /^(?=.*[A-Za-z])(?=.*[0-9])[\x21-\x7e]{8,20}$/, message: '请输入8至20位字母、数字组合', trigger: 'blur' }]">
+                          <el-input v-model="form.initialPassword" type="password" show-password autocomplete="new-password" placeholder="安全交付并提醒修改密码" />
                         </el-form-item>
                         <el-form-item label="手机号码" prop="userPhone">
                           <el-input v-model="form.userPhone" placeholder="请输入手机号码" />
@@ -313,6 +316,7 @@
       reset() {
         this.form = {
                         id: null,
+                        initialPassword: null,
                         tenantName: null,
                         userName: null,
                         userPhone: null,
@@ -351,7 +355,7 @@
         this.reset();
         this.open = true;
         this.updateOrAdd=false;
-        this.title = "新增租户";
+        this.title = "运营商开户";
         //每次修改租户的时候都会添加租户套餐校验
         getTenantPackageList().then(response => {
           this.packageList = response.data;
@@ -383,7 +387,8 @@
               });
             } else {
               addTenant(this.form).then(response => {
-                this.$modal.msgSuccess("新增成功,密码已发送至邮箱");
+                this.form.initialPassword = null;
+                this.$modal.msgSuccess("开户成功，请通过安全渠道交付账号并提醒修改密码");
                 this.open = false;
                 this.getList();
               });

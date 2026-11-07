@@ -16,6 +16,8 @@
     </description>
 
     <dependencies>
+        <dependency><groupId>org.springframework</groupId><artifactId>spring-jdbc</artifactId></dependency>
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency>
 
         <!-- SpringBoot Boot security -->
         <dependency>
@@ -24,4 +26,5 @@
         </dependency>
 
     </dependencies>
+    <build><plugins><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-surefire-plugin</artifactId><version>3.2.5</version></plugin></plugins></build>
 </project>

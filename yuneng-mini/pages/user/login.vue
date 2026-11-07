@@ -10,6 +10,8 @@
       <text class="label">密码</text>
       <input v-model="password" class="input" password maxlength="32" placeholder="8至32位，包含字母和数字" />
       <view v-if="registering">
+        <text class="label">运营商编码</text>
+        <input v-model="tenantCode" class="input" type="number" maxlength="12" placeholder="请输入运营商提供的编码" />
         <text class="label">确认密码</text>
         <input v-model="confirmPassword" class="input" password maxlength="32" placeholder="请再次输入密码" />
         <text class="label">手机号</text>
@@ -36,6 +38,7 @@ const username = ref('demo')
 const password = ref('')
 const confirmPassword = ref('')
 const mobile = ref('')
+const tenantCode = ref('')
 const code = ref('')
 const testCode = ref('')
 const busy = ref(false)
@@ -99,7 +102,8 @@ const submit = async () => {
   busy.value = true
   try {
     if (registering.value) {
-      await call('register', { username: username.value, password: password.value, mobile: mobile.value, code: code.value })
+      if (!/^[1-9]\d{0,11}$/.test(tenantCode.value)) throw new Error('请输入有效运营商编码')
+      await call('register', { username: username.value, password: password.value, mobile: mobile.value, code: code.value, tenantCode: tenantCode.value })
       registering.value = false
       password.value = ''
       confirmPassword.value = ''

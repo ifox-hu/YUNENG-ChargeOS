@@ -24,20 +24,20 @@ public interface RemoteMemberService
      * @param id 用户名
      * @return 结果
      */
-    @GetMapping("/member/info/{id}")
+    @GetMapping(value="/member/info/{id}",headers="from-source=inner")
     R<Member> getMemberInfo(@PathVariable("id") Long id);
 
-    @GetMapping("/member/memberInfo/{openId}")
+    @GetMapping(value="/member/memberInfo/{openId}",headers="from-source=inner")
     R<Member> getMemberInfoByOpenId(@PathVariable("openId") String openId);
 
     /**
      * 注册用户信息
      * @return 结果
      */
-    @PostMapping("/member/info/register")
+    @PostMapping(value="/member/info/register",headers="from-source=inner")
     R<Member> addMemberInfo(@RequestBody Member member);
 
 
-    @PostMapping("/member/info/update")
+    @PostMapping(value="/member/info/update",headers="from-source=inner")
     R<Integer> updateMemberById(@RequestBody Member member);
 }

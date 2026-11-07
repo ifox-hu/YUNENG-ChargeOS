@@ -45,6 +45,7 @@ public class MpServiceImpl implements MpService {
     private RedisService redisService;
     @Resource
     private RemoteMemberBalanceService remoteMemberBalanceService;
+    @Resource private com.hcp.common.mybatisplus.tenant.TenantLifecycle tenantLifecycle;
 
     @Override
     public R loginByCode(String appid, String code) {
@@ -61,6 +62,7 @@ public class MpServiceImpl implements MpService {
             if (null == miniapp) {
                 return R.fail("小程序尚未注册");
             }
+            tenantLifecycle.requireActive(miniapp.getTenantId());
             WxMaJscode2SessionResult session = wxMaService.getUserService().getSessionInfo(code);
             String openId = session.getOpenid();
             if (TextUtils.isBlank(openId) || TextUtils.isBlank(session.getSessionKey())) {
@@ -82,12 +84,15 @@ public class MpServiceImpl implements MpService {
                 member = memberEntity;
 
                 MenberBalance menberBalance = new MenberBalance();
+                menberBalance.setTenantId(memberEntity.getTenantId());
                 menberBalance.setMemberId(memberEntity.getMemberId());
                 menberBalance.setAmount(BigDecimal.ZERO);
                 menberBalance.setCreateTime(new Date());
                 remoteMemberBalanceService.insertMemberBalance(menberBalance);
 
             } else {
+                 if(!java.util.Objects.equals(member.getTenantId(),miniapp.getTenantId())) return R.fail("会员不属于当前运营商");
+                 tenantLifecycle.requireActive(member.getTenantId());
                  memberService.updateMemberById(member);
             }
             String token = session.getSessionKey();

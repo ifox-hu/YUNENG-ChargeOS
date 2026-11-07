@@ -3,8 +3,7 @@ FROM eclipse-temurin:8-jre-jammy
 # author
 MAINTAINER hcp
 
-# 挂载目录
-VOLUME /home/hcp
+# Application jar belongs to the image; an anonymous volume here preserves stale jars on recreate.
 # 创建目录
 RUN mkdir -p /home/hcp
 # 指定路径

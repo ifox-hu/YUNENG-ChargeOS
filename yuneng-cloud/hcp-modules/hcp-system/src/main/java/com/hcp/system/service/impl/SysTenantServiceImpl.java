@@ -7,8 +7,6 @@ import com.hcp.common.core.constant.CacheConstants;
 import com.hcp.common.core.exception.ServiceException;
 import com.hcp.common.core.utils.StringUtils;
 import com.hcp.common.core.web.domain.AjaxResult;
-import com.hcp.common.message.mail.EmailUtil;
-import com.hcp.common.message.sms.SmsUtil;
 import com.hcp.common.mybatisplus.util.TenantUtils;
 import com.hcp.common.redis.service.RedisService;
 import com.hcp.common.security.utils.SecurityUtils;
@@ -69,13 +67,71 @@ public class SysTenantServiceImpl implements ISysTenantService
     private SysUserPostMapper userPostMapper;
 
     @Autowired
-    EmailUtil emailUtil;
-
-    @Autowired
-    SmsUtil smsUtil;
-
-    @Autowired
     private RedisService redisService;
+
+    @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbc;
+    @Autowired private com.hcp.common.mybatisplus.tenant.TenantLifecycle lifecycle;
+
+    private void requirePlatformAdmin() {
+        if (!SecurityUtils.isAdmin(SecurityUtils.getUserId())) throw new ServiceException("仅平台管理员可管理运营商");
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public AjaxResult onboard(SysTenant tenant, String initialPassword) {
+        requirePlatformAdmin();
+        if (initialPassword == null || !initialPassword.matches("(?=.*[A-Za-z])(?=.*[0-9])[\\x21-\\x7e]{8,20}")) {
+            throw new ServiceException("初始密码须为8至20位字母、数字组合");
+        }
+        return initializeTenant(tenant, initialPassword);
+    }
+
+    private void validateTenant(SysTenant tenant) {
+        if (tenant == null || tenant.getId() == null || tenant.getId() <= 0 || tenant.getId() == 9999L
+                || StringUtils.isBlank(tenant.getTenantName()) || tenant.getTenantName().length() > 20
+                || tenant.getUserName() == null || !tenant.getUserName().matches("[A-Za-z0-9_]{3,20}")
+                || tenant.getTenantTime() == null || !tenant.getTenantTime().after(new Date())) {
+            throw new ServiceException("运营商编码、名称、管理员账号或到期日无效");
+        }
+        validatePackage(tenant.getTenantPackage());
+        if (sysTenantMapper.selectById(tenant.getId()) != null || userMapper.checkUserNameUnique(tenant.getUserName()) != null)
+            throw new ServiceException("运营商编码或管理员账号已存在");
+    }
+
+    private void validatePackage(Long id) {
+        SysTenantPackage pack = id == null ? null : sysTenantPackageMapper.selectById(id);
+        if (pack == null || !Integer.valueOf(0).equals(pack.getStatus()) || !"0".equals(pack.getDelFlag())
+                || StringUtils.isBlank(pack.getMenuIds())) throw new ServiceException("套餐不存在、停用或未配置菜单");
+        for (String raw : pack.getMenuIds().split(",")) {
+            if (!raw.matches("[0-9]+")) throw new ServiceException("套餐菜单无效");
+            List<Map<String,Object>> menus = jdbc.queryForList("SELECT perms,path,component FROM sys_menu WHERE menu_id=?",Long.valueOf(raw));
+            if (menus.isEmpty()) throw new ServiceException("套餐包含无效菜单");
+            Map<String,Object> menu = menus.get(0);
+            String perms = String.valueOf(menu.get("perms"));
+            String path = String.valueOf(menu.get("path")).toLowerCase(Locale.ROOT);
+            String component = String.valueOf(menu.get("component")).toLowerCase(Locale.ROOT);
+            if (perms.startsWith("system:tenant") || perms.contains("*" ) || path.contains("tenant") || component.contains("tenant"))
+                throw new ServiceException("套餐不得包含平台租户管理权限");
+        }
+    }
+
+    private AjaxResult initializeTenant(SysTenant tenant, String password) {
+        validateTenant(tenant);
+        tenant.setStatus(0); tenant.setDelFlag("0");
+        try {
+            sysTenantMapper.insert(tenant);
+            TenantUtils.execute(tenant.getId(), () -> {
+                Long deptId = createDept(tenant);
+                Long postId = createPost(tenant.getUserName());
+                Long roleId = createRole(tenant);
+                createUser(tenant,deptId,postId,roleId,password);
+                lifecycle.initializeChargingRule(tenant.getId());
+            });
+        } catch (org.springframework.dao.DuplicateKeyException ex) {
+            throw new ServiceException("运营商编码或管理员账号已存在");
+        }
+        return AjaxResult.success("运营商开户成功，请通过安全渠道交付账号并提醒修改密码");
+    }
 
 
     /**
@@ -124,72 +180,21 @@ public class SysTenantServiceImpl implements ISysTenantService
 
     public AjaxResult insertSysTenant(SysTenant sysTenant)
     {
-        AjaxResult res = new AjaxResult();
-        //新增租户开始
-        if (StringUtils.isEmpty(sysTenant.getId())){
-            return res.error("租户编码为空,请重新设置!");
-        }
-        //先判断租户编码是否存在
-        if ("9999".equals(sysTenant.getId())){
-            //优化租户列表里不存在9999的超级管理员租户导致查出结果为0跳过校验
-            return res.error("租户编码已存在,请重新设置!");
-        }
-        Long tenantcount = sysTenantMapper.selectCount("id",sysTenant.getId());
-        if (tenantcount > 0)
-        {
-            return res.error("租户编码已存在,请重新设置!");
-        }
-        if (StringUtils.isEmpty(sysTenant.getUserName())){
-            return res.error("管理员账号为空,请重新设置!");
-        }
-        //先判断租户管理员设置的账号是否存在
-        SysUser usercount = userMapper.checkUserNameUnique(sysTenant.getUserName());
-        if (!(usercount == null))
-        {
-            return res.error("用户名已存在,请重新设置!");
-        }
-        //创建租户
-        sysTenantMapper.insert(sysTenant);
-        //租户创建完成后 开始创建相关基础数据
-        TenantUtils.execute(sysTenant.getId(), () -> {
-            //创建默认部门--部门默认名称以租户名称
-            Long deptid = createDept(sysTenant);
-            //创建默认岗位--岗位默认为董事长
-            Long postid = createPost(sysTenant.getUserName());
-            //创建默认角色--角色默认为租户名称+管理员
-            Long roleid = createRole(sysTenant);
-            //创建默认账号
-            createUser(sysTenant,deptid,postid,roleid);
-        });
-        return res.success("租户创建成功!");
+        requirePlatformAdmin();
+        // Legacy random-password delivery is retired; explicit delivery avoids external side effects.
+        throw new ServiceException("请使用运营商开户入口设置初始密码");
     }
 
-    private void createUser(SysTenant sysTenant,Long deptId,Long postid,Long roleid) {
+    private void createUser(SysTenant sysTenant,Long deptId,Long postid,Long roleid, String initialPassword) {
         SysUser user = new SysUser();
         user.setDeptId(deptId).setUserName(sysTenant.getUserName()).setNickName(sysTenant.getTenantName())
                 .setUserType("00")//用户类型 00 表示各管理员账号，不允许租户修改删除 其他账号为10
                 .setEmail(sysTenant.getUserEmail()).setPhonenumber(sysTenant.getUserPhone()).setRemark("租户管理员");
-        //默认密码采用随机生成
-        String randomPassword = SecurityUtils.randomPassword(8);//随机密码8位
-
-        String password = SecurityUtils.encryptPassword(randomPassword);
+        String password = SecurityUtils.encryptPassword(initialPassword);
         user.setPassword(password);
         userMapper.insert(user);
         userPostMapper.insert(new SysUserPost().setUserId(user.getUserId()).setPostId(postid));
         userRoleMapper.insert(new SysUserRole().setRoleId(roleid).setUserId(user.getUserId()));
-        String configValue = Convert.toStr(redisService.getCacheObject( CacheConstants.SYS_CONFIG_KEY + "sys.message.type"));
-        if ("false".equals(configValue)){
-           //短信
-            emailUtil.sendSimpleMail("租户管理员账号注册成功","请牢记登录密码:"+randomPassword,sysTenant.getUserEmail());
-        }else {
-            try {
-                smsUtil.send(sysTenant.getUserPhone(),randomPassword);
-            }catch (Exception e){
-                log.info("短信调用失败:"+e.getMessage());
-                //调用邮件通知
-                emailUtil.sendSimpleMail("租户管理员账号注册成功","请牢记登录密码:"+randomPassword,sysTenant.getUserEmail());
-            }
-        }
     }
 
     private Long createRole(SysTenant sysTenant) {
@@ -233,7 +238,7 @@ public class SysTenantServiceImpl implements ISysTenantService
         // 创建部门
         SysDept dept = new SysDept();
         dept.setParentId(0L).setAncestors("0").setDeptName(sysTenant.getTenantName()).setOrderNum(0)
-                .setLeader(sysTenant.getTenantName()+"管理员").setPhone(sysTenant.getUserPhone()).setEmail(sysTenant.getUserEmail());
+                .setLeader(sysTenant.getUserName()).setPhone(sysTenant.getUserPhone()).setEmail(sysTenant.getUserEmail());
         deptMapper.insert(dept);
         return dept.getDeptId();
     }
@@ -248,6 +253,8 @@ public class SysTenantServiceImpl implements ISysTenantService
     @Override
     public int updateSysTenant(SysTenant sysTenant)
     {
+        requirePlatformAdmin();
+        if (sysTenant.getTenantPackage() != null) validatePackage(sysTenant.getTenantPackage());
         //判断最新的租户套餐是否改变 重新授权 租户二级管理员账号需重新分配三级账号权限
         SysTenant t_sysTenant = sysTenantMapper.selectById(sysTenant.getId());
         if(sysTenant.getTenantPackage() != null && !sysTenant.getTenantPackage().equals(t_sysTenant.getTenantPackage()))
@@ -288,6 +295,7 @@ public class SysTenantServiceImpl implements ISysTenantService
     @Transactional(rollbackFor = Exception.class)
     public int deleteSysTenantByIds(Long[] ids)
     {
+        requirePlatformAdmin();
         //优化删除逻辑
         //1.先删租户
         int tenantres = sysTenantMapper.deleteSysTenantByIds(ids);
@@ -320,6 +328,7 @@ public class SysTenantServiceImpl implements ISysTenantService
     @Override
     public int deleteSysTenantById(Long id)
     {
+        requirePlatformAdmin();
         return sysTenantMapper.deleteById(id);
     }
 }

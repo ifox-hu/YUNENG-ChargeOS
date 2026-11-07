@@ -39,6 +39,15 @@ public class SimCenter {
     private ChargingPortService chargingPortService;
     @Autowired
     private ChargingOrderService chargingOrderService;
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    /** Simulator persistence follows the stored device owner, never the demo default/header. */
+    private void withDeviceTenant(String pileId, Runnable action) {
+        List<Long> tenants = jdbc.queryForList("SELECT tenant_id FROM c_charging_pile WHERE pile_id=? AND deleted=0",Long.class,pileId);
+        if (tenants.size()!=1 || tenants.get(0)==null) throw new BaseException("未查询到充电桩归属");
+        com.hcp.common.mybatisplus.util.TenantUtils.execute(tenants.get(0),action);
+    }
 
     public Boolean isOnline(String pileId) {
         if (pileMap.containsKey(pileId)) {
@@ -49,6 +58,9 @@ public class SimCenter {
     }
 
     public void start(String pileId) throws BaseException {
+        withDeviceTenant(pileId, () -> startWithinTenant(pileId));
+    }
+    private void startWithinTenant(String pileId) {
         log.info("启动模态充电桩：{}", pileId);
         if (pileMap.containsKey(pileId)) {
             throw new BaseException("模态桩已启动");
@@ -82,6 +94,9 @@ public class SimCenter {
     }
 
     public void stop(String pileId) throws BaseException {
+        withDeviceTenant(pileId, () -> stopWithinTenant(pileId));
+    }
+    private void stopWithinTenant(String pileId) {
         if (!pileMap.containsKey(pileId)) {
             throw new BaseException("模态桩未启动");
         }
@@ -95,6 +110,9 @@ public class SimCenter {
     }
 
     public void link(String pileId,String deviceId) throws BaseException {
+        withDeviceTenant(pileId, () -> linkWithinTenant(pileId,deviceId));
+    }
+    private void linkWithinTenant(String pileId,String deviceId) {
         if (!pileMap.containsKey(pileId)) {
             throw new BaseException("模态桩未启动");
         }
@@ -110,6 +128,9 @@ public class SimCenter {
     }
 
     public void unlink(String pileId,String deviceId) throws BaseException {
+        withDeviceTenant(pileId, () -> unlinkWithinTenant(pileId,deviceId));
+    }
+    private void unlinkWithinTenant(String pileId,String deviceId) {
         if (!pileMap.containsKey(pileId)) {
             throw new BaseException("模态桩未启动");
         }
@@ -125,6 +146,10 @@ public class SimCenter {
     }
 
     public void startCharge(ChargingOrderDTO chargingOrder) throws BaseException {
+        if (chargingOrder == null) throw new BaseException("无效的枪信息");
+        withDeviceTenant(chargingOrder.getPileId(), () -> startChargeWithinTenant(chargingOrder));
+    }
+    private void startChargeWithinTenant(ChargingOrderDTO chargingOrder) {
         if (chargingOrder == null || StringUtils.isBlank(chargingOrder.getPileId()) || StringUtils.isBlank(chargingOrder.getDeviceId())) {
             throw new BaseException("无效的枪信息");
         }
@@ -164,6 +189,9 @@ public class SimCenter {
     }
 
     public void stopCharge(String pileId,String deviceId) throws BaseException {
+        withDeviceTenant(pileId, () -> stopChargeWithinTenant(pileId,deviceId));
+    }
+    private void stopChargeWithinTenant(String pileId,String deviceId) {
         if (!pileMap.containsKey(pileId)) {
             throw new BaseException("模态桩未启动");
         }

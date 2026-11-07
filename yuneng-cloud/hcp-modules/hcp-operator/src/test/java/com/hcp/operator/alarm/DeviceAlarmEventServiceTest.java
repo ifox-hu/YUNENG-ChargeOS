@@ -76,6 +76,9 @@ class DeviceAlarmEventServiceTest {
         assertEquals(0L,jdbc.queryForObject("SELECT COUNT(*) FROM c_fault_ticket WHERE pile_id=?",Long.class,run+"0"));}
     @Test void terminalWriteFailureRollsBackAllSideEffects() throws Throwable{
         long a=id(accept(input("a",0)));String trigger="qaa_"+run.substring(10);
+        // The live delivery scheduler may claim a newly accepted row. Hold it outside
+        // the retry window so this test isolates processor transaction rollback.
+        jdbc.update("UPDATE c_device_alarm_event SET status='PENDING',next_retry_at=DATE_ADD(NOW(),INTERVAL 1 HOUR) WHERE id=?",a);
         jdbc.execute("CREATE TRIGGER "+trigger+" BEFORE UPDATE ON c_device_alarm_event FOR EACH ROW BEGIN IF NEW.id="+a+" AND NEW.status='PROCESSED' THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='alarm rollback test'; END IF; END");
         try{assertThrows(Exception.class,()->process(a));assertEquals("PENDING",jdbc.queryForObject("SELECT status FROM c_device_alarm_event WHERE id=?",String.class,a));
             assertEquals(0L,jdbc.queryForObject("SELECT COUNT(*) FROM c_fault_ticket WHERE pile_id=?",Long.class,run+"0"));

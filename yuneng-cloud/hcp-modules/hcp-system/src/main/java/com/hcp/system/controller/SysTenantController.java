@@ -34,6 +34,19 @@ public class SysTenantController extends BaseController
     @Autowired
     private ISysTenantService sysTenantService;
 
+    private void requirePlatformAdmin() {
+        if (!com.hcp.common.security.utils.SecurityUtils.isAdmin(com.hcp.common.security.utils.SecurityUtils.getUserId()))
+            throw new com.hcp.common.core.exception.ServiceException("仅平台管理员可管理运营商");
+    }
+
+    @RequiresPermissions("system:tenant:add")
+    @Log(title = "运营商开户", businessType = BusinessType.INSERT, isSaveRequestData = false)
+    @PostMapping("/onboard")
+    public AjaxResult onboard(@RequestBody com.hcp.system.domain.OperatorOnboardRequest request) {
+        requirePlatformAdmin();
+        return sysTenantService.onboard(request.getTenant(), request.getInitialPassword());
+    }
+
     /**
      * 查询租户管理列表
      */
@@ -41,6 +54,7 @@ public class SysTenantController extends BaseController
     @GetMapping("/list")
     public AjaxResult list(SysTenant sysTenant)
     {
+        requirePlatformAdmin();
         IPage<SysTenant> list = sysTenantService.selectSysTenantPage(sysTenant);
         return AjaxResult.success(list);
     }
@@ -53,6 +67,7 @@ public class SysTenantController extends BaseController
     @PostMapping("/export")
     public void export(HttpServletResponse response, SysTenant sysTenant)
     {
+        requirePlatformAdmin();
         List<SysTenant> list = sysTenantService.selectSysTenantList(sysTenant);
         ExcelUtil<SysTenant> util = new ExcelUtil<SysTenant>(SysTenant.class);
         util.exportExcel(response, list, "租户管理数据");
@@ -65,6 +80,7 @@ public class SysTenantController extends BaseController
     @GetMapping(value = "/{id}")
     public AjaxResult getInfo(@PathVariable("id") Long id)
     {
+        requirePlatformAdmin();
         return AjaxResult.success(sysTenantService.selectSysTenantById(id));
     }
 
@@ -76,6 +92,7 @@ public class SysTenantController extends BaseController
     @PostMapping
     public AjaxResult add(@RequestBody SysTenant sysTenant)
     {
+        requirePlatformAdmin();
         return sysTenantService.insertSysTenant(sysTenant);
     }
 
@@ -87,6 +104,7 @@ public class SysTenantController extends BaseController
     @PutMapping
     public AjaxResult edit(@RequestBody SysTenant sysTenant)
     {
+        requirePlatformAdmin();
         return toAjax(sysTenantService.updateSysTenant(sysTenant));
     }
 
@@ -98,6 +116,7 @@ public class SysTenantController extends BaseController
 	@DeleteMapping("/{ids}")
     public AjaxResult remove(@PathVariable Long[] ids)
     {
+        requirePlatformAdmin();
         return toAjax(sysTenantService.deleteSysTenantByIds(ids));
     }
 }

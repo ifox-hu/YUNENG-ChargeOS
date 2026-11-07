@@ -48,6 +48,7 @@ import javax.annotation.Resource;
 @Slf4j
 public class ChargingPileServiceImpl implements IChargingPileService
 {
+    @Autowired private com.hcp.operator.rule.OperatorResourceScope scope;
     @Autowired
     private ChargingPileMapper chargingPileMapper;
     @Resource
@@ -104,6 +105,8 @@ public class ChargingPileServiceImpl implements IChargingPileService
     @Override
     public int insertChargingPile(ChargingPile chargingPile)
     {
+        chargingPile.setTenantId(scope.bind(chargingPile.getTenantId()));
+        scope.station(chargingPile.getStationId(),chargingPile.getTenantId());
         return chargingPileMapper.insert(chargingPile);
     }
 
@@ -116,6 +119,9 @@ public class ChargingPileServiceImpl implements IChargingPileService
     @Override
     public int updateChargingPile(ChargingPile chargingPile)
     {
+        chargingPile.setTenantId(scope.bind(chargingPile.getTenantId()));
+        scope.pile(chargingPile.getPileId(),chargingPile.getTenantId());
+        if (chargingPile.getStationId() != null) scope.station(chargingPile.getStationId(),chargingPile.getTenantId());
         return chargingPileMapper.updateById(chargingPile);
     }
 

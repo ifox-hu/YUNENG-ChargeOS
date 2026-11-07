@@ -1,0 +1,65 @@
+{
+  "run": "QA_ONBOARD_1794048792025",
+  "scope": "Local single instance; two real operator identities; simulated devices; not real hardware or production capacity",
+  "checks": [
+    {
+      "name": "two root onboardings",
+      "operators": 2
+    },
+    {
+      "name": "initialization relationships reconciled"
+    },
+    {
+      "name": "two real operator logins"
+    },
+    {
+      "name": "root and input guards"
+    },
+    {
+      "name": "late initialization rollback"
+    },
+    {
+      "name": "concurrent duplicate onboarding creates one account"
+    },
+    {
+      "name": "registered member and wallet tenant ownership"
+    },
+    {
+      "name": "member tenant transfer and internal lookup rejected"
+    },
+    {
+      "name": "member self-service identity boundary"
+    },
+    {
+      "name": "stations piles ports created through operator APIs"
+    },
+    {
+      "name": "symmetric tenant spoof rules and device-parent denial"
+    },
+    {
+      "name": "whitelist duration stale-version and no-side-effect guards"
+    },
+    {
+      "name": "disabled and expired tenant entry guards"
+    },
+    {
+      "name": "two full charge settlement flows and stopped-tenant safe stop",
+      "completedOrders": 2
+    },
+    {
+      "name": "two alarm-report merges and complete ticket lifecycles",
+      "events": 2,
+      "closedTickets": 2
+    }
+  ],
+  "onboardingMs": [
+    112.288,
+    144.978,
+    144.012
+  ],
+  "startedAt": "2026-11-07T10:53:12.025Z",
+  "success": true,
+  "cleanupResidual": 0,
+  "cleanup": "dedicated database fixtures removed",
+  "finishedAt": "2026-11-07T10:53:57.911Z"
+}
