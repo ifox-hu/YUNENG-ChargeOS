@@ -1,6 +1,7 @@
 import fixtures from './fixtures.json'
 import { seedDemoPorts, refreshDemoPorts, simulateDemoPorts } from './telemetry'
 import { handleDemoAlarms } from './alarms'
+import { createDemoCaptcha, verifyDemoCaptcha } from './captcha'
 const key = 'yuneng-original-ui-demo-v1'
 const clone = value => JSON.parse(JSON.stringify(value))
 const now = () => new Date().toLocaleString('sv-SE')
@@ -51,8 +52,12 @@ function handle(config) {
  const parsed=new URL(config.url,'https://demo.invalid'),url=parsed.pathname,q=Object.fromEntries(parsed.searchParams);let b=config.data||{}
  if(typeof b==='string'){try{b=JSON.parse(b)}catch(e){b=Object.fromEntries(new URLSearchParams(b))}}
  const method=(config.method||'get').toLowerCase()
- if(url==='/code')return {...ok(null),captchaEnabled:false}
- if(url==='/auth/login')return ok({access_token:'DEMO_BROWSER_ONLY',expires_in:7200,tenant_id:9999})
+ if(url==='/code')return {...ok(null),...createDemoCaptcha()}
+ if(url==='/auth/login'){
+  const error=verifyDemoCaptcha(b.code,b.uuid)
+  if(error)return fail(error)
+  return ok({access_token:'DEMO_BROWSER_ONLY',expires_in:7200,tenant_id:9999})
+ }
  if(url==='/auth/logout'||url==='/auth/refresh')return ok(7200)
  if(url==='/system/user/getInfo')return {...ok(null),user,roles:['admin'],permissions:['*:*:*']}
  if(url.includes('/config/configKey/'))return ok('false')

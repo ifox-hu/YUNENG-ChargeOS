@@ -1,5 +1,6 @@
 // Exercise the built Pages artifact locally or at DEMO_URL; browser-only data, no backend.
 const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),assert=require('node:assert/strict');
+const {fillDemoCaptcha}=require('./demo-captcha-helper.cjs');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'C:/Users/Lenovo/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
 const root=path.resolve(__dirname,'../site');
 let browser,server;
@@ -12,7 +13,7 @@ let browser,server;
  base=base.replace(/\/?$/,'/');
  browser=await chromium.launch({channel:'msedge',headless:true});const page=await browser.newPage({viewport:{width:1800,height:1100}});
  const errors=[],backend=[];page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(/\/(prod-api|demo-api)\//.test(r.url()))backend.push(r.url())});
- await page.goto(base+'#/login');await page.locator('input').first().fill('demo');await page.locator('input[type="password"]').fill('Demo123456!');await page.locator('.login-form button').last().click();await page.waitForURL('**/#/index');
+ await page.goto(base+'#/login');await page.locator('input').first().fill('demo');await page.locator('input[type="password"]').fill('Demo123456!');await fillDemoCaptcha(page);await page.locator('.login-form button').last().click();await page.waitForURL('**/#/index');
  await page.goto(base+'#/operate/fault');const panel=page.locator('[data-testid="alarm-events"]');await panel.waitFor();
  await panel.getByText('静态演示：告警与工单仅保存在当前浏览器',{exact:false}).waitFor();
  const dead=panel.locator('.el-table__row').filter({hasText:'DEMO-ALARM-DEAD'});await dead.getByRole('button',{name:'重放',exact:true}).click();await page.locator('.el-message-box').getByRole('button',{name:'确定',exact:true}).click();
