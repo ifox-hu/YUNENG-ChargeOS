@@ -1,4 +1,5 @@
 const fs=require('fs'),path=require('path'),http=require('http'),assert=require('assert');
+const {fillDemoCaptcha}=require('./demo-captcha-helper.cjs');
 const {chromium}=require('C:/Users/Lenovo/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
 const root=path.resolve(__dirname,'../site');
 (async()=>{
@@ -8,7 +9,7 @@ const root=path.resolve(__dirname,'../site');
   browser=await chromium.launch({channel:'msedge',headless:true});const page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[],remote=[];
   page.on('pageerror',e=>{errors.push(e.message);console.log('ERROR',e.message)});page.on('request',r=>{if(!r.url().startsWith('http://127.0.0.1:')&&!r.url().startsWith('data:'))remote.push(r.url())});
   const base='http://127.0.0.1:'+server.address().port;
-  await page.goto(base+'/#/login');await page.locator('input').first().fill('demo');await page.locator('input[type="password"]').fill('Demo123456!');await page.locator('.login-form button').last().click();await page.waitForURL('**/#/index');await page.locator('.sidebar-container').waitFor();console.log('PASS login');
+  await page.goto(base+'/#/login');await page.locator('input').first().fill('demo');await page.locator('input[type="password"]').fill('Demo123456!');await fillDemoCaptcha(page);await page.locator('.login-form button').last().click();await page.waitForURL('**/#/index');await page.locator('.sidebar-container').waitFor();console.log('PASS login');
   const fixtures=require('../yuneng-admin/src/demo/fixtures.json'),routes=[];
   function walk(items,prefix=''){for(const r of items){const p=r.path.startsWith('/')?r.path:prefix+'/'+r.path;if(r.children)walk(r.children,p);else if(!r.hidden)routes.push(p)}}walk(fixtures['/system/menu/getRouters'].data);
   async function goto(route){await page.evaluate(async p=>{const v=document.querySelector('#app').__vue__;await v.$router.push(p)},route);await page.waitForTimeout(1400);const actual=await page.evaluate(()=>document.querySelector('#app').__vue__.$route.path);assert.equal(actual,route)}
@@ -25,6 +26,6 @@ const root=path.resolve(__dirname,'../site');
   const action=()=>page.locator('.el-dialog:visible').filter({has:page.locator('textarea[placeholder="填写处理步骤或解决结果"]')});await action().locator('.el-select').click();await page.locator('.el-select-dropdown:visible').getByText('演示管理员 (demo)').click();await action().locator('textarea').fill('安排演示管理员检查');await action().getByRole('button',{name:'确认',exact:true}).click();
   for(const [button,note]of [['开始处理','检查接口'],['提交解决结果','更换连接器后正常'],['确认关闭','复查通过']]){await page.getByRole('button',{name:button,exact:true}).click();await action().locator('textarea').fill(note);await action().getByRole('button',{name:'确认',exact:true}).click()}
   await page.waitForTimeout(200);assert((await page.locator('.el-descriptions').innerText()).includes('已关闭'));await page.screenshot({path:path.join(root,'original-demo-preview.png'),fullPage:true});console.log('PASS original fault lifecycle');console.log('PAGE_ERRORS',JSON.stringify([...new Set(errors)]));console.log('EXTERNAL_REQUESTS',JSON.stringify(remote));assert.equal(remote.length,0);assert.equal(errors.length,0)
-  const prefixPage=await browser.newPage();await prefixPage.goto(base+'/site/#/login');await prefixPage.locator('input').first().fill('demo');await prefixPage.locator('input[type="password"]').fill('Demo123456!');await prefixPage.locator('.login-form button').last().click();await prefixPage.waitForURL('**/site/#/index');console.log('PASS subdirectory deployment login');
+  const prefixPage=await browser.newPage();await prefixPage.goto(base+'/site/#/login');await prefixPage.locator('input').first().fill('demo');await prefixPage.locator('input[type="password"]').fill('Demo123456!');await fillDemoCaptcha(prefixPage);await prefixPage.locator('.login-form button').last().click();await prefixPage.waitForURL('**/site/#/index');console.log('PASS subdirectory deployment login');
  }finally{if(browser)await browser.close();server.close()}
 })().catch(e=>{console.error(e);process.exitCode=1});

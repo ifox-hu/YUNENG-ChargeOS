@@ -104,6 +104,7 @@
                 v-model="loginForm.code"
                 auto-complete="off"
                 placeholder="请输入右侧验证码"
+                maxlength="4"
                 @keyup.enter.native="handleLogin"
               >
                 <svg-icon
@@ -112,10 +113,11 @@
                   class="el-input__icon field__icon"
                 />
               </el-input>
-              <div class="login-code">
-                <img :src="codeUrl" @click="getCode" class="login-code-img" />
-              </div>
+              <button type="button" class="login-code" aria-label="刷新验证码" title="看不清？点击换一张" @click="getCode">
+                <img :src="codeUrl" alt="登录验证码" class="login-code-img" />
+              </button>
             </div>
+            <span class="login-code-hint">看不清？点击图片换一张</span>
           </el-form-item>
 
           <div class="login-options">
@@ -200,8 +202,10 @@ export default {
         this.captchaEnabled =
           res.captchaEnabled === undefined ? true : res.captchaEnabled;
         if (this.captchaEnabled) {
-          this.codeUrl = "data:image/gif;base64," + res.img;
+          this.codeUrl = "data:" + (res.imageType || "image/gif") + ";base64," + res.img;
+          this.loginForm.code = "";
           this.loginForm.uuid = res.uuid;
+          this.$nextTick(() => this.$refs.loginForm.clearValidate("code"));
         }
       });
     },
@@ -210,6 +214,7 @@ export default {
       const password = Cookies.get("password");
       const rememberMe = Cookies.get("rememberMe");
       this.loginForm = {
+        ...this.loginForm,
         username: username === undefined ? this.loginForm.username : username,
         password:
           password === undefined ? this.loginForm.password : decrypt(password),
@@ -501,6 +506,7 @@ $border: #dfe5ee;
 
     .el-input {
       flex: 1;
+      min-width: 0;
     }
   }
 
@@ -519,6 +525,13 @@ $border: #dfe5ee;
   overflow: hidden;
   background: #eef1f6;
   border: 1px solid $border;
+  padding: 0;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid $brand;
+    outline-offset: 2px;
+  }
 
   img {
     width: 100%;
@@ -526,6 +539,14 @@ $border: #dfe5ee;
     cursor: pointer;
     vertical-align: middle;
   }
+}
+
+.login-code-hint {
+  display: block;
+  color: $muted;
+  font-size: 12px;
+  line-height: 20px;
+  margin-top: 4px;
 }
 
 .login-options {
