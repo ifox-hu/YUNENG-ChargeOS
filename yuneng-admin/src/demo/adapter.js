@@ -1,6 +1,8 @@
 import fixtures from './fixtures.json'
 import { seedDemoPorts, refreshDemoPorts, simulateDemoPorts } from './telemetry'
 import { handleDemoAlarms } from './alarms'
+import { createDemoCaptcha, verifyDemoCaptcha } from './captcha'
+import { prepareOperatorDemo, handleDemoOperators } from './operators'
 const key = 'yuneng-original-ui-demo-v1'
 const clone = value => JSON.parse(JSON.stringify(value))
 const now = () => new Date().toLocaleString('sv-SE')
@@ -38,9 +40,11 @@ const samples={
  '/demo/demo/list':[{demoId:1,name:'演示数据',remark:'浏览器模拟记录'}]
 }
 Object.entries(samples).forEach(([url,rows])=>{if(!db.lists[url])db.lists[url]={code:200,data:clone(rows),rows:clone(rows),total:rows.length}})
+prepareOperatorDemo(db)
+persist()
 const ok=data=>({code:200,msg:'演示操作成功',data})
 const fail=msg=>({code:500,msg})
-const primaryKeys={station:'stationId',pile:'pileId',port:'portId',order:'orderId',member:'memberId',balance:'id',rule:'ruleId',price:'id',city:'id',miniapp:'id',user:'userId',role:'roleId',post:'postId',notice:'noticeId',tenant:'tenantId',tenantpackage:'packageId',config:'configId',type:'dictId',demo:'demoId'}
+const primaryKeys={station:'stationId',pile:'pileId',port:'portId',order:'orderId',member:'memberId',balance:'id',rule:'ruleId',price:'id',city:'id',miniapp:'id',user:'userId',role:'roleId',post:'postId',notice:'noticeId',tenant:'id',tenantpackage:'packageId',config:'configId',type:'dictId',demo:'demoId'}
 function listResponse(rows,query,original={}) {
   const filtered=rows.filter(row=>Object.entries(query).every(([k,v])=>!v||['pageNum','pageSize','orderByColumn','isAsc'].includes(k)||!(k in row)||String(row[k]??'').includes(v)))
   const size=Math.max(1,Number(query.pageSize)||10), page=Math.max(1,Number(query.pageNum)||1)
@@ -51,10 +55,17 @@ function handle(config) {
  const parsed=new URL(config.url,'https://demo.invalid'),url=parsed.pathname,q=Object.fromEntries(parsed.searchParams);let b=config.data||{}
  if(typeof b==='string'){try{b=JSON.parse(b)}catch(e){b=Object.fromEntries(new URLSearchParams(b))}}
  const method=(config.method||'get').toLowerCase()
- if(url==='/code')return {...ok(null),captchaEnabled:false}
- if(url==='/auth/login')return ok({access_token:'DEMO_BROWSER_ONLY',expires_in:7200,tenant_id:9999})
+ if(url==='/code')return {...ok(null),...createDemoCaptcha()}
+ if(url==='/auth/login'){
+  const error=verifyDemoCaptcha(b.code,b.uuid)
+  if(error)return fail(error)
+  return ok({access_token:'DEMO_BROWSER_ONLY',expires_in:7200,tenant_id:9999})
+ }
  if(url==='/auth/logout'||url==='/auth/refresh')return ok(7200)
  if(url==='/system/user/getInfo')return {...ok(null),user,roles:['admin'],permissions:['*:*:*']}
+ const operatorResult=handleDemoOperators(db,url,method,b,q)
+ if(operatorResult){persist();return operatorResult}
+ if(url==='/system/dict/data/type/sys_tenant_status')return ok([{dictLabel:'正常',dictValue:'0',dictSort:1,status:'0'},{dictLabel:'停用',dictValue:'1',dictSort:2,status:'0'}])
  if(url.includes('/config/configKey/'))return ok('false')
  if(url==='/system/user/profile')return {...ok(user),roleGroup:'演示管理员',postGroup:'运营'}
  if(url==='/demo/operation-logs')return ok(db.faults.flatMap(t=>t.logs.map(l=>({...l,ticketNo:t.ticketNo}))))
