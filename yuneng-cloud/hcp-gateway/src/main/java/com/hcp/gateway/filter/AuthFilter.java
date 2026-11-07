@@ -72,10 +72,15 @@ public class AuthFilter implements GlobalFilter, Ordered
         {
             return unauthorizedResponse(exchange, "登录状态已过期");
         }
-        String userid = JwtUtils.getUserId(claims);
-        String username = JwtUtils.getUserName(claims);
-        String deptid = JwtUtils.getDeptId(claims);
-        if (StringUtils.isEmpty(userid) || StringUtils.isEmpty(username))
+        Object cached = redisService.getCacheObject(getTokenKey(userkey));
+        com.alibaba.fastjson2.JSONObject session = cached == null ? null :
+                com.alibaba.fastjson2.JSON.parseObject(com.alibaba.fastjson2.JSON.toJSONString(cached));
+        com.alibaba.fastjson2.JSONObject user = session == null ? null : session.getJSONObject("sysUser");
+        String userid = user == null ? null : user.getString("userId");
+        String username = user == null ? null : user.getString("userName");
+        String deptid = user == null ? null : user.getString("deptId");
+        String tenantid = user == null ? null : user.getString("tenantId");
+        if (StringUtils.isEmpty(userid) || StringUtils.isEmpty(username) || StringUtils.isEmpty(tenantid))
         {
             return unauthorizedResponse(exchange, "令牌验证失败");
         }
@@ -85,6 +90,7 @@ public class AuthFilter implements GlobalFilter, Ordered
         addHeader(mutate, SecurityConstants.DETAILS_USER_ID, userid);
         addHeader(mutate, SecurityConstants.DETAILS_USERNAME, username);
         addHeader(mutate, SecurityConstants.DETAILS_DEPT_ID, deptid);
+        addHeader(mutate, SecurityConstants.DETAILS_TENANT_ID, tenantid);
         // 内部请求来源参数清除
         removeHeader(mutate, SecurityConstants.FROM_SOURCE);
         return chain.filter(exchange.mutate().request(mutate.build()).build());
@@ -94,6 +100,7 @@ public class AuthFilter implements GlobalFilter, Ordered
     {
         if (value == null)
         {
+            removeHeader(mutate, name);
             return;
         }
         String valueStr = value.toString();
