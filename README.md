@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/assets/readme-banner-saas.svg" alt="驭能智充 · SaaS充电平台骨架" width="100%" />
+  <img src="docs/assets/readme-banner-project.svg" alt="驭能智充 · 充电运营与故障工单管理平台" width="100%" />
 
   <h1>驭能智充 · YUNENG ChargeOS</h1>
   <p>从模拟充电、订单结算到积分发放与故障处理，串起完整的运营流程。</p>
