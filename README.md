@@ -75,24 +75,47 @@ Pages 可体验查询、部分增改删、模拟充电状态、告警重放与�
 
 以下为已有 **uni-app H5 构建预览**，展示本地接口数据；微信专用组件与 H5 存在显示差异，不作为微信真机验收截图。
 
-| 首页与站点 | 端口与充电选择 | 账户与积分 |
+#### 首页与站点服务
+
+展示附近站点、快慢充空闲数量、费用信息，以及距离、价格和智能排序入口。
+
+| 首页 · 距离最近 | 首页 · 价格最低 | 首页 · 智能排序 |
 | --- | --- | --- |
-| <img src="docs/screenshots/mini/home-h5.png" alt="小程序首页 H5 预览" width="240" /> | <img src="docs/screenshots/mini/charge-select-h5.png" alt="模拟充电选择 H5 预览" width="240" /> | <img src="docs/screenshots/mini/points-h5.png" alt="积分页面 H5 预览" width="240" /> |
+| <img src="docs/screenshots/mini/home-h5.png" alt="首页距离排序 H5 预览" width="240" /> | <img src="docs/screenshots/mini/home-price-h5.png" alt="首页价格排序 H5 预览" width="240" /> | <img src="docs/screenshots/mini/home-smart-h5.png" alt="首页智能排序 H5 预览" width="240" /> |
 
-<details>
-<summary><b>展开更多：订单详情、账户与故障报修</b></summary>
+#### 设备与充电选择
 
-| 订单列表 | 订单详情 | 我的报修 |
+从站点进入设备列表，查看充电桩与端口状态，再选择端口、充电时长及计费标准。
+
+| 站点设备与空闲状态 | 端口、时长与计费标准 |
+| --- | --- |
+| <img src="docs/screenshots/mini/station-h5.png" alt="站点设备列表 H5 预览" width="280" /> | <img src="docs/screenshots/mini/charge-select-h5.png" alt="模拟充电选择 H5 预览" width="280" /> |
+
+#### 订单与费用详情
+
+展示充电订单列表、订单状态、费用明细和状态日志。图中为已有本地测试记录，不代表真实付款凭证。
+
+| 充电订单列表 | 订单详情与状态日志 |
+| --- | --- |
+| <img src="docs/screenshots/mini/orders-h5.png" alt="订单列表 H5 预览" width="280" /> | <img src="docs/screenshots/mini/order-detail-h5.png" alt="订单详情 H5 预览" width="280" /> |
+
+#### 个人中心与账户积分
+
+展示个人服务入口、账户余额与流水，以及签到、订单奖励和积分明细。
+
+| 个人中心 | 账户余额与流水 | 积分、签到与订单奖励 |
 | --- | --- | --- |
-| <img src="docs/screenshots/mini/orders-h5.png" alt="订单列表 H5 预览" width="240" /> | <img src="docs/screenshots/mini/order-detail-h5.png" alt="订单详情 H5 预览" width="240" /> | <img src="docs/screenshots/mini/repair-list-h5.png" alt="报修列表 H5 预览" width="240" /> |
+| <img src="docs/screenshots/mini/profile-h5.png" alt="个人中心 H5 预览" width="240" /> | <img src="docs/screenshots/mini/balance-h5.png" alt="余额页面 H5 预览" width="240" /> | <img src="docs/screenshots/mini/points-h5.png" alt="积分页面 H5 预览" width="240" /> |
 
-| 我的账户 | 余额流水 | 创建报修 |
+#### 登录与故障报修
+
+展示账号登录、填写设备故障，以及查看个人报修记录与处理进度。
+
+| 账号登录 | 创建设备报修 | 我的报修与进度 |
 | --- | --- | --- |
-| <img src="docs/screenshots/mini/profile-h5.png" alt="个人中心 H5 预览" width="240" /> | <img src="docs/screenshots/mini/balance-h5.png" alt="余额页面 H5 预览" width="240" /> | <img src="docs/screenshots/mini/repair-create-h5.png" alt="创建设备报修 H5 预览" width="240" /> |
+| <img src="docs/screenshots/mini/login-h5.png" alt="账号登录 H5 预览" width="240" /> | <img src="docs/screenshots/mini/repair-create-h5.png" alt="创建设备报修 H5 预览" width="240" /> | <img src="docs/screenshots/mini/repair-list-h5.png" alt="报修列表 H5 预览" width="240" /> |
 
-完整界面说明与截图复现步骤见[小程序界面预览](docs/development-guide.md#小程序界面预览)。
-
-</details>
+以上共 13 张功能截图均直接展开。完整界面说明与截图复现步骤见[小程序界面预览](docs/development-guide.md#小程序界面预览)。
 
 ## 技术架构
 
