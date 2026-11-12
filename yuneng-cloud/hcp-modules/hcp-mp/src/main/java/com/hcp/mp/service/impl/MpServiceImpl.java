@@ -45,7 +45,8 @@ public class MpServiceImpl implements MpService {
     private RedisService redisService;
     @Resource
     private RemoteMemberBalanceService remoteMemberBalanceService;
-    @Resource private com.hcp.common.mybatisplus.tenant.TenantLifecycle tenantLifecycle;
+    @Resource
+    private com.hcp.common.mybatisplus.tenant.TenantLifecycle tenantLifecycle;
 
     @Override
     public R loginByCode(String appid, String code) {
@@ -65,7 +66,8 @@ public class MpServiceImpl implements MpService {
             tenantLifecycle.requireActive(miniapp.getTenantId());
             WxMaJscode2SessionResult session = wxMaService.getUserService().getSessionInfo(code);
             String openId = session.getOpenid();
-            if (TextUtils.isBlank(openId) || TextUtils.isBlank(session.getSessionKey())) {
+            if (TextUtils.isBlank(openId) || TextUtils.isBlank(session.getSessionKey()))
+            {
                 return R.fail(HttpStatus.UNAUTHORIZED, "微信登录凭证无效");
             }
             Member member = memberService.getMemberInfoByOpenId(openId).getData();
@@ -78,7 +80,8 @@ public class MpServiceImpl implements MpService {
                 }
                 //补充默认值
                 memberEntity = memberService.getMemberInfoByOpenId(openId).getData();
-                if (memberEntity == null) {
+                if (memberEntity == null)
+                {
                     return R.fail("用户注册后查询失败");
                 }
                 member = memberEntity;
@@ -91,9 +94,10 @@ public class MpServiceImpl implements MpService {
                 remoteMemberBalanceService.insertMemberBalance(menberBalance);
 
             } else {
-                 if(!java.util.Objects.equals(member.getTenantId(),miniapp.getTenantId())) return R.fail("会员不属于当前运营商");
-                 tenantLifecycle.requireActive(member.getTenantId());
-                 memberService.updateMemberById(member);
+                if (!java.util.Objects.equals(member.getTenantId(), miniapp.getTenantId()))
+                    return R.fail("会员不属于当前运营商");
+                tenantLifecycle.requireActive(member.getTenantId());
+                memberService.updateMemberById(member);
             }
             String token = session.getSessionKey();
             assert member != null;

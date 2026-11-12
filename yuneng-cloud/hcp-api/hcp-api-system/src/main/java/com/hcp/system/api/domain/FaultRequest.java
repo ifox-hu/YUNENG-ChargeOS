@@ -4,7 +4,8 @@ import lombok.Data;
 
 /** Identity and source are always derived on the server, never accepted from this DTO. */
 @Data
-public class FaultRequest {
+public class FaultRequest
+{
     private String pileId;
     private String faultType;
     private String priority;
@@ -13,4 +14,3 @@ public class FaultRequest {
     private String action;
     private String note;
 }
-

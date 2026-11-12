@@ -46,7 +46,8 @@ public class HeaderInterceptor implements AsyncHandlerInterceptor
             {
                 AuthUtil.verifyLoginUserExpire(loginUser);
                 SecurityContextHolder.set(SecurityConstants.LOGIN_USER, loginUser);
-                if (loginUser.getSysUser() == null || loginUser.getSysUser().getTenantId() == null) {
+                if (loginUser.getSysUser() == null || loginUser.getSysUser().getTenantId() == null)
+                {
                     throw new com.hcp.common.core.exception.ServiceException("登录身份缺少租户信息，请重新登录");
                 }
                 com.hcp.system.api.domain.SysUser user = loginUser.getSysUser();

@@ -34,15 +34,18 @@ public class SysTenantController extends BaseController
     @Autowired
     private ISysTenantService sysTenantService;
 
-    private void requirePlatformAdmin() {
-        if (!com.hcp.common.security.utils.SecurityUtils.isAdmin(com.hcp.common.security.utils.SecurityUtils.getUserId()))
+    private void requirePlatformAdmin()
+    {
+        if (!com.hcp.common.security.utils.SecurityUtils.isAdmin(
+                com.hcp.common.security.utils.SecurityUtils.getUserId()))
             throw new com.hcp.common.core.exception.ServiceException("仅平台管理员可管理运营商");
     }
 
     @RequiresPermissions("system:tenant:add")
     @Log(title = "运营商开户", businessType = BusinessType.INSERT, isSaveRequestData = false)
     @PostMapping("/onboard")
-    public AjaxResult onboard(@RequestBody com.hcp.system.domain.OperatorOnboardRequest request) {
+    public AjaxResult onboard(@RequestBody com.hcp.system.domain.OperatorOnboardRequest request)
+    {
         requirePlatformAdmin();
         return sysTenantService.onboard(request.getTenant(), request.getInitialPassword());
     }

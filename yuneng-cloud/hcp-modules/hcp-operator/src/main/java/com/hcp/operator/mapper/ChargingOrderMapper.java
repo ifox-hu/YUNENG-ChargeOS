@@ -35,7 +35,7 @@ public interface ChargingOrderMapper extends BaseMapperX<ChargingOrder>
      * @param chargingOrder 充电订单
      * @return
      */
-    Page<ChargingOrder> selectChargingOrderListPage(Page page,@Param("query") ChargingOrder chargingOrder);
+    Page<ChargingOrder> selectChargingOrderListPage(Page page, @Param("query") ChargingOrder chargingOrder);
 
     /**
      * 查询充电订单列表
@@ -68,7 +68,6 @@ public interface ChargingOrderMapper extends BaseMapperX<ChargingOrder>
     ChargingOrder lockById(@Param("orderId") String orderId);
     @InterceptorIgnore(tenantLine = "1")
     long countActiveByPort(@Param("portId") Long portId);
-
 
     @InterceptorIgnore(tenantLine = "1")
     int deleteByPrimaryKey(Long id);

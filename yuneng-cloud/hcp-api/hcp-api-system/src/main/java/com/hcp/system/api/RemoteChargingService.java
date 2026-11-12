@@ -26,7 +26,8 @@ import java.util.List;
  *
  * @author vctgo
  */
-@FeignClient(contextId = "remoteChargeService", value = ServiceNameConstants.OPERATOR_SERVICE, fallbackFactory = RemoteChargingFallbackFactory.class)
+@FeignClient(contextId = "remoteChargeService", value = ServiceNameConstants.OPERATOR_SERVICE,
+             fallbackFactory = RemoteChargingFallbackFactory.class)
 public interface RemoteChargingService {
     /**
      * 更新设备心跳
@@ -171,6 +172,4 @@ public interface RemoteChargingService {
 
     @PostMapping("/charge/getPlotInfoPage")
     R<Page<PlotVO>> getPlotInfoPage(@RequestBody PlotInfoReqVO plotInfoReqVO);
-
-
 }

@@ -8,10 +8,14 @@ import com.hcp.system.api.domain.ChargingPile;
 import org.springframework.stereotype.Service;
 
 @Service
-public class ChargingPileServiceImpl extends ServiceImpl<ChargingPileMapper, ChargingPile> implements ChargingPileService {
+public class ChargingPileServiceImpl
+    extends ServiceImpl<ChargingPileMapper, ChargingPile> implements ChargingPileService
+{
     @Override
-    public void updateRunningStatus(String pileId, long status) {
-        update(Wrappers.<ChargingPile>lambdaUpdate().eq(ChargingPile::getPileId, pileId)
-                .set(ChargingPile::getRunningStatus, status));
+    public void updateRunningStatus(String pileId, long status)
+    {
+        update(Wrappers.<ChargingPile>lambdaUpdate()
+                   .eq(ChargingPile::getPileId, pileId)
+                   .set(ChargingPile::getRunningStatus, status));
     }
 }

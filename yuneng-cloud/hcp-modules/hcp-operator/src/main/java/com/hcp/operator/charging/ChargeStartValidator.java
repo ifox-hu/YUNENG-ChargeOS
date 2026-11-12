@@ -1,6 +1,7 @@
 package com.hcp.operator.charging;
 
-public interface ChargeStartValidator {
+public interface ChargeStartValidator
+{
     int order();
     void validate(ChargeStartContext context);
 }

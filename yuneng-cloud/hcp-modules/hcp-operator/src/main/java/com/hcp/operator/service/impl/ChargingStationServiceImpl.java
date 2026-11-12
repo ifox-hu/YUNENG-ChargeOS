@@ -22,7 +22,8 @@ import com.hcp.common.mybatisplus.constant.MybatisPageConstants;
 @Service
 public class ChargingStationServiceImpl implements IChargingStationService
 {
-    @Autowired private com.hcp.operator.rule.OperatorResourceScope scope;
+    @Autowired
+    private com.hcp.operator.rule.OperatorResourceScope scope;
     @Autowired
     private ChargingStationMapper chargingStationMapper;
 
@@ -88,7 +89,7 @@ public class ChargingStationServiceImpl implements IChargingStationService
     public int updateChargingStation(ChargingStation chargingStation)
     {
         chargingStation.setTenantId(scope.bind(chargingStation.getTenantId()));
-        scope.station(chargingStation.getStationId(),chargingStation.getTenantId());
+        scope.station(chargingStation.getStationId(), chargingStation.getTenantId());
         chargingStation.setUserId(SecurityContextHolder.getUserId());
         return chargingStationMapper.updateById(chargingStation);
     }

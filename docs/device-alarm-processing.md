@@ -88,14 +88,12 @@
 只在可暂停中间件的专用本地环境执行。`backlog/restart` 及原积分回归会停止容器，不能用于共享/生产环境。
 
 ```powershell
-# 后端：真实 MySQL 集成测试应先暂停 operator，防止在线消费者抢测试夹具。
-docker stop hcp-operator
+# 后端编译检查；Java 测试类已移除，业务回归使用下方独立脚本。
 $env:JAVA_HOME='D:\jdk1.8'
 $env:Path='D:\jdk1.8\bin;'+$env:Path
 Set-Location D:\xiangmu\huizhi\yuneng-cloud
-mvn test '-Dalarm.integration=true'
-# 无论成功失败都应恢复 operator；修改业务后需先重新打包/构建镜像。
-docker start hcp-operator
+mvn compile
+# 修改业务后需重新打包、构建镜像并启动服务，再执行接口回归。
 
 Set-Location D:\xiangmu\huizhi
 node --test scripts/test-device-alarm-metrics.cjs

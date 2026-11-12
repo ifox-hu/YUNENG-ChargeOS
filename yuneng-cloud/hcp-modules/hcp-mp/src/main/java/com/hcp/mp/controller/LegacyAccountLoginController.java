@@ -9,11 +9,14 @@ import javax.annotation.Resource;
 /** Keep previously compiled local clients working through the same account validation. */
 @RestController
 @RequestMapping("/v1/auth")
-public class LegacyAccountLoginController {
-    @Resource private AccountLoginService accounts;
+public class LegacyAccountLoginController
+{
+    @Resource
+    private AccountLoginService accounts;
 
     @PostMapping("/testLogin")
-    public R<UserVo> login(@RequestParam String username, @RequestParam String password) {
+    public R<UserVo> login(@RequestParam String username, @RequestParam String password)
+    {
         return accounts.login(username, password);
     }
 }

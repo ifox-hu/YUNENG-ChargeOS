@@ -39,7 +39,8 @@ public class MemberController extends BaseController
     private IMemberService memberService;
     @Autowired
     private RemoteMpService remoteMpService;
-    @Autowired private com.hcp.operator.rule.OperatorResourceScope resourceScope;
+    @Autowired
+    private com.hcp.operator.rule.OperatorResourceScope resourceScope;
 
     /**
      * 查询用户列表
@@ -96,7 +97,7 @@ public class MemberController extends BaseController
     public AjaxResult edit(@RequestBody Member member)
     {
         member.setTenantId(resourceScope.bind(member.getTenantId()));
-        resourceScope.member(member.getMemberId(),member.getTenantId());
+        resourceScope.member(member.getMemberId(), member.getTenantId());
         return toAjax(memberService.updateMember(member));
     }
 
@@ -113,12 +114,15 @@ public class MemberController extends BaseController
 
     @GetMapping("/info/{id}")
     @InnerAuth
-    R<Member> getMemberInfo(@PathVariable("id") Long id){
+    R<Member> getMemberInfo(@PathVariable("id") Long id)
+    {
         return R.ok(memberService.getMemberByMemberId(id));
     }
+
     @GetMapping("/memberInfo/{openId}")
     @InnerAuth
-    R<Member> getMemberInfoByOpenId(@PathVariable("openId") String openId){
+    R<Member> getMemberInfoByOpenId(@PathVariable("openId") String openId)
+    {
         return R.ok(memberService.getMemberByOpenId(openId));
     }
 
@@ -128,15 +132,16 @@ public class MemberController extends BaseController
      */
     @PostMapping("/info/register")
     @InnerAuth
-    R<Member> addMemberInfo(@RequestBody Member member){
+    R<Member> addMemberInfo(@RequestBody Member member)
+    {
         memberService.insertMember(member);
         return R.ok(member);
     }
 
-
     @PostMapping("/info/update")
     @InnerAuth
-    public R<Integer> updateMemberById(@RequestBody Member member){
+    public R<Integer> updateMemberById(@RequestBody Member member)
+    {
         int i = memberService.updateMember(member);
         return R.ok(i);
     }

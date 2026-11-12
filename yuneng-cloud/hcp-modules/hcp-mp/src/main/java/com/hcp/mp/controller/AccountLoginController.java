@@ -10,26 +10,40 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/v1/auth/account")
-public class AccountLoginController {
-    @Resource private AccountLoginService accounts;
+public class AccountLoginController
+{
+    @Resource
+    private AccountLoginService accounts;
 
     @PostMapping("/login")
-    public R<UserVo> login(@RequestParam String username, @RequestParam String password) {
+    public R<UserVo> login(@RequestParam String username, @RequestParam String password)
+    {
         return accounts.login(username, password);
     }
+
     @PostMapping("/code")
-    public R<Map<String, Object>> code(@RequestParam String mobile) {
+    public R<Map<String, Object>> code(@RequestParam String mobile)
+    {
         return accounts.sendCode(mobile);
     }
+
     @PostMapping("/register")
-    public R<String> register(@RequestParam String username, @RequestParam String password,
-                              @RequestParam String mobile, @RequestParam String code,
-                              @RequestParam(required=false) Long tenantCode) {
-        try { return accounts.register(username, password, mobile, code, tenantCode); }
-        catch (DuplicateKeyException ex) { return R.fail("账号或手机号已注册"); }
+    public R<String> register(@RequestParam String username, @RequestParam String password, @RequestParam String mobile,
+                              @RequestParam String code, @RequestParam(required = false) Long tenantCode)
+    {
+        try
+        {
+            return accounts.register(username, password, mobile, code, tenantCode);
+        }
+        catch (DuplicateKeyException ex)
+        {
+            return R.fail("账号或手机号已注册");
+        }
     }
+
     @PostMapping("/logout")
-    public R<String> logout(@RequestHeader(value="token", required=false) String token) {
+    public R<String> logout(@RequestHeader(value = "token", required = false) String token)
+    {
         accounts.logout(token);
         return R.ok("已退出登录");
     }

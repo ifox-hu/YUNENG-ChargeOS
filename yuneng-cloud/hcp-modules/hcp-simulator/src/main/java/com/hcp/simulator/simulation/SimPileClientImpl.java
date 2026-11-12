@@ -243,9 +243,11 @@ public class SimPileClientImpl implements SimPileIClient {
             ChargeInfoDTO chargeInfoDTO = chargeInfoMap.get(chargingOrder.getDeviceId());
             chargeInfoDTO.setEndTime(new Date());
             try {
-                remoteChargingService.orderInfo(chargingOrder.getOrderId(), Double.valueOf(chargeInfoDTO.getChargePower()),
-                        DateUtil.formatDateTime(chargeInfoDTO.getStartTime()), DateUtil.formatDateTime(chargeInfoDTO.getEndTime()),
-                        chargeInfoDTO.getChargeFee(), chargeInfoDTO.getServiceFee(), chargeInfoDTO.getChargePrice(), stopReason);
+                remoteChargingService.orderInfo(
+                    chargingOrder.getOrderId(), Double.valueOf(chargeInfoDTO.getChargePower()),
+                    DateUtil.formatDateTime(chargeInfoDTO.getStartTime()),
+                    DateUtil.formatDateTime(chargeInfoDTO.getEndTime()), chargeInfoDTO.getChargeFee(),
+                    chargeInfoDTO.getServiceFee(), chargeInfoDTO.getChargePrice(), stopReason);
             }catch (Exception e){
                 log.error("远程调用发送充电订单信息接口失败:{}", e.getMessage());
             }

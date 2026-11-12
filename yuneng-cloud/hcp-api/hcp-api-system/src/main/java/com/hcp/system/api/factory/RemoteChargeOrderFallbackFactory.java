@@ -26,25 +26,24 @@ public class RemoteChargeOrderFallbackFactory implements FallbackFactory<RemoteC
     public RemoteChargeOrderService create(Throwable throwable)
     {
         log.error("用户服务调用失败:{}", throwable.getMessage());
-        return new RemoteChargeOrderService()
-        {
+        return new RemoteChargeOrderService() {
             @Override
-            public R<ChargingOrder> getOrderByOrderNumber(String orderNumber, String source) {
+            public R<ChargingOrder> getOrderByOrderNumber(String orderNumber, String source)
+            {
                 return R.fail("获取订单信息失败:" + throwable.getMessage());
             }
 
             @Override
-            public R<List<OrderLog>> queryOrderLogByOrderNumber( String orderNumber) {
+            public R<List<OrderLog>> queryOrderLogByOrderNumber(String orderNumber)
+            {
                 return R.fail("获取订单日志信息失败:" + throwable.getMessage());
             }
 
             @Override
-            public R<Page<ChargingOrder>> queryOrderList(ChargingOrder chargingOrder) {
+            public R<Page<ChargingOrder>> queryOrderList(ChargingOrder chargingOrder)
+            {
                 return R.fail("获取订单列表失败:" + throwable.getMessage());
             }
-
-
         };
-
     }
 }

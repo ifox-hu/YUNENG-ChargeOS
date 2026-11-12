@@ -40,27 +40,32 @@ public class OrderController {
     @Resource
     private RedisService redisService;
 
-    private long currentMember() {
+    private long currentMember()
+    {
         String token = ServletUtils.getRequest().getHeader("token");
-        Object member = token == null ? null : redisService.getCacheObject(
-            MpConstant.USER_TOKEN + token.replaceFirst("^Bearer ", ""));
-        if (member == null) throw new ServiceException("登录已失效，请重新登录");
+        Object member = token == null
+                            ? null
+                            : redisService.getCacheObject(MpConstant.USER_TOKEN + token.replaceFirst("^Bearer ", ""));
+        if (member == null)
+            throw new ServiceException("登录已失效，请重新登录");
         return Long.parseLong(String.valueOf(member));
     }
 
-    private ChargingOrder ownedOrder(String orderNumber) {
+    private ChargingOrder ownedOrder(String orderNumber)
+    {
         long member = currentMember();
         R<ChargingOrder> result = remoteChargeOrderService.getOrderByOrderNumber(orderNumber, SecurityConstants.INNER);
-        if (result == null || result.getCode() != 200 || result.getData() == null) {
+        if (result == null || result.getCode() != 200 || result.getData() == null)
+        {
             throw new ServiceException("订单查询失败或订单不存在");
         }
         ChargingOrder order = result.getData();
-        if (!String.valueOf(member).equals(String.valueOf(order.getUserId()))) {
+        if (!String.valueOf(member).equals(String.valueOf(order.getUserId())))
+        {
             throw new ServiceException("无权查看或操作该订单");
         }
         return order;
     }
-
 
     @GetMapping("/saveOrder")
     public R<ChargingOrder> saveOrder(
@@ -72,7 +77,8 @@ public class OrderController {
     ) {
 
         userId = currentMember();
-        if (hour == null || hour < 0 || hour > 24 || amount == null || amount.signum() < 0) {
+        if (hour == null || hour < 0 || hour > 24 || amount == null || amount.signum() < 0)
+        {
             throw new ServiceException("充电时长或金额无效");
         }
         R<ChargingPort> chargingPortR = remoteChargePortService.getChargePortByPortId(portId);
@@ -81,17 +87,18 @@ public class OrderController {
         }
         ChargingPort chargingPort = chargingPortR.getData();
 
-        R<ChargingOrder> result = remoteChargingService.startCharge(
-            chargingPort.getPileId(), chargingPort.getDeviceId(), userId, amount, hour);
-        if (result == null) return R.fail("启动服务无响应，请稍后重试");
-        if (result.getCode() != R.SUCCESS) return result;
+        R<ChargingOrder> result = remoteChargingService.startCharge(chargingPort.getPileId(),
+                                                                    chargingPort.getDeviceId(), userId, amount, hour);
+        if (result == null)
+            return R.fail("启动服务无响应，请稍后重试");
+        if (result.getCode() != R.SUCCESS)
+            return result;
         ChargingOrder order = result.getData();
-        if (order == null || order.getOrderNumber() == null || order.getPortId() == null
-                || order.getPileId() == null) {
+        if (order == null || order.getOrderNumber() == null || order.getPortId() == null || order.getPileId() == null)
+        {
             return R.fail("启动结果缺少订单信息，请先检查订单列表");
         }
         return result;
-
     }
 
     @GetMapping("/queryOrderList")
@@ -129,14 +136,18 @@ public class OrderController {
                                @RequestParam("port") String port,
                                @RequestParam(value = "orderNumber", required = false) String orderNumber) {
 
-        if (orderNumber == null || orderNumber.isEmpty()) return R.fail("缺少订单编号，请重新进入订单");
+        if (orderNumber == null || orderNumber.isEmpty())
+            return R.fail("缺少订单编号，请重新进入订单");
         ChargingOrder order = ownedOrder(orderNumber);
-        if (!pileId.equals(order.getPileId()) || !port.equals(String.valueOf(order.getPortId()))) {
+        if (!pileId.equals(order.getPileId()) || !port.equals(String.valueOf(order.getPortId())))
+        {
             return R.fail("订单与端口信息不匹配");
         }
-        if ("3".equals(order.getOrderState())) return R.ok();
+        if ("3".equals(order.getOrderState()))
+            return R.ok();
         R<ChargingPort> chargePortByPortId = remoteChargePortService.getChargePortByPortId(Long.valueOf(port));
-        if (ObjectUtil.isEmpty(chargePortByPortId) || chargePortByPortId.getData() == null) {
+        if (ObjectUtil.isEmpty(chargePortByPortId) || chargePortByPortId.getData() == null)
+        {
             return R.fail("充电口信息未找到");
         }
         String deviceId = chargePortByPortId.getData().getDeviceId();

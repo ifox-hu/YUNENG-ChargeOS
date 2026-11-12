@@ -65,7 +65,7 @@ public class ChargingPortController extends BaseController
     @GetMapping(value = "/{portId}")
     public AjaxResult getInfo(@PathVariable("portId") Long portId)
     {
-        resourceScope.port(portId,resourceScope.bind(null));
+        resourceScope.port(portId, resourceScope.bind(null));
         return success(chargingPortService.selectChargingPortByPortId(portId));
     }
 
@@ -120,5 +120,7 @@ public class ChargingPortController extends BaseController
     {
         return AjaxResult.success(chargingPortService.selectChargingPortByPortId(portId));
     }
-    @Autowired private com.hcp.operator.rule.OperatorResourceScope resourceScope;
+
+    @Autowired
+    private com.hcp.operator.rule.OperatorResourceScope resourceScope;
 }

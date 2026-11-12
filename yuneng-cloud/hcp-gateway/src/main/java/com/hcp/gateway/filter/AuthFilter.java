@@ -57,9 +57,12 @@ public class AuthFilter implements GlobalFilter, Ordered
             return unauthorizedResponse(exchange, "令牌不能为空");
         }
         Claims claims;
-        try {
+        try
+        {
             claims = JwtUtils.parseToken(token);
-        } catch (io.jsonwebtoken.JwtException | IllegalArgumentException ex) {
+        }
+        catch (io.jsonwebtoken.JwtException | IllegalArgumentException ex)
+        {
             return unauthorizedResponse(exchange, "登录状态无效，请重新登录");
         }
         if (claims == null)
@@ -73,8 +76,9 @@ public class AuthFilter implements GlobalFilter, Ordered
             return unauthorizedResponse(exchange, "登录状态已过期");
         }
         Object cached = redisService.getCacheObject(getTokenKey(userkey));
-        com.alibaba.fastjson2.JSONObject session = cached == null ? null :
-                com.alibaba.fastjson2.JSON.parseObject(com.alibaba.fastjson2.JSON.toJSONString(cached));
+        com.alibaba.fastjson2.JSONObject session =
+            cached == null ? null
+                           : com.alibaba.fastjson2.JSON.parseObject(com.alibaba.fastjson2.JSON.toJSONString(cached));
         com.alibaba.fastjson2.JSONObject user = session == null ? null : session.getJSONObject("sysUser");
         String userid = user == null ? null : user.getString("userId");
         String username = user == null ? null : user.getString("userName");

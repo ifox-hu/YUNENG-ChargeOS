@@ -25,25 +25,28 @@ public class RemoteSimulatorFallbackFactory implements FallbackFactory<RemoteSim
     public RemoteSimulatorService create(Throwable throwable)
     {
         log.error("用户服务调用失败:{}", throwable.getMessage());
-        return new RemoteSimulatorService()
-        {
+        return new RemoteSimulatorService() {
             @Override
-            public R<String> start(String pileId) {
+            public R<String> start(String pileId)
+            {
                 return R.fail("启动模拟桩失败:" + throwable.getMessage());
             }
 
             @Override
-            public R<String> link(String pileId, String deviceId) {
+            public R<String> link(String pileId, String deviceId)
+            {
                 return R.fail("模拟插枪失败:" + throwable.getMessage());
             }
 
             @Override
-            public R<String> startCharge(ChargingOrder chargingOrder) {
+            public R<String> startCharge(ChargingOrder chargingOrder)
+            {
                 return R.fail("启动模拟器充电失败:" + throwable.getMessage());
             }
 
             @Override
-            public R<String> stopCharge(String pileId, String deviceId) {
+            public R<String> stopCharge(String pileId, String deviceId)
+            {
                 return R.fail("停止模拟器启动失败:" + throwable.getMessage());
             }
         };

@@ -9,16 +9,22 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 @Service
-public class ChargingPortServiceImpl extends ServiceImpl<ChargingPortMapper, ChargingPort> implements ChargingPortService {
+public class ChargingPortServiceImpl
+    extends ServiceImpl<ChargingPortMapper, ChargingPort> implements ChargingPortService
+{
     @Override
-    public List<ChargingPort> getByDeviceId(String pileId) {
+    public List<ChargingPort> getByDeviceId(String pileId)
+    {
         return list(Wrappers.<ChargingPort>lambdaQuery().eq(ChargingPort::getPileId, pileId));
     }
 
     @Override
-    public void updateGunStatus(String pileId, String deviceId, Long gunStatus, String state) {
-        update(Wrappers.<ChargingPort>lambdaUpdate().eq(ChargingPort::getPileId, pileId)
-                .eq(ChargingPort::getDeviceId, deviceId).set(ChargingPort::getGunStatus, gunStatus)
-                .set(ChargingPort::getState, state));
+    public void updateGunStatus(String pileId, String deviceId, Long gunStatus, String state)
+    {
+        update(Wrappers.<ChargingPort>lambdaUpdate()
+                   .eq(ChargingPort::getPileId, pileId)
+                   .eq(ChargingPort::getDeviceId, deviceId)
+                   .set(ChargingPort::getGunStatus, gunStatus)
+                   .set(ChargingPort::getState, state));
     }
 }

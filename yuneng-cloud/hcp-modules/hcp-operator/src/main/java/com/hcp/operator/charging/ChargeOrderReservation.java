@@ -19,7 +19,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class ChargeOrderReservation {
+public class ChargeOrderReservation
+{
     private final ChargingPortMapper ports;
     private final ChargingPileMapper piles;
     private final ChargingOrderMapper orders;
@@ -27,7 +28,8 @@ public class ChargeOrderReservation {
     private final ChargeStartValidationChain validation;
 
     public ChargeOrderReservation(ChargingPortMapper ports, ChargingPileMapper piles, ChargingOrderMapper orders,
-                                 OrderLogMapper logs, ChargeStartValidationChain validation) {
+                                  OrderLogMapper logs, ChargeStartValidationChain validation)
+    {
         this.ports = ports;
         this.piles = piles;
         this.orders = orders;
@@ -36,8 +38,11 @@ public class ChargeOrderReservation {
     }
 
     // Commit the order reservation before any device RPC touches the port row.
-    @Transactional(rollbackFor = Exception.class, isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
-    public ChargingOrder reserve(String pileId, String devicePort, Long memberId, BigDecimal amount, Integer hours) {
+    @Transactional(rollbackFor = Exception.class,
+                   isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
+    public ChargingOrder
+    reserve(String pileId, String devicePort, Long memberId, BigDecimal amount, Integer hours)
+    {
         ChargingPort port = ports.lockPort(pileId, devicePort);
         ChargingPile pile = piles.getById(pileId);
         validation.validate(new ChargeStartContext(pile, port, memberId, amount, hours));
@@ -69,10 +74,12 @@ public class ChargeOrderReservation {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public void markUncertain(String orderId) {
+    public void markUncertain(String orderId)
+    {
         ChargingOrder order = orders.lockById(orderId);
-        if (order != null && OrderState.PLACE.equals(order.getOrderState())
-                && ChargeStatus.PRE_CHARGE.equals(order.getChargeStatus())) {
+        if (order != null && OrderState.PLACE.equals(order.getOrderState()) &&
+            ChargeStatus.PRE_CHARGE.equals(order.getChargeStatus()))
+        {
             order.setStopReason("设备启动结果待确认，请勿重复下单");
             orders.updateByPrimaryKeySelective(order);
         }

@@ -79,18 +79,20 @@ public class ChargingOrderController extends BaseController
 
     @RequiresPermissions("operator:order:query")
     @GetMapping(value = "getOrderByOrderNumber/{orderNumber}")
-        public AjaxResult getOrderByOrderNumber(@PathVariable("orderNumber") String orderNumber)
+    public AjaxResult getOrderByOrderNumber(@PathVariable("orderNumber") String orderNumber)
     {
         AjaxResult result = chargingOrderService.selectChargingOrderByOrderNumber(orderNumber);
-        Object data=result.get("data");
-        if(data instanceof ChargingOrder && !java.util.Objects.equals(((ChargingOrder)data).getTenantId(),SecurityUtils.getTenantId()))
+        Object data = result.get("data");
+        if (data instanceof ChargingOrder &&
+            !java.util.Objects.equals(((ChargingOrder)data).getTenantId(), SecurityUtils.getTenantId()))
             throw new com.hcp.common.core.exception.ServiceException("无权访问其他运营商订单");
         return result;
     }
 
     @InnerAuth
     @GetMapping("/internal/detail")
-    public AjaxResult internalDetail(@RequestParam("orderNumber") String orderNumber) {
+    public AjaxResult internalDetail(@RequestParam("orderNumber") String orderNumber)
+    {
         return chargingOrderService.selectChargingOrderByOrderNumber(orderNumber);
     }
 

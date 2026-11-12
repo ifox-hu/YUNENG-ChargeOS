@@ -22,7 +22,6 @@ public interface RemoteChargePortService
      * @param portId 端口id
      * @return 结果
      */
-    @GetMapping(value="/port/info/{portId}",headers="from-source=inner")
+    @GetMapping(value = "/port/info/{portId}", headers = "from-source=inner")
     R<ChargingPort> getChargePortByPortId(@PathVariable("portId") Long portId);
-
 }

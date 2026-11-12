@@ -30,7 +30,7 @@ public interface RemoteChargeOrderService
      */
     @GetMapping("/order/internal/detail")
     R<ChargingOrder> getOrderByOrderNumber(@RequestParam("orderNumber") String orderNumber,
-        @RequestHeader("from-source") String source);
+                                           @RequestHeader("from-source") String source);
 
     /**
      * 根据订单编号查询订单日志列表
