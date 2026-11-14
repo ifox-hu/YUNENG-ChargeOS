@@ -31,8 +31,15 @@ async function openOrderFunds(page) {
     await live.addCookies([{ name: 'Admin-Token', value: await adminToken(), url: ui }, { name: 'Admin-Tenant', value: '9999', url: ui }]);
     const page = await live.newPage(), errors = [];
     page.on('pageerror', error => errors.push(error.message));
-    await page.goto(ui + '/index');
-    await page.getByText('当前日期范围暂无订单', { exact: true }).waitFor();
+    async function openLiveOperator() {
+      await page.goto(ui + '/index');
+      await page.waitForFunction(() => { const v = document.querySelector('.overview-page')?.__vue__; return v && v.report && !v.loading; });
+      const name = await page.locator('.overview-page').evaluate(el => el.__vue__.operators.find(row => row.id === '9999').name);
+      await page.locator('.operator-selector').click();
+      await page.locator('.el-select-dropdown:visible').getByText(name, { exact: true }).click();
+      await page.waitForFunction(() => { const v = document.querySelector('.overview-page').__vue__; return v.report && !v.loading && v.target === '9999'; });
+    }
+    await openLiveOperator();
     await page.screenshot({ path: path.join(output, 'live-overview.png'), fullPage: true });
     await page.getByRole('button', { name: /异常订单待核查/ }).click();
     await page.getByRole('tab', { name: '异常核查', exact: true }).waitFor();
@@ -41,12 +48,12 @@ async function openOrderFunds(page) {
     await page.getByRole('button', { name: '详情', exact: true }).first().click();
     await page.locator('.el-dialog:visible').getByText('订单号', { exact: true }).waitFor();
     pass('real dashboard, exception filter and order detail render with backend data');
-    await page.goto(ui + '/index');
+    await openLiveOperator();
     const faultResponse = page.waitForResponse(response => response.url().includes('/operator/fault/list'));
     await page.getByRole('button', { name: /未关闭故障工单/ }).click();
     const faultUrl = new URL((await faultResponse).url());
     assert.equal(faultUrl.searchParams.get('status'), 'ACTIVE'); assert.equal(faultUrl.searchParams.get('targetTenantId'), '9999');
-    await page.goto(ui + '/index');
+    await openLiveOperator();
     const pointsResponse = page.waitForResponse(response => response.url().includes('/operator/points/events?'));
     await page.getByRole('button', { name: /积分发放失败事件/ }).click();
     const pointsUrl = new URL((await pointsResponse).url());
@@ -69,11 +76,11 @@ async function openOrderFunds(page) {
     await p.goto(demo + '#/login');
     await p.getByPlaceholder('请输入账号').fill('demo'); await p.getByPlaceholder('请输入密码').fill('Demo123456!');
     await fillDemoCaptcha(p); await p.locator('.login-actions button').click(); await p.waitForURL('**/#/index');
-    await p.getByText('浏览器模拟数据', { exact: true }).waitFor();
+    await p.getByText('平台管理员', { exact: true }).waitFor();
     await p.screenshot({ path: path.join(output, 'pages-overview.png'), fullPage: true });
     assert.equal(await p.locator('.sidebar-container a[href*="/operations/"]').count(), 0);
     await p.evaluate(() => { const key='yuneng-original-ui-demo-v1'; const db=JSON.parse(localStorage.getItem(key)); db.lists['/system/menu/getRouters'].data.unshift({path:'/operations',component:'Layout',meta:{title:'运营工作台'},children:[]}); localStorage.setItem(key,JSON.stringify(db)); });
-    await p.reload(); await p.getByText('浏览器模拟数据', { exact: true }).waitFor();
+    await p.reload(); await p.getByText('平台管理员', { exact: true }).waitFor();
     assert.equal(await p.locator('.sidebar-container a[href*="/operations/"]').count(), 0);
     const cached=await p.evaluate(() => JSON.parse(localStorage.getItem('yuneng-original-ui-demo-v1')).lists['/system/menu/getRouters'].data.some(row=>row.path==='/operations'));
     assert.equal(cached,false);
