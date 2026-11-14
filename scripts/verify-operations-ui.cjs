@@ -60,7 +60,7 @@ async function adminToken() {
     p.on('request', request => { if (/\/(prod-api|demo-api|dev-api)\//.test(request.url())) backend.push(request.url()); });
     await p.goto(demo + '#/login');
     await p.getByPlaceholder('请输入账号').fill('demo'); await p.getByPlaceholder('请输入密码').fill('Demo123456!');
-    await fillDemoCaptcha(p); await p.getByRole('button', { name: '登 录' }).click(); await p.waitForURL('**/#/index');
+    await fillDemoCaptcha(p); await p.locator('.login-actions button').click(); await p.waitForURL('**/#/index');
     await p.getByText('浏览器模拟数据', { exact: true }).waitFor();
     await p.screenshot({ path: path.join(output, 'pages-overview.png'), fullPage: true });
     await p.goto(demo + '#/operations/orders');
