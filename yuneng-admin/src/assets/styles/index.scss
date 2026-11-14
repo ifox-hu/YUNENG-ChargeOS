@@ -11,8 +11,8 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   font-family: Helvetica Neue, Helvetica, PingFang SC, Hiragino Sans GB, Microsoft YaHei, Arial, sans-serif;
-  background: #f3f7f4;
-  color: #173d34;
+  background: #f3f6fc;
+  color: #182b49;
 }
 
 label {
@@ -138,34 +138,34 @@ aside {
 .app-container .el-table {
   border-radius: 10px;
   overflow: hidden;
-  border: 1px solid #e1ece7;
+  border: 1px solid #e1e8f3;
 }
 
 .app-container .el-table th.el-table__cell {
-  background: #eef7f3;
-  color: #5c766d;
+  background: #eff5ff;
+  color: #61738e;
   font-weight: 600;
 }
 
 .app-container .el-table td.el-table__cell {
-  border-bottom-color: #edf2ef;
+  border-bottom-color: #edf1f7;
 }
 
 .app-container .el-table--enable-row-hover .el-table__body tr:hover > td.el-table__cell {
-  background: #f6fbf8;
+  background: #f7faff;
 }
 
 .app-container .el-button--primary:not(.is-disabled) {
   color: #fff;
-  background: #008773;
-  border-color: #008773;
+  background: #2563eb;
+  border-color: #2563eb;
 }
 
 .app-container .el-button--primary:not(.is-disabled):hover,
 .app-container .el-button--primary:not(.is-disabled):focus {
   color: #fff;
-  background: #006f61;
-  border-color: #006f61;
+  background: #1d4ed8;
+  border-color: #1d4ed8;
 }
 
 .components-container {

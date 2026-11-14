@@ -6,7 +6,7 @@
     <top-nav id="topmenu-container" class="topmenu-container" v-if="topNav"/>
 
     <div class="right-menu">
-      <span v-if="demoMode" style="color:#008773;margin-right:18px;font-size:13px">模拟演示 · 不连接后端 <el-button size="mini" @click="resetDemoData">重置数据</el-button></span>
+      <span v-if="demoMode" style="color:#2563eb;margin-right:18px;font-size:13px">模拟演示 · 不连接后端 <el-button size="mini" @click="resetDemoData">重置数据</el-button></span>
       <template v-if="device!=='mobile'">
         <search id="header-search" class="right-menu-item" />
 
@@ -124,7 +124,7 @@ export default {
   overflow: hidden;
   position: relative;
   background: #ffffff;
-  box-shadow: 0 1px 0 rgba(26, 76, 64, .08);
+  box-shadow: 0 1px 0 rgba(37, 73, 132, .08);
 
   .hamburger-container {
     line-height: 46px;

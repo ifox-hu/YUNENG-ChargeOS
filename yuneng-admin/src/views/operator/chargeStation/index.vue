@@ -857,10 +857,10 @@ export default {
     .el-button {
       width: 100%;
       margin-left: 0;
-      background: #008773;
-      border-color: #008773;
+      background: #2563eb;
+      border-color: #2563eb;
       color: #fff;
-      &:hover, &:focus { background: #006f61; border-color: #006f61; color: #fff; }
+      &:hover, &:focus { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
     }
 
     .el-button + .el-button {

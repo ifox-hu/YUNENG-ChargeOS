@@ -4,7 +4,8 @@ const { sideTheme, showSettings, topNav, tagsView, fixedHeader, sidebarLogo, dyn
 
 const storageSetting = JSON.parse(localStorage.getItem('layout-setting')) || ''
 const savedTheme = storageSetting.theme
-const theme = savedTheme === '#EF8708' || savedTheme === '#AB590C' ? '#008773' : (savedTheme || '#008773')
+const previousDefaultThemes = ['#ef8708', '#ab590c', '#008773', '#0f9d84']
+const theme = !savedTheme || previousDefaultThemes.includes(savedTheme.toLowerCase()) ? '#2563eb' : savedTheme
 const state = {
   title: '',
   theme,

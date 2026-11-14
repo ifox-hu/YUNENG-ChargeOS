@@ -105,8 +105,8 @@ export default {
       if(!this.typeChart)this.typeChart=echarts.init(this.$refs.typeChart);
       const dates=[];for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);dates.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'))}
       const counts={};(this.stats.trend||[]).forEach(x=>{counts[x.day]=x.count});
-      this.trendChart.setOption({color:['#008773'],tooltip:{trigger:'axis'},grid:{left:35,right:20,top:20,bottom:25},xAxis:{type:'category',data:dates.map(d=>d.slice(5))},yAxis:{type:'value',minInterval:1},series:[{type:'bar',data:dates.map(d=>counts[d]||0),barMaxWidth:32}]});
-      this.typeChart.setOption({color:['#008773','#4f8ff7','#edaa45','#9ba7b8'],tooltip:{trigger:'item'},series:[{type:'pie',radius:['40%','65%'],data:(this.stats.byType||[]).map(x=>({name:this.types[x.faultType],value:x.count}))}]});
+      this.trendChart.setOption({color:['#2563eb'],tooltip:{trigger:'axis'},grid:{left:35,right:20,top:20,bottom:25},xAxis:{type:'category',data:dates.map(d=>d.slice(5))},yAxis:{type:'value',minInterval:1},series:[{type:'bar',data:dates.map(d=>counts[d]||0),barMaxWidth:32}]});
+      this.typeChart.setOption({color:['#2563eb','#4f8ff7','#edaa45','#9ba7b8'],tooltip:{trigger:'item'},series:[{type:'pie',radius:['40%','65%'],data:(this.stats.byType||[]).map(x=>({name:this.types[x.faultType],value:x.count}))}]});
     },
     openDetail(id) {this.detailLoading=true;return api.getFault(id).then(r=>{this.detail=r.data;this.detailVisible=true}).finally(()=>{this.detailLoading=false})},
     createAlarm() {
@@ -127,8 +127,8 @@ export default {
 </script>
 <style scoped>
 .headline{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}.headline h2{margin:0 0 10px}.headline p,.muted{color:#83909e;font-size:13px}
-.metric{background:#fff;border:1px solid #e5ecea;border-radius:8px;padding:20px;margin-bottom:20px}.metric span{display:block;color:#73867f}.metric strong{display:block;font-size:30px;margin-top:12px;color:#087d69}
-.charts{margin-bottom:22px}.chart{height:200px}.dialog-form{margin-top:20px}.actions{margin:20px 0}.fault-page{background:#f7faf9}
+.metric{background:#fff;border:1px solid #e1e8f3;border-radius:8px;padding:20px;margin-bottom:20px}.metric span{display:block;color:#61738e}.metric strong{display:block;font-size:30px;margin-top:12px;color:#2563eb}
+.charts{margin-bottom:22px}.chart{height:200px}.dialog-form{margin-top:20px}.actions{margin:20px 0}.fault-page{background:#f3f6fc}
 .fault-page ::v-deep .el-descriptions-item__label{width:90px;white-space:nowrap}
 .fault-page ::v-deep .el-descriptions-item__content{word-break:break-all}
 </style>
