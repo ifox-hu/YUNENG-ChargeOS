@@ -3,7 +3,6 @@
     <div class="page-heading"><span>运营首页</span><el-tag size="small" type="info" effect="plain">{{ isPlatform ? '平台管理员' : '运营商账号' }}</el-tag></div>
     <div v-if="isPlatform" class="operator-toolbar">
       <div class="operator-picker"><span>运营商</span><el-select v-model="target" filterable size="small" class="operator-selector" :disabled="loading" @change="changeTenant"><el-option label="全部运营商" value="" /><el-option v-for="row in operators" :key="row.id" :label="row.name" :value="row.id" /></el-select><el-button v-if="target" size="small" plain icon="el-icon-back" @click="selectOperator('')">返回全部运营商</el-button></div>
-      <el-switch v-model="showSamples" class="sample-source" active-text="示例数据" :disabled="loading" @change="changeSource" />
     </div>
     <el-card shadow="never" class="filter-card">
       <el-radio-group v-model="period" size="small" @change="setPeriod"><el-radio-button :label="7">近7天</el-radio-button><el-radio-button :label="30">近30天</el-radio-button><el-radio-button :label="0">自定义</el-radio-button></el-radio-group>
@@ -44,8 +43,10 @@ export default {
   name: 'OperationsOverview',
   components: { OperationChart },
   data() {
+    const requested = String(this.$route.query.targetTenantId || '')
+    const target = process.env.VUE_APP_DEMO === 'true' && !dashboardSamples.some(row => row.id === requested) ? '' : requested
     return {
-      showSamples: process.env.VUE_APP_DEMO === 'true' && !this.$route.query.targetTenantId, operators: [], target: this.$route.query.targetTenantId ? String(this.$route.query.targetTenantId) : '', report: null, stations: [], loading: false, error: '', period: 7, range: [], station: undefined, sequence: 0,
+      operators: [], target, report: null, stations: [], loading: false, error: '', period: 7, range: [], station: undefined, sequence: 0,
       metrics: [
         { key: 'gross', label: '订单结算金额', caption: '已结束订单费用，不代表已收款', unit: '元', icon: 'el-icon-tickets', color: '#2563eb' },
         { key: 'net', label: '本地实收净额', caption: '余额实付扣除累计退款', unit: '元', icon: 'el-icon-wallet', color: '#1ab394' },
@@ -63,7 +64,7 @@ export default {
     visiblePendingItems() { const permissions = this.$store.getters.permissions || []; const root = permissions.includes('*:*:*'); return this.pendingItems.filter(item => item.key === 'points' ? !this.isDemo && Number(this.$store.state.user.id) === 1 : root || permissions.includes(item.key === 'faults' ? 'operator:fault:list' : 'operator:operations:orders')) },
     isDemo() { return process.env.VUE_APP_DEMO === 'true' },
     isPlatform() { return Number(this.$store.getters.userId) === 1 },
-    isSample() { return this.isPlatform && this.showSamples },
+    isSample() { return this.isPlatform && this.isDemo },
     allOperators() { return this.isPlatform && !this.target },
     selectedName() { const row = this.operators.find(row => row.id === this.target); const station = this.stations.find(row => row.station_id === this.station); return this.isPlatform ? row ? row.name : '运营商详情' : station ? station.station_name : '全部站点' },
     trendOption() {
@@ -78,7 +79,6 @@ export default {
   methods: {
     money: formatMoney,
     selectOperator(id) { this.target = String(id || ''); this.changeTenant() },
-    changeSource() { this.target = ''; this.changeTenant() },
     changeTenant() { this.station = undefined; this.stations = []; this.report = null; this.load() },
     setPeriod() {
       if (!this.period) return

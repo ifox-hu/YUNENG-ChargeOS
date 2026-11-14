@@ -40,3 +40,11 @@ test('platform all uses every actual tenant; a failed tenant never yields a part
 test('local legacy demo identity remains visible without inventing a registered operator',async()=>{
  const {component,calls}=await overviewComponent(1,{}, {getTenant:()=>9999,listTenant:async()=>({data:[{id:101,tenantName:'已登记运营商'}],total:1})});await component.load();assert.equal(component.report.operators.length,2);assert.equal(component.operators[1].id,'9999');assert.equal(component.operators[1].name,'本地演示运营商（9999）');assert.equal(calls.length,2);assert.equal(calls[1].targetTenantId,'9999');component.$destroy();
 });
+test('Pages uses samples without a switch, including old numeric links and sample detail links',async()=>{
+ for(const target of ['', '9999', 'sample-campus']){
+  const {component,calls}=await overviewComponent(1,{targetTenantId:target},{process:{env:{VUE_APP_DEMO:'true'}}});await component.load();assert(component.isSample);assert(component.report.sampleOnly);assert.equal(calls.length,0);assert.equal(Object.hasOwn(component.$data,'showSamples'),false);assert.equal(component.changeSource,undefined);assert.equal(component.target,target==='sample-campus'?target:'');assert.equal(component.allOperators,target!=='sample-campus');component.$destroy();
+ }
+});
+test('Pages operator account still queries its own demo business records only',async()=>{
+ const {component,calls}=await overviewComponent(42,{targetTenantId:'12345'},{process:{env:{VUE_APP_DEMO:'true'}}});await component.load();assert.equal(component.isSample,false);assert.equal(calls.length,1);assert.equal(calls[0].targetTenantId,undefined);assert.equal(component.report.tenantId,9999);component.$destroy();
+});
