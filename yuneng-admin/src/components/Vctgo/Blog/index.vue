@@ -9,12 +9,12 @@ export default {
   name: 'VctgoBlog',
   data() {
     return {
-      url: 'https://github.com/ifox-hu'
+      url: 'https://github.com/ifox-hu/YUNENG-ChargeOS/blob/master/docs/development-guide.md'
     }
   },
   methods: {
     goto() {
-      window.open(this.url)
+      window.open(this.url, '_blank', 'noopener,noreferrer')
     }
   }
 }

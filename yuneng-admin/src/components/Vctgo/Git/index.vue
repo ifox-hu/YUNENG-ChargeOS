@@ -9,12 +9,12 @@ export default {
   name: 'VctgoGit',
   data() {
     return {
-      url: 'https://github.com/roinli/HUIZHI-ChargeOS-cloud'
+      url: 'https://github.com/ifox-hu/YUNENG-ChargeOS'
     }
   },
   methods: {
     goto() {
-      window.open(this.url)
+      window.open(this.url, '_blank', 'noopener,noreferrer')
     }
   }
 }

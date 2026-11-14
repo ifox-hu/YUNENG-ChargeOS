@@ -9,12 +9,12 @@ export default {
   name: 'VctgoDoc',
   data() {
     return {
-      url: 'http://doc.huizhidata.com/'
+      url: 'https://github.com/ifox-hu/YUNENG-ChargeOS/issues'
     }
   },
   methods: {
     goto() {
-      window.open(this.url)
+      window.open(this.url, '_blank', 'noopener,noreferrer')
     }
   }
 }

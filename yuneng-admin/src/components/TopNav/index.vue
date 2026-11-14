@@ -1,7 +1,9 @@
 <template>
   <el-menu
+    ref="topMenu"
     :default-active="activeMenu"
     mode="horizontal"
+    menu-trigger="click"
     @select="handleSelect"
   >
     <template v-for="(item, index) in topMenus">
@@ -14,7 +16,7 @@
     </template>
 
     <!-- 顶部菜单超出数量折叠 -->
-    <el-submenu :style="{'--theme': theme}" index="more" v-if="topMenus.length > visibleNumber">
+    <el-submenu :style="{'--theme': theme}" index="more" popper-class="topnav-more-popup" v-if="topMenus.length > visibleNumber">
       <template slot="title">更多菜单</template>
       <template v-for="(item, index) in topMenus">
         <el-menu-item
@@ -116,13 +118,29 @@ export default {
   },
   beforeDestroy() {
     window.removeEventListener('resize', this.setVisibleNumber)
+    document.removeEventListener('click', this.closeMoreOutside)
+    document.removeEventListener('keydown', this.closeMoreOnEscape)
   },
   mounted() {
     this.setVisibleNumber();
+    document.addEventListener('click', this.closeMoreOutside)
+    document.addEventListener('keydown', this.closeMoreOnEscape)
   },
   methods: {
+    closeMore() {
+      if (this.$refs.topMenu) this.$refs.topMenu.close('more');
+    },
+    closeMoreOutside(event) {
+      const menu = this.$refs.topMenu, target = event.target;
+      if (!menu || menu.$el.contains(target) || (target && target.closest && target.closest('.topnav-more-popup'))) return;
+      this.closeMore();
+    },
+    closeMoreOnEscape(event) {
+      if (event.key === 'Escape') this.closeMore();
+    },
     // 根据宽度计算设置显示栏数
     setVisibleNumber() {
+      this.closeMore();
       const width = document.body.getBoundingClientRect().width / 3;
       this.visibleNumber = parseInt(width / 85);
     },
