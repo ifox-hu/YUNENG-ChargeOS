@@ -39,7 +39,7 @@ export default {
     return {
       target: this.$route.query.targetTenantId || '', report: null, stations: [], loading: false, error: '', period: 7, range: [], station: undefined, sequence: 0,
       metrics: [
-        { key: 'gross', label: '订单结算金额', caption: '已结束订单费用，不代表已收款', unit: '元', icon: 'el-icon-tickets', color: '#6375ed' },
+        { key: 'gross', label: '订单结算金额', caption: '已结束订单费用，不代表已收款', unit: '元', icon: 'el-icon-tickets', color: '#2563eb' },
         { key: 'net', label: '本地实收净额', caption: '余额实付扣除累计退款', unit: '元', icon: 'el-icon-wallet', color: '#1ab394' },
         { key: 'power', label: '累计充电量', caption: '来自模拟充电订单', unit: 'kWh', icon: 'el-icon-lightning', color: '#e6a23c' },
         { key: 'orders', label: '订单数量', caption: '当前筛选范围内全部订单', unit: '笔', icon: 'el-icon-document', color: '#4f9bea' }
@@ -56,7 +56,7 @@ export default {
     isDemo() { return process.env.VUE_APP_DEMO === 'true' },
     trendOption() {
       const rows = this.report.trend
-      return { color: ['#6375ed', '#1ab394'], tooltip: { trigger: 'axis' }, legend: { data: ['本地净收 / 元', '订单 / 笔'] }, grid: { left: 48, right: 42, top: 48, bottom: 35 }, xAxis: { type: 'category', data: rows.map(row => row.day.slice(5)), boundaryGap: false }, yAxis: [{ type: 'value', name: '元' }, { type: 'value', name: '笔', minInterval: 1 }], series: [{ name: '本地净收 / 元', type: 'line', smooth: true, areaStyle: { opacity: 0.08 }, data: rows.map(row => row.net) }, { name: '订单 / 笔', type: 'line', yAxisIndex: 1, data: rows.map(row => row.orders) }] }
+      return { color: ['#2563eb', '#60a5fa'], tooltip: { trigger: 'axis' }, legend: { data: ['本地净收 / 元', '订单 / 笔'] }, grid: { left: 48, right: 42, top: 48, bottom: 35 }, xAxis: { type: 'category', data: rows.map(row => row.day.slice(5)), boundaryGap: false }, yAxis: [{ type: 'value', name: '元' }, { type: 'value', name: '笔', minInterval: 1 }], series: [{ name: '本地净收 / 元', type: 'line', smooth: true, areaStyle: { opacity: 0.08 }, data: rows.map(row => row.net) }, { name: '订单 / 笔', type: 'line', yAxisIndex: 1, data: rows.map(row => row.orders) }] }
     },
     deviceOption() {
       return { color: ['#1ab394', '#aab4c7', '#e6a23c'], tooltip: { trigger: 'item' }, legend: { bottom: 0 }, series: [{ type: 'pie', radius: ['48%', '70%'], center: ['50%', '45%'], label: { formatter: '{b}\n{c} 台' }, data: this.report.devices.map(row => ({ name: String(row.status) === '0' ? '在线' : String(row.status) === '1' ? '离线' : '状态未确认', value: row.count })) }] }
@@ -87,7 +87,7 @@ export default {
 }
 </script>
 <style scoped>
-.overview-page { background: #f4f6fb; min-height: calc(100vh - 84px); }
+.overview-page { background: #f3f6fc; min-height: calc(100vh - 84px); }
 .page-heading { display: flex; align-items: center; justify-content: space-between; margin: 4px 0 24px; }
 .eyebrow { color: #7c89a2; font-size: 11px; letter-spacing: 2px; }
 .page-heading h2 { margin: 9px 0; color: #22304b; font-size: 26px; }
@@ -103,7 +103,7 @@ export default {
 .section-card { border: 0; margin-bottom: 20px; border-radius: 8px; }
 .subtle { float: right; font-size: 11px; color: #98a1b2; }
 .pending-item { display: flex; width: 100%; padding: 18px 6px; border: 0; background: white; border-bottom: 1px solid #f0f2f7; color: #596781; justify-content: space-between; cursor: pointer; }
-.pending-item strong { color: #6375ed; }
+.pending-item strong { color: #2563eb; }
 .pending-item:hover { background: #f7f9ff; }
 .error-state { margin-bottom: 20px; }
 @media(max-width: 900px) { .filter-card .el-date-editor,.filter-card .el-select { margin: 10px 0; max-width: 100%; } .metric-value { font-size: 23px; } }
