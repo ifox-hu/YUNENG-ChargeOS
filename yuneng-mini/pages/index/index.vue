@@ -87,7 +87,7 @@
 		.active
 			font-family 'scBold'
 			font-weight bold
-			color #2D55E8
+			color #2d55e8
 		.default
 			color #888888
 		.search
@@ -143,7 +143,7 @@
 					width 44rpx
 					height 44rpx
 					line-height 44rpx
-					background linear-gradient(96deg, #569AFF, #4A6EF3)
+					background linear-gradient(96deg, #569aff, #2563eb)
 					border-radius 10rpx
 					image
 						width 28rpx
@@ -161,7 +161,7 @@
 		.price
 			width 320rpx
 			margin-top 20rpx
-			color #F95731
+			color #f95731
 		.price-value
 			font-size 42rpx
 			margin-left 4rpx
@@ -170,10 +170,10 @@
 			width 44rpx
 			height 44rpx
 			line-height 40rpx
-			background #E9EDFF
+			background #e9edff
 			border-radius 10rpx
 			font-weight bold
-			color #4A6EF3
+			color #2563eb
 		.notice
 			font-weight 400
 			color #333333

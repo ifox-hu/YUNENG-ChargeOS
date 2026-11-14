@@ -8,7 +8,7 @@
 		<view class='main'>
 			<view class="charge code-wrapper">
 				<view class='code'>桩编码：<text class='f-fwb'>{{form.pileId}}</text></view>
-				<van-tag color="#e4f5ef" text-color="#008773" class='type'>
+				<van-tag color="#e4eaf5" text-color="#2563eb" class='type'>
 					<text class='type-label'>{{form.pileType == 1 ? '快充' : '慢充'}}</text>
 				</van-tag>
 			</view>
@@ -28,7 +28,7 @@
 				<van-row gutter='20' class='f-tac'>
 					<van-col :span='8' v-for='(item, index) in times' v-bind:key='index'>
 						<view v-on:click='setime(index)'>
-							<van-tag class='time' v-bind:class='activetime === index ? "active" : "default"' v-bind:color="activetime === index ? '#e4f5ef' : 'white'" v-bind:text-color="activetime === index ? '#008773' : '#666'">{{item}}{{item == '智能充满' ? '' : '小时'}}</van-tag>
+							<van-tag class='time' v-bind:class='activetime === index ? "active" : "default"' v-bind:color="activetime === index ? '#e4eaf5' : 'white'" v-bind:text-color="activetime === index ? '#2563eb' : '#666'">{{item}}{{item == '智能充满' ? '' : '小时'}}</van-tag>
 						</view>
 					</van-col>
 					<van-col :span='8'>
@@ -65,7 +65,7 @@
 
 <style scoped>
 	.container{
-		background: linear-gradient(-42deg, #E7FFFA, #EFF5FF, #FCFDEF);
+		background: linear-gradient(-42deg, #e7f0ff, #eff5ff, #eff4fd);
 		padding-top: 160rpx;
 		min-height: calc(100vh - 80rpx);
 		padding-bottom: 80rpx;
@@ -83,7 +83,7 @@
 		font-family: Microsoft YaHei;
 		font-weight: bold;
 		font-size: 36rpx;
-		color: #17141B;
+		color: #17141b;
 		line-height: 60rpx;
 		margin-bottom: 20rpx;
 	}
@@ -123,13 +123,13 @@
 		margin-right: 4rpx;
 	}
 	.busy{
-		color: #F16A19;
+		color: #f16a19;
 	}
 	.selected /deep/ .van-button--primary {
-		background: linear-gradient(96deg, #16b99c, #008773);
+		background: linear-gradient(96deg, #60a5fa, #2563eb);
 	}
 	.port /deep/ .van-button--primary {
-		border: 2rpx solid #008773;
+		border: 2rpx solid #2563eb;
 		color: white;
 	}
 	.port /deep/ .van-button--default {
@@ -137,7 +137,7 @@
 	}
 	.port /deep/ .van-button--plain.van-button--primary {
 		background-color: white;
-		color: #008773;
+		color: #2563eb;
 	}
 	.time /deep/ .van-tag{
 		width: calc(100% - 20rpx);
@@ -149,10 +149,10 @@
 		border-radius: 10rpx;
 	}
 	.active /deep/ .van-tag{
-		border: #008773 solid 2rpx;
+		border: #2563eb solid 2rpx;
 	}
 	.default /deep/ .van-tag{
-		border: #D8DCE0 solid 2rpx;
+		border: #d8dce0 solid 2rpx;
 	}
 	.popup{
 		padding: 20rpx;
@@ -182,9 +182,9 @@
 		padding: 20rpx;
 	}
 	.footer /deep/ .van-button--primary {
-		border: 2rpx solid #008773;
+		border: 2rpx solid #2563eb;
 		color: white;
-		background: linear-gradient(96deg, #16b99c, #008773);
+		background: linear-gradient(96deg, #60a5fa, #2563eb);
 		width: calc(100% - 40rpx);
 		border-radius: 80rpx;
 	}

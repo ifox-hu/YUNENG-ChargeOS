@@ -69,7 +69,7 @@
 
 <style scoped>
 	.container{
-		background: linear-gradient(255deg, #FFEEED, #F3F3F3, #E7ECFF);
+		background: linear-gradient(255deg, #ffeeed, #f3f3f3, #e7ecff);
 		min-height: calc(100vh - 80rpx);
 		padding: 150rpx 20rpx 20rpx 20rpx;
 	}
@@ -118,7 +118,7 @@
 		color: #333999;
 	}
 	.out{
-		background-color: #D6DEFE;
+		background-color: #d6defe;
 		width: 30rpx;
 		height: 30rpx;
 		border-radius: 100%;
@@ -130,7 +130,7 @@
 		top: 0rpx;
 	}
 	.inner{
-		background-color: #8495DA;
+		background-color: #8495da;
 		width: 15rpx;
 		height: 15rpx;
 		border-radius: 100%;
@@ -154,10 +154,10 @@
 		color: #666;
 	}
 	.amount{
-		color: #5164E3;
+		color: #5164e3;
 	}
 	.step-warning{
-		color: #E06E11;
+		color: #e06e11;
 	}
 	.step:last-of-type{
 		border-left: none;

@@ -1,0 +1,25 @@
+{
+  "capturedAt": "2026-11-14T18:02:49.685Z",
+  "source": "current blue-white mini H5 build, local API read-only",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "deviceScaleFactor": 2,
+  "files": [
+    "login-h5.png",
+    "home-h5.png",
+    "home-price-h5.png",
+    "home-smart-h5.png",
+    "station-h5.png",
+    "charge-select-h5.png",
+    "orders-h5.png",
+    "order-detail-h5.png",
+    "profile-h5.png",
+    "balance-h5.png",
+    "points-h5.png",
+    "repair-create-h5.png",
+    "repair-list-h5.png"
+  ],
+  "errors": []
+}

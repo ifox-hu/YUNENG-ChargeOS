@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/assets/readme-banner-project.svg" alt="驭能智充 · 充电运营与故障工单管理平台" width="100%" />
+  <img src="docs/assets/readme-banner-blue-white.svg" alt="驭能智充 · 充电运营与故障工单管理平台" width="100%" />
 
   <h1>驭能智充 · YUNENG ChargeOS</h1>
   <p>从模拟充电、订单结算到积分发放与故障处理，串起完整的运营流程。</p>
@@ -65,15 +65,23 @@ Pages 可体验查询、部分增改删、模拟充电状态、告警重放与�
 
 ### 运营后台
 
-下图来自本项目 Pages 演示，展示登录与告警事件交互。点击图片可查看原图；[截图来源与范围](docs/screenshots/README.md)中说明了演示数据及版本。
+以下 9 张截图于 2026-11-15 从当前蓝白最终版重新生成，展示实际页面。登录页保留 3D 场景，品牌标识统一使用蓝色闪电。[截图清单与来源](docs/screenshots/README.md)。
 
-| 品牌登录与图片验证码 | 告警事件、处理状态与关联工单 |
-| --- | --- |
-| ![驭能智充后台登录页](docs/screenshots/admin/login-pages.png) | ![告警事件面板](docs/screenshots/admin/alarm-events-pages.png) |
+| 品牌登录与图片验证码 | 经营概览 | 站点信息 |
+| --- | --- | --- |
+| ![品牌登录](docs/screenshots/admin/login-blue-white.png) | ![经营概览](docs/screenshots/admin/overview-blue-white.png) | ![站点信息](docs/screenshots/admin/station-list-blue-white.png) |
+
+| 充电订单 | 模拟充电桩 | 故障工单 |
+| --- | --- | --- |
+| ![充电订单](docs/screenshots/admin/order-list-blue-white.png) | ![模拟充电桩](docs/screenshots/admin/device-list-blue-white.png) | ![故障工单](docs/screenshots/admin/fault-list-blue-white.png) |
+
+| 收款与对账（用户余额） | 优惠券（注册用户） | 告警事件 |
+| --- | --- | --- |
+| ![收款与对账](docs/screenshots/admin/finance-blue-white.png) | ![优惠券](docs/screenshots/admin/marketing-blue-white.png) | ![告警事件](docs/screenshots/admin/alarm-events-blue-white.png) |
 
 ### 小程序
 
-以下为已有 **uni-app H5 构建预览**，展示本地接口数据；微信专用组件与 H5 存在显示差异，不作为微信真机验收截图。
+以下 13 张图于 2026-11-15 从蓝白版小程序重新构建、采集，属于 **uni-app H5 构建预览**，展示本地接口数据；微信专用组件与 H5 存在显示差异，不作为微信真机验收截图。
 
 #### 首页与站点服务
 

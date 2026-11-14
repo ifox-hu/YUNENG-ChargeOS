@@ -1,7 +1,7 @@
 {
-    "name" : "opensource",
+    "name" : "驭能智充",
     "appid" : "__UNI__DB359B5",
-    "description" : "",
+    "description" : "充电服务与设备故障报修",
     "versionName" : "1.0.0",
     "versionCode" : "100",
     "transformPx" : false,

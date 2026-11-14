@@ -34,7 +34,7 @@
 			<view class='footer-main price'>
 				¥<text class='price-value f-fwb'>{{form.price}}</text>/度
 			</view>
-			<van-button round class='footer-aside f-fwb' color="linear-gradient(to right, #16b99c, #008773)" v-on:click="scan">扫码充电</van-button>
+			<van-button round class='footer-aside f-fwb' color="linear-gradient(to right, #60a5fa, #2563eb)" v-on:click="scan">扫码充电</van-button>
 		</view>
 		<!--<view class='custom f-tac'>
 			<image src='../../static/image/customer.png' mode='widthFix' class='customer'></image>
@@ -69,7 +69,7 @@
 		font-family: Microsoft YaHei;
 		font-weight: bold;
 		font-size: 36rpx;
-		color: #17141B;
+		color: #17141b;
 		line-height: 60rpx;
 		margin-bottom: 20rpx;
 	}
@@ -83,7 +83,7 @@
 		width: 100rpx;
 		font-family: Microsoft YaHei;
 		font-weight: 400;
-		color: #16151B;
+		color: #16151b;
 	}
 	.direction{
 		width: 60rpx;
@@ -91,7 +91,7 @@
 	.distance{
 		font-family: Microsoft YaHei;
 		font-weight: 400;
-		color: #16151B;
+		color: #16151b;
 		line-height: 50rpx;
 	}
 	.charge{
@@ -124,7 +124,7 @@
 		margin-top: 6rpx;
 	}
 	.price{
-		color: #F95731;
+		color: #f95731;
 		margin-top: -4rpx;
 	}
 	.price-value{
@@ -140,10 +140,10 @@
 		width: 44rpx;
 		height: 44rpx;
 		line-height: 40rpx;
-		background: #E9EDFF;
+		background: #e9edff;
 		border-radius: 10rpx;
 		font-weight: bold;
-		color: #4A6EF3;
+		color: #2563eb;
 		margin-right: 20rpx;
 		position: relative;
 		top: -4rpx;
@@ -161,11 +161,11 @@
 		border-radius: 20rpx;
 	}
 	.fast{
-		border: 2rpx solid #5C75E2;
+		border: 2rpx solid #5c75e2;
 		margin-bottom: 20rpx;
 	}
 	.slow{
-		border: 2rpx solid #F3A841;
+		border: 2rpx solid #f3a841;
 	}
 	.speed-main{
 		flex: 1;
@@ -185,10 +185,10 @@
 		line-height: 72rpx;
 	}
 	.fast-label{
-		background: linear-gradient(96deg, #569AFF, #4A6EF3);
+		background: linear-gradient(96deg, #569aff, #2563eb);
 	}
 	.slow-label{
-		background: linear-gradient(96deg, #F4B44F, #EF8B1F);
+		background: linear-gradient(96deg, #f4b44f, #ef8b1f);
 	}
 	.use{
 		color: #999;
@@ -209,12 +209,12 @@
 		margin-top: 10rpx;
 	}
 	.device-free{
-		border: 10rpx solid #ADF6CC;
-		color: #ADF6CC;
+		border: 10rpx solid #adc8f6;
+		color: #adc8f6;
 	}
 	.device-busy{
-		border: 10rpx solid #FBC2B5;
-		color: #FBC2B5;
+		border: 10rpx solid #fbc2b5;
+		color: #fbc2b5;
 	}
 	.device-main{
 		flex: 1;
@@ -225,7 +225,7 @@
 		color: #444;
 	}
 	.device-type{
-		color: #003ECC;
+		color: #003ecc;
 	}
 	.footer{
 		display: flex;
@@ -235,7 +235,7 @@
 		bottom: 0;
 		padding: 30rpx 20rpx;
 		width: 100%;
-		box-shadow: 0px 0px 16px 0px #E3E3E3;
+		box-shadow: 0px 0px 16px 0px #e3e3e3;
 	}
 	.footer-main{
 		flex: 1;
@@ -251,7 +251,7 @@
 	.custom{
 		width: 80rpx;
 		height: 160rpx;
-		background: #FFFFFF;
+		background: #ffffff;
 		box-shadow: 0px 0px 18rpx 0px rgba(171,171,171,0.52);
 		position: fixed;
 		top: 40%;

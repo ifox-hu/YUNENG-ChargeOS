@@ -3,7 +3,7 @@
     <div class="ec-atmosphere" aria-hidden="true" />
     <header class="ec-nav">
       <div class="ec-brand">
-        <span class="ec-mark"><img src="@/assets/logo/logo1.png" alt=""></span>
+        <span class="ec-mark"><img src="@/assets/logo/yuneng.svg" alt=""></span>
         <div><b>驭能智充</b><small>YUNENG INTELLIGENCE</small></div>
       </div>
       <div class="ec-nav-right"><span><b class="ec-dot" />智慧运营平台</span><span>简体中文</span></div>

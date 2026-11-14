@@ -65,8 +65,8 @@
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
 		"navigationBarTitleText": "驭能智充",
-		"navigationBarBackgroundColor": "#F8F8F8",
-		"backgroundColor": "#F8F8F8",
+		"navigationBarBackgroundColor": "#F3F6FC",
+		"backgroundColor": "#F3F6FC",
 		"usingComponents": {
 			"van-button": "/wxcomponents/vant/button/index",
 			"van-cell": "/wxcomponents/vant/cell/index",

@@ -22,7 +22,7 @@
 <style scoped>
 	.tabbar{
 		background: white;
-		border-top: 1rpx solid #e4ece7;
+		border-top: 1rpx solid #e4e7ec;
 		position: fixed;
 		left: 0;
 		bottom: 0;
@@ -40,18 +40,18 @@
 		height: 42rpx;
 	}
 	.text-active{
-		color: #008773;
+		color: #2563eb;
 	}
 	.text-default{
 		color: #666;
 	}
 	.scan{
-		background: linear-gradient(120deg, #16b99c, #008773);
+		background: linear-gradient(120deg, #60a5fa, #2563eb);
 		width: 160rpx;
 		height: 104rpx;
 		border-radius: 28rpx;
 		margin: -16rpx auto 0 auto;
-		border: 8rpx solid #f3f7f5;
+		border: 8rpx solid #f3f6fc;
 		display: flex;
 		flex-direction: column;
 		align-items: center;

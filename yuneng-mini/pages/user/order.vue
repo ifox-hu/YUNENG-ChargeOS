@@ -54,7 +54,7 @@
 
 <style scoped>
 	.container{
-		background: linear-gradient(255deg, #FFEEED, #F3F3F3, #E7ECFF);
+		background: linear-gradient(255deg, #ffeeed, #f3f3f3, #e7ecff);
 		min-height: calc(100vh - 80rpx);
 		padding: 160rpx 20rpx 20rpx 20rpx;
 	}
@@ -62,7 +62,7 @@
 		padding-top: 30rpx;
 	}
 	.line{
-		background: linear-gradient(270deg, #FDEFEE, #5F70F4, #374EF7);
+		background: linear-gradient(270deg, #fdefee, #5f70f4, #374ef7);
 	}
 	.unline{
 		background: rgba(255, 255, 255, 0);
@@ -88,15 +88,15 @@
 	}
 	.order-num{
 		flex: 1;
-		color: #17141B;
+		color: #17141b;
 		line-height: 50rpx;
 		font-size: 24rpx;
 	}
 	.finish{
-		background: linear-gradient(270deg, #5086F9, #5569FF);
+		background: linear-gradient(270deg, #5086f9, #5569ff);
 	}
 	.ing{
-		background: linear-gradient(270deg, #70CAF3, #44E590);
+		background: linear-gradient(270deg, #70caf3, #447fe5);
 	}
 	.finish,.ing{
 		color: white;
@@ -123,7 +123,7 @@
 		color: #333;
 	}
 	.money-value{
-		color: #4369F8;
+		color: #4369f8;
 	}
 	.more{
 		margin-top: 10rpx;

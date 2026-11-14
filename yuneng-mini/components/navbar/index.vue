@@ -31,7 +31,7 @@
 		justify-content: center;
 	}
 	.title{
-		color: #1d3731;
+		color: #243b5e;
 		font-size: 32rpx;
 		font-weight: 600;
 	}

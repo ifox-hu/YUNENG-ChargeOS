@@ -31,10 +31,10 @@ function back(){
 }
 </script>
 <style scoped>
-.page-header{position:sticky;top:0;background:#f3f7f5;z-index:20;box-sizing:border-box}
+.page-header{position:sticky;top:0;background:#f3f6fc;z-index:20;box-sizing:border-box}
 .navigation{position:relative;display:flex;align-items:center}
-.back-button{display:flex;align-items:center;justify-content:center;gap:12rpx;width:154rpx;height:88rpx;line-height:1;margin:0 0 0 12rpx;padding:0;background:transparent;color:#24463b;font-size:27rpx;border-radius:14rpx;flex-shrink:0}
-.back-button::after{border:0}.back-pressed{background:#dfede6}
-.back-chevron{width:16rpx;height:16rpx;border-left:3rpx solid #24463b;border-bottom:3rpx solid #24463b;transform:rotate(45deg)}
+.back-button{display:flex;align-items:center;justify-content:center;gap:12rpx;width:154rpx;height:88rpx;line-height:1;margin:0 0 0 12rpx;padding:0;background:transparent;color:#243046;font-size:27rpx;border-radius:14rpx;flex-shrink:0}
+.back-button::after{border:0}.back-pressed{background:#dfe4ed}
+.back-chevron{width:16rpx;height:16rpx;border-left:3rpx solid #243046;border-bottom:3rpx solid #243046;transform:rotate(45deg)}
 .navigation-title{position:absolute;text-align:center;font-size:32rpx;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;pointer-events:none}
 </style>

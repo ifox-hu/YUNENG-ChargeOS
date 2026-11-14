@@ -1,0 +1,20 @@
+{
+  "capturedAt": "2026-11-14T18:00:21.983Z",
+  "source": "current site build",
+  "viewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "files": [
+    "login-blue-white.png",
+    "overview-blue-white.png",
+    "station-list-blue-white.png",
+    "order-list-blue-white.png",
+    "device-list-blue-white.png",
+    "fault-list-blue-white.png",
+    "finance-blue-white.png",
+    "marketing-blue-white.png",
+    "alarm-events-blue-white.png"
+  ],
+  "errors": []
+}

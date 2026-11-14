@@ -2,7 +2,7 @@
   <view class="container b-login">
     <navbar :title="registering ? '手机号注册' : '账号登录'"></navbar>
     <view class="panel">
-      <view class="b-login-brand"><view class="b-login-mark"><van-icon name="flash" size="24px" /></view><text>驭能智充</text></view>
+      <view class="b-login-brand"><view class="b-login-mark"><image src="/static/image/yuneng-blue.png" mode="aspectFit" style="width:100%;height:100%" /></view><text>驭能智充</text></view>
       <text class="title">{{ registering ? '创建你的账号' : '欢迎回来' }}</text>
       <text class="subtitle">{{ registering ? '注册后使用账号密码登录' : '登录后查看余额和充电订单' }}</text>
       <text class="label">账号</text>
@@ -124,12 +124,12 @@ onUnmounted(() => clearInterval(countdownTimer))
 .subtitle { display: block; font-size: 26rpx; color: #888; margin: 16rpx 0 36rpx; }
 .label { display: block; font-size: 28rpx; color: #444; margin-bottom: 12rpx; }
 .input { background: #f5f6f8; border-radius: 12rpx; padding: 20rpx; height: 48rpx; font-size: 28rpx; margin-bottom: 24rpx; }
-.submit { background: #4a6ef3; color: white; border-radius: 14rpx; margin-top: 32rpx; font-size: 30rpx; }
+.submit { background: #2563eb; color: white; border-radius: 14rpx; margin-top: 32rpx; font-size: 30rpx; }
 .submit[disabled] { background: #a4b4f3; color: white; }
-.switch { display: block; text-align: center; color: #4a6ef3; margin: 30rpx 0; font-size: 28rpx; }
+.switch { display: block; text-align: center; color: #2563eb; margin: 30rpx 0; font-size: 28rpx; }
 .code-row { display: flex; gap: 16rpx; align-items: flex-start; }
 .code-input { flex: 1; width: 0; }
-.code-button { width: 220rpx; height: 88rpx; line-height: 88rpx; font-size: 24rpx; color: #4a6ef3; padding: 0; }
+.code-button { width: 220rpx; height: 88rpx; line-height: 88rpx; font-size: 24rpx; color: #2563eb; padding: 0; }
 .notice, .hint { background: #f1f4ff; border-radius: 12rpx; padding: 20rpx; color: #586178; font-size: 26rpx; }
 .notice-detail { display: block; margin-top: 8rpx; font-size: 24rpx; }
 </style>

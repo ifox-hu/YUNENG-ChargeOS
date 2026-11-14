@@ -53,7 +53,7 @@
 		width: 44rpx;
 		height: 44rpx;
 		line-height: 44rpx;
-		background: linear-gradient(96deg, #569AFF, #4A6EF3);
+		background: linear-gradient(96deg, #569aff, #2563eb);
 		border-radius: 10rpx;
 		margin-right: 14rpx;
 	}
@@ -86,7 +86,7 @@
 		width: 100%;
 	}
 	.park{
-		background-color: #E2E9F7;
+		background-color: #e2e9f7;
 		height: 76rpx;
 		line-height: 76rpx;
 		border-radius: 38rpx;
@@ -100,7 +100,7 @@
 		width: 46rpx;
 		line-height: 36rpx;
 		color: white;
-		background-color: #337CEE;
+		background-color: #337cee;
 		border-radius: 10rpx;
 		margin-right: 20rpx;
 		position: relative;
@@ -127,9 +127,9 @@
 		padding: 20rpx;
 	}
 	.footer /deep/ .van-button--primary {
-		border: 2rpx solid #008773;
+		border: 2rpx solid #2563eb;
 		color: white;
-		background: linear-gradient(96deg, #16b99c, #008773);
+		background: linear-gradient(96deg, #60a5fa, #2563eb);
 		width: calc(100% - 40rpx);
 		border-radius: 80rpx;
 	}
