@@ -14,9 +14,11 @@
         v-if="collapse"
         key="collapse"
         class="sidebar-logo-link"
+        :aria-label="title"
+        :title="title"
         to="/"
       >
-        <img v-if="logo" :src="logo" class="sidebar-logo" />
+        <img v-if="logo" :src="logo" class="sidebar-logo" alt="" />
         <h1
           v-else
           class="sidebar-title"
@@ -30,8 +32,8 @@
           {{ title }}
         </h1>
       </router-link>
-      <router-link v-else key="expand" class="sidebar-logo-link" to="/">
-        <img v-if="logo" :src="logo" class="sidebar-logo" />
+      <router-link v-else key="expand" class="sidebar-logo-link" :aria-label="title" :title="title" to="/">
+        <img v-if="logo" :src="logo" class="sidebar-logo" alt="" />
         <h1
           class="sidebar-title"
           :style="{
@@ -93,8 +95,9 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.sidebarLogoFade-enter-active {
-  transition: opacity 1.5s;
+.sidebarLogoFade-enter-active,
+.sidebarLogoFade-leave-active {
+  transition: opacity .16s ease;
 }
 
 .sidebarLogoFade-enter,
@@ -102,53 +105,58 @@ export default {
   opacity: 0;
 }
 
-.sidebar-logo-container {
+/* Keep the brand layout above the generic #app .sidebar-container a rule. */
+#app .sidebar-logo-container {
   position: relative;
   width: 100%;
   height: 50px;
-  line-height: 50px;
-  background: #2b2f3a;
-  text-align: center;
   overflow: hidden;
 
-  & .sidebar-logo-link {
-    height: 100%;
-    width: 100%;
+  .sidebar-logo-link {
     display: flex;
     align-items: center;
-    justify-content: flex-start !important;
-    padding-left: 15px !important;
+    justify-content: flex-start;
+    width: 100%;
+    height: 100%;
+    padding: 0 20px;
+    gap: 12px;
     text-align: left;
-    gap: 14px;
+    white-space: nowrap;
 
-    & .sidebar-logo {
-      width: 32px;
-      height: 32px;
-      vertical-align: middle;
-      margin-right: 0;
-    }
-
-    & .sidebar-title {
-      display: inline-block;
-      margin: 0;
-      color: #fff;
-      font-weight: 600;
-      line-height: 50px;
-      font-size: 18px;
-      font-family: Avenir, Helvetica Neue, Arial, Helvetica, sans-serif;
-      vertical-align: middle;
+    &:focus-visible {
+      outline: 2px solid #2563eb;
+      outline-offset: -3px;
+      border-radius: 6px;
     }
   }
 
-  &.collapse {
-    .sidebar-logo-link {
-      justify-content: center;
-      padding-left: 0;
-    }
+  .sidebar-logo {
+    display: block;
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    margin: 0;
+    object-fit: contain;
+  }
 
-    .sidebar-logo {
-      margin-right: 0px;
-    }
+  .sidebar-title {
+    flex: 0 1 auto;
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    color: #142d53;
+    font-family: inherit;
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 26px;
+    letter-spacing: .5px;
+    text-overflow: ellipsis;
+  }
+
+  &.collapse .sidebar-logo-link {
+    justify-content: center;
+    padding: 0;
+    gap: 0;
   }
 }
 </style>
