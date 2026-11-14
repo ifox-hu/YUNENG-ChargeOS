@@ -240,10 +240,10 @@ export default {
 .energy-login .ec-atmosphere:after{content:"";position:absolute;width:1400px;height:190px;left:-650px;top:380px;background:linear-gradient(transparent,#7fa9ff03 45%,#72e5ff0a 50%,#50d6ff03 55%,transparent);transform:rotate(-36deg);filter:blur(8px)}
 .energy-login .ec-nav{position:relative;z-index:4;padding:31px 40px;display:flex;justify-content:space-between;align-items:center;gap:18px}
 .energy-login .ec-brand{display:flex;align-items:center;gap:11px}
-.energy-login .ec-mark{width:37px;height:37px;display:grid;place-items:center;border-radius:10px;background:linear-gradient(130deg,#7be7f721,#717aff15);border:1px solid #a6d5ff2a;box-shadow:inset 0 1px #e0ffff11,0 0 28px #6caaff0c}
+.energy-login .ec-mark{width:37px;height:37px;display:grid;place-items:center;border-radius:10px;background:linear-gradient(135deg,#1d4ed833,#60a5fa14);border:1px solid #60a5fa66;box-shadow:inset 0 1px #dbeafe1a,0 0 24px #2563eb1f}
 .energy-login .ec-mark svg{width:23px;height:23px;color:#b5f6fa}
-.energy-login .ec-brand b{display:block;font-size:17px;font-weight:600;letter-spacing:3px}
-.energy-login .ec-brand small{display:block;font-size:8px;letter-spacing:2.5px;color:#6d8b9d;margin-top:3px}
+.energy-login .ec-brand b{display:block;font-size:17px;font-weight:600;letter-spacing:3px;color:#93c5fd}
+.energy-login .ec-brand small{display:block;font-size:8px;letter-spacing:2.5px;color:#93b6e6;margin-top:3px}
 .energy-login .ec-nav-right{display:flex;align-items:center;gap:20px;margin-right:72px;font-size:9px;letter-spacing:1px;color:#94aabc}
 .energy-login .ec-nav-right>span:first-child{display:flex;align-items:center;gap:7px}
 .energy-login .ec-dot{width:5px;height:5px;display:inline-block;background:var(--ec-accent);box-shadow:0 0 9px var(--ec-accent);border-radius:50%}
