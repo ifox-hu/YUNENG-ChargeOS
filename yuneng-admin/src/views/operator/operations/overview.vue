@@ -1,7 +1,9 @@
 <template>
   <div class="app-container overview-page">
-    <div class="page-heading"><span>经营概览</span><el-tag size="small" type="info" effect="plain">{{ isDemo ? '浏览器模拟数据' : '本地后端数据' }}</el-tag></div>
-    <operation-scope v-model="target" @change="changeTenant" />
+    <div class="page-heading"><span>运营首页</span><el-tag size="small" type="info" effect="plain">{{ sampleId ? '示例运营商 · 非实际业务' : isDemo ? '浏览器模拟数据' : '本地后端数据' }}</el-tag></div>
+    <p class="home-purpose">首页查看经营概览和待办；站点、设备明细及统计导出请进入“经营管理”。</p>
+    <operation-scope v-model="target" :samples="sampleOperators" :sample-id="sampleId" note="经营概览与待办速览；实际数据与示例预览分别展示" @sample-change="changeSample" @change="changeTenant" />
+    <el-alert v-if="sampleId" :title="report ? report.sampleName + '：当前显示展示样本，待办不可操作' : '正在加载示例'" type="info" :closable="false" show-icon class="sample-notice" />
     <el-card shadow="never" class="filter-card">
       <el-radio-group v-model="period" size="small" @change="setPeriod"><el-radio-button :label="7">近7天</el-radio-button><el-radio-button :label="30">近30天</el-radio-button><el-radio-button :label="0">自定义</el-radio-button></el-radio-group>
       <el-date-picker v-model="range" type="daterange" value-format="yyyy-MM-dd" size="small" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" @change="customRange" />
@@ -19,7 +21,7 @@
       </el-row>
       <el-row :gutter="16">
         <el-col :xs="24" :lg="14"><el-card shadow="never" class="section-card"><div slot="header"><strong>站点经营排行</strong></div><el-table :data="report.ranking" size="small" empty-text="暂无站点经营数据"><el-table-column type="index" label="排名" width="60" /><el-table-column prop="name" label="站点名称" /><el-table-column prop="orders" label="订单数" width="90" align="right" /><el-table-column label="本地净收 / 元" align="right"><template slot-scope="scope">{{ money(scope.row.net) }}</template></el-table-column></el-table></el-card></el-col>
-        <el-col :xs="24" :lg="10"><el-card shadow="never" class="section-card"><div slot="header"><strong>待处理事项</strong><span class="subtle">点击进入业务页</span></div><button v-for="item in visiblePendingItems" :key="item.key" class="pending-item" @click="openPending(item)"><span><i :class="item.icon" /> {{ item.label }}</span><strong>{{ report.pending[item.key] }} <i class="el-icon-arrow-right" /></strong></button></el-card></el-col>
+        <el-col :xs="24" :lg="10"><el-card shadow="never" class="section-card"><div slot="header"><strong>待处理事项</strong><span class="subtle">{{ sampleId ? '样本仅展示，切回实际数据后处理' : '点击进入业务页' }}</span></div><button v-for="item in visiblePendingItems" :key="item.key" class="pending-item" :disabled="Boolean(sampleId)" @click="openPending(item)"><span><i :class="item.icon" /> {{ item.label }}</span><strong>{{ report.pending[item.key] }} <i class="el-icon-arrow-right" /></strong></button></el-card></el-col>
       </el-row>
       <p class="basis">{{ report.basis }}。优惠 {{ money(report.summary.discount) }} 元，累计退款 {{ money(report.summary.refunded) }} 元。</p>
     </div>
@@ -29,6 +31,7 @@
 </template>
 <script>
 import OperationScope from './scope'
+import { dashboardSamples, getDashboardSample } from '@/demo/dashboard-samples'
 import OperationChart from './chart'
 import { getOperations, formatMoney } from '@/api/operator/operations'
 function dateText(date) { return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-') }
@@ -37,7 +40,7 @@ export default {
   components: { OperationScope, OperationChart },
   data() {
     return {
-      target: this.$route.query.targetTenantId || '', report: null, stations: [], loading: false, error: '', period: 7, range: [], station: undefined, sequence: 0,
+      sampleId: '', sampleOperators: dashboardSamples, target: this.$route.query.targetTenantId || '', report: null, stations: [], loading: false, error: '', period: 7, range: [], station: undefined, sequence: 0,
       metrics: [
         { key: 'gross', label: '订单结算金额', caption: '已结束订单费用，不代表已收款', unit: '元', icon: 'el-icon-tickets', color: '#2563eb' },
         { key: 'net', label: '本地实收净额', caption: '余额实付扣除累计退款', unit: '元', icon: 'el-icon-wallet', color: '#1ab394' },
@@ -65,6 +68,7 @@ export default {
   created() { this.setPeriod() },
   methods: {
     money: formatMoney,
+    changeSample(id) { this.sampleId = id; this.changeTenant() },
     changeTenant() { this.station = undefined; this.stations = []; this.report = null; this.load() },
     setPeriod() {
       if (!this.period) return
@@ -77,17 +81,21 @@ export default {
       const sequence = ++this.sequence
       this.loading = true; this.error = ''
       try {
-        const { data } = await getOperations('overview', { targetTenantId: this.target || undefined, from: this.range[0], to: this.range[1], stationId: this.station })
+        const query = { targetTenantId: this.target || undefined, from: this.range[0], to: this.range[1], stationId: this.station }
+        const { data } = this.sampleId ? { data: getDashboardSample(this.sampleId, query) } : await getOperations('overview', query)
         if (sequence !== this.sequence) return
         this.report = data; this.stations = data.stations
       } catch (error) { if (sequence === this.sequence) { this.report = null; this.error = '经营数据加载失败，请检查后端服务或点击刷新重试' } } finally { if (sequence === this.sequence) this.loading = false }
     },
-    openPending(item) { this.$router.push({ path: item.path, query: { ...item.query, targetTenantId: this.target || this.report.tenantId }}) }
+    openPending(item) { if (this.sampleId) return; this.$router.push({ path: item.path, query: { ...item.query, targetTenantId: this.target || this.report.tenantId }}) }
   }
 }
 </script>
 <style scoped>
 .page-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; color: #303133; font-size: 16px; }
+.home-purpose { margin: -4px 0 16px; color: #7c8ba1; font-size: 13px; line-height: 1.6; }
+.sample-notice { margin-bottom: 16px; }
+.pending-item:disabled { cursor: default; }
 .filter-card { margin-bottom: 16px; }
 .filter-card .el-date-editor,.filter-card .el-select,.filter-card .el-button { margin-left: 12px; }
 .metric-card { margin-bottom: 16px; }

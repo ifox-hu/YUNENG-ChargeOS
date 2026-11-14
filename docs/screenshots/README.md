@@ -9,7 +9,7 @@
 | 文件 | 页面 |
 | --- | --- |
 | admin/login-blue-white.png | 3D 登录页、蓝色品牌与验证码 |
-| admin/overview-blue-white.png | 经营概览 |
+| admin/overview-blue-white.png | 运营首页，选择“城际快充 · 城区示例”的展示样本 |
 | admin/station-list-blue-white.png | 站点列表 |
 | admin/order-list-blue-white.png | 原菜单充电订单 |
 | admin/device-list-blue-white.png | 模拟充电桩与端口 |

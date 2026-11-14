@@ -41,6 +41,8 @@
 
 Pages 可体验查询、部分增改删、模拟充电状态、告警重放与工单处理；顶部提供“重置数据”。其中验证码和登录会话均为浏览器演示，不构成服务端安全验证。Pages 不连接真实后端或 MQ，未接入的操作会给出提示。详见[演示与本地运行说明](docs/development-guide.md#github-pages-演示)。
 
+首页“运营商视图”提供城区快充、校园慢充、园区运营 3 组展示样本，可切换查看近 7 / 30 天趋势、站点排行和设备状态，并按站点筛选。样本明确标记为非实际业务，不创建租户、订单或资金流水；切回“当前运营商数据”即可恢复原数据。首页侧重概览与待办，“经营管理”保留明细筛选及统计导出。
+
 ## 功能模块
 
 | 模块 | 已有能力 | 对应源码 |
@@ -67,9 +69,9 @@ Pages 可体验查询、部分增改删、模拟充电状态、告警重放与�
 
 以下 9 张截图于 2026-11-15 从当前蓝白最终版重新生成，展示实际页面。登录页保留 3D 场景，品牌标识统一使用蓝色闪电。[截图清单与来源](docs/screenshots/README.md)。
 
-| 品牌登录与图片验证码 | 经营概览 | 站点信息 |
+| 品牌登录与图片验证码 | 运营首页（城区示例） | 站点信息 |
 | --- | --- | --- |
-| ![品牌登录](docs/screenshots/admin/login-blue-white.png) | ![经营概览](docs/screenshots/admin/overview-blue-white.png) | ![站点信息](docs/screenshots/admin/station-list-blue-white.png) |
+| ![品牌登录](docs/screenshots/admin/login-blue-white.png) | ![运营首页城区样本](docs/screenshots/admin/overview-blue-white.png) | ![站点信息](docs/screenshots/admin/station-list-blue-white.png) |
 
 | 充电订单 | 模拟充电桩 | 故障工单 |
 | --- | --- | --- |
