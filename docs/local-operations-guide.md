@@ -1,4 +1,4 @@
-# 本地运营工作台
+# 本地运营功能
 
 本轮提供经营仪表盘、异常核查、本地余额付款、部分/全额退款、分账冲正、本地对账及满减券。真实设备、微信支付、提现和渠道对账均不在此范围。
 
@@ -8,11 +8,23 @@
 2. 在 `vctgo_platform` 执行 `yuneng-cloud/docker/local-operations.sql`。该增量脚本可重复执行，不回填历史付款，不删除业务数据。
 3. operator 设置 `HCP_OPERATIONS_LOCAL_ENABLED=true`。默认关闭，当前本地 Compose override 显式开启。会员余额充值另受既有本地充值开关控制。
 4. 编译 operator、mp 及其依赖，并将 JAR 放入 Compose 的对应 `jar` 目录后重建服务。仅重启旧镜像不会自动更新 JAR。
-5. 管理员在角色管理中授予“运营工作台”的页面权限和“本地运营操作”写权限；不自动向已有普通角色授予财务操作。重新登录刷新权限。
+5. 管理员在角色管理中，按需授予原“经营管理”“充电订单”“用户余额”“注册用户”页面下的功能权限，以及“本地运营操作”写权限。不会自动向普通角色授予写权限。重新登录刷新权限。
 6. 管理后台在 `yuneng-admin` 执行原有开发启动命令，指定端口 8080；代理已连接 `127.0.0.1:38080`。生产构建使用原有 `build:prod`，部署时保留 history 路由的 SPA 回退。
 7. Pages 运行 `scripts/build-pages.ps1`，用静态服务器提供 `site/`，通过 `/#/` 路由访问。构建只生成本地文件，不自动发布。
 
 本轮本地入口：`http://127.0.0.1:8080/`（真实后端）、`http://127.0.0.1:8010/site/`（浏览器模拟）。8001 沿用旧静态部署，没有覆盖另一个工作目录的产物。
+
+功能使用原有菜单，不再设置独立工作台：
+
+| 原入口 | 功能位置 |
+| --- | --- |
+| 首页 | 经营概览、趋势、站点排行和待办 |
+| 经营管理 | 原统计明细、筛选和导出 |
+| 充电订单 | 原订单列表、行内“结算与退款”、新增“异常核查”页签 |
+| 用户余额 | 原余额账户、“收款与对账”页签中的收退款、分账与对账 |
+| 注册用户 | 原用户列表、“优惠券”页签中的模板、发放和记录 |
+
+已有工作台版本升级时，单独执行 `yuneng-cloud/docker/integrate-operations-menu.sql` 即可迁移菜单，无需重建业务表。脚本保留原权限键和授权，将页面权限转为原页面下的功能权限，并为已授权角色补齐对应原页面入口；不新增写权限。旧 `/operations/*` 链接自动跳到对应页面页签，浏览器演示会清理缓存中的旧菜单。
 
 小程序重新编译后导入 `yuneng-mini/unpackage/dist/dev/mp-weixin`。订单详情增加本地余额付款和选券，会员身份来自服务端 token。编译通过不等于微信真机验收或上传发布。
 
@@ -34,6 +46,7 @@
 ```powershell
 node scripts/verify-local-operations.cjs
 node --test scripts/test-demo-operations.cjs scripts/test-demo-operators.cjs scripts/test-demo-alarms.cjs scripts/test-demo-captcha.cjs
+node --test scripts/test-operations-lifecycle.cjs
 node scripts/verify-operations-ui.cjs
 node yuneng-mini/scripts/test-repair-pages.cjs
 node yuneng-mini/scripts/test-page-flows.cjs

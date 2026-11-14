@@ -34,6 +34,7 @@ const server = http.createServer((req, res) => {
     await page.locator('.login-actions button').click();
     await page.waitForURL('**/#/index');
     await page.locator('.metric-card').first().waitFor();
+    assert.equal(await page.locator('.sidebar-container a[href*="/operations/"]').count(), 0, 'final version keeps business tools inside original menus');
     assert.equal(await page.evaluate(() => document.querySelector('#app').__vue__.$store.state.settings.theme), '#2563eb');
     const views = [
       ['/index', 'overview', '.metric-card'],
@@ -41,9 +42,9 @@ const server = http.createServer((req, res) => {
       ['/operate/order', 'order-list', '.el-table__row'],
       ['/operate/chargeStation', 'device-list', '.port-card'],
       ['/operate/fault', 'fault-list', '.fault-page .metric'],
-      ['/operations/orders', 'business-orders', '.el-table__row'],
-      ['/operations/finance', 'finance', '.app-main .el-tabs'],
-      ['/operations/marketing', 'marketing', '.app-main .el-table']
+      ['/operate/order?tab=exceptions', 'business-orders', '.app-main .el-tabs'],
+      ['/operate/balance?tab=finance', 'finance', '.app-main .el-tabs'],
+      ['/operate/member?tab=coupons', 'marketing', '.app-main .el-table']
     ];
     for (const [route, name, selector] of views) {
       await page.evaluate(async p => { const router = document.querySelector('#app').__vue__.$router; if (router.currentRoute.path !== p) await router.push(p); }, route);

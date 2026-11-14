@@ -1,6 +1,6 @@
 <template>
-  <div class="app-container">
-    <h2>本地财务与对账</h2><operation-scope v-model="target" @change="changeTenant" />
+  <div :class="embedded ? 'embedded-operations' : 'app-container'">
+    <operation-scope v-model="target" @change="changeTenant" />
     <el-alert v-if="error" :title="error" type="error" :closable="false" />
     <el-tabs v-model="tab">
       <el-tab-pane label="收款台账" name="payments"><el-button size="small" icon="el-icon-refresh" @click="load">刷新</el-button><el-table v-loading="loading" :data="report.records" border class="data-table"><el-table-column prop="order_id" label="订单" min-width="210" /><el-table-column prop="member_id" label="会员" width="90" /><el-table-column prop="gross_amount" label="结算 / 元" /><el-table-column prop="discount_amount" label="优惠 / 元" /><el-table-column prop="paid_amount" label="实付 / 元" /><el-table-column prop="refunded_amount" label="已退 / 元" /><el-table-column label="净收 / 元"><template slot-scope="scope">{{ money(Number(scope.row.paid_amount) - Number(scope.row.refunded_amount)) }}</template></el-table-column><el-table-column prop="status" label="状态" /><el-table-column label="分账"><template slot-scope="scope"><el-button v-hasPermi="['operator:operations:write']" type="text" :disabled="saving" @click="split(scope.row)">记入分账</el-button></template></el-table-column></el-table><pagination v-show="report.total > 0" :total="report.total" :page.sync="page" :limit.sync="size" @pagination="load" /></el-tab-pane>
@@ -15,10 +15,18 @@
 import OperationScope from './scope'
 import { getOperations, saveOperation, formatMoney } from '@/api/operator/operations'
 export default {
-  name: 'OperationsFinance', components: { OperationScope },
-  data() { return { target: this.$route.query.targetTenantId || '', tab: 'payments', page: 1, size: 10, report: { records: [], refunds: [], splits: [], batches: [], notes: [], total: 0, rule: {}}, rate: 10, businessDay: new Date().toLocaleDateString('sv-SE'), sequence: 0, context: 0, loading: false, saving: false, error: '', details: [], detailVisible: false } },
+  name: 'OperationsFinance', components: { OperationScope }, props: { embedded: Boolean },
+  data() { return { target: this.$route.query.targetTenantId || '', tab: 'payments', page: 1, size: 10, report: { records: [], refunds: [], splits: [], batches: [], notes: [], total: 0, rule: {}}, rate: 10, businessDay: new Date().toLocaleDateString('sv-SE'), sequence: 0, context: 0, confirming: false, loading: false, saving: false, error: '', details: [], detailVisible: false } },
   created() { this.load() },
+  beforeDestroy() { this.closeDialogs() },
+  deactivated() { this.closeDialogs() },
   methods: {
+    closeDialogs() {
+      this.context++
+      if (this.confirming) this.$msgbox.close()
+      this.confirming = false
+      this.detailVisible = false
+    },
     money: formatMoney,
     changeTenant() { this.context++; this.page = 1; this.report = { records: [], refunds: [], splits: [], batches: [], notes: [], total: 0, rule: {}}; this.detailVisible = false; this.details = []; this.rate = 10; this.load() },
     params(extra) { return { targetTenantId: this.target || undefined, ...extra } },
@@ -28,7 +36,15 @@ export default {
     saveRule() { return this.mutate('split/rule', { platformRate: this.rate, version: this.report.rule.version }) },
     async reconcile() { if (!this.businessDay) return this.$message.warning('请选择业务日期'); await this.mutate('reconcile', { businessDay: this.businessDay }) },
     inspect(row) { try { this.details = JSON.parse(row.details); this.detailVisible = true } catch (error) { this.$message.error('对账明细格式异常') } },
-    async note(row) { const context = this.context; const { value } = await this.$prompt('输入差异处理说明，保留原批次结果', '添加处理备注', { inputValidator: value => !!value && value.length <= 255 }); if (context !== this.context) return; await this.mutate('reconcile/note', { batchId: row.id, reason: value }) }
+    async note(row) {
+      const context = this.context
+      this.confirming = true
+      try {
+        const { value } = await this.$prompt('输入差异处理说明，保留原批次结果', '添加处理备注', { inputValidator: value => !!value && value.length <= 255 })
+        if (context !== this.context) return
+        await this.mutate('reconcile/note', { batchId: row.id, reason: value })
+      } catch (error) { if (error !== 'cancel' && error !== 'close') throw error } finally { this.confirming = false }
+    }
   }
 }
 </script>

@@ -1,6 +1,6 @@
 <template>
   <div class="operation-scope">
-    <el-alert title="本地业务环境 · 付款、退款和分账仅操作本地余额及台账，不调用真实支付渠道。" type="info" :closable="false" show-icon />
+    <span class="scope-note">本地模拟：收退款及分账仅记入本地余额与台账</span>
     <el-form v-if="isRoot" inline class="scope-form" @submit.native.prevent="apply">
       <el-form-item label="运营商编码"><el-input v-model="target" clearable placeholder="留空查看当前运营商" size="small" /></el-form-item>
       <el-form-item><el-button size="small" @click="apply">切换运营商</el-button></el-form-item>
@@ -23,7 +23,8 @@ export default {
 }
 </script>
 <style scoped>
-.operation-scope { margin-bottom: 20px; }
-.scope-form { margin-top: 14px; }
+.operation-scope { margin-bottom: 16px; }
+.scope-note { display: block; color: #909399; font-size: 12px; margin-bottom: 12px; }
+.scope-form { margin-top: 0; }
 .scope-form .el-form-item { margin-bottom: 0; }
 </style>

@@ -15,6 +15,13 @@ async function adminToken() {
   const result = await (await fetch('http://127.0.0.1:38080/auth/login', { signal: AbortSignal.timeout(30000), method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: 'admin', password: 'admin123', code: answer, uuid: code.uuid }) })).json();
   assert.equal(result.code, 200); return result.data.access_token;
 }
+async function openOrderFunds(page) {
+  await page.goto(demo + '#/operate/order');
+  await page.getByPlaceholder('订单编号', {exact:true}).fill('LOCAL_DEMO_0');
+  await page.getByRole('button', {name: /搜索/}).click();
+  await page.getByRole('button', {name:'结算与退款',exact:true}).click();
+  await page.getByRole('dialog', {name:'订单结算与退款',exact:true}).waitFor();
+}
 (async () => {
   fs.mkdirSync(output, { recursive: true });
   const browser = await chromium.launch({ channel: 'msedge', headless: true });
@@ -28,8 +35,9 @@ async function adminToken() {
     await page.getByText('当前日期范围暂无订单', { exact: true }).waitFor();
     await page.screenshot({ path: path.join(output, 'live-overview.png'), fullPage: true });
     await page.getByRole('button', { name: /异常订单待核查/ }).click();
-    await page.getByRole('radio', { name: '异常待核查', exact: true }).first().waitFor();
-    assert(await page.getByRole('radio', { name: '异常待核查', exact: true }).last().isChecked());
+    await page.getByRole('tab', { name: '异常核查', exact: true }).waitFor();
+    assert.equal(await page.getByRole('tab', { name: '异常核查', exact: true }).getAttribute('aria-selected'), 'true');
+    assert.equal(await page.getByRole('radio', { name: '全部订单', exact: true }).count(), 0);
     await page.getByRole('button', { name: '详情', exact: true }).first().click();
     await page.locator('.el-dialog:visible').getByText('订单号', { exact: true }).waitFor();
     pass('real dashboard, exception filter and order detail render with backend data');
@@ -63,20 +71,31 @@ async function adminToken() {
     await fillDemoCaptcha(p); await p.locator('.login-actions button').click(); await p.waitForURL('**/#/index');
     await p.getByText('浏览器模拟数据', { exact: true }).waitFor();
     await p.screenshot({ path: path.join(output, 'pages-overview.png'), fullPage: true });
-    await p.goto(demo + '#/operations/orders');
-    await p.getByPlaceholder('订单号 / 充电桩编号').fill('LOCAL_DEMO_0'); await p.getByRole('button', { name: /查询/ }).click();
+    assert.equal(await p.locator('.sidebar-container a[href*="/operations/"]').count(), 0);
+    await p.evaluate(() => { const key='yuneng-original-ui-demo-v1'; const db=JSON.parse(localStorage.getItem(key)); db.lists['/system/menu/getRouters'].data.unshift({path:'/operations',component:'Layout',meta:{title:'运营工作台'},children:[]}); localStorage.setItem(key,JSON.stringify(db)); });
+    await p.reload(); await p.getByText('浏览器模拟数据', { exact: true }).waitFor();
+    assert.equal(await p.locator('.sidebar-container a[href*="/operations/"]').count(), 0);
+    const cached=await p.evaluate(() => JSON.parse(localStorage.getItem('yuneng-original-ui-demo-v1')).lists['/system/menu/getRouters'].data.some(row=>row.path==='/operations'));
+    assert.equal(cached,false);
+    await p.goto(demo + '#/operations/orders?exceptions=true&targetTenantId=9999');
+    await p.getByRole('tab',{name:'异常核查',exact:true}).waitFor();
+    assert(p.url().includes('/operate/order?')); assert(p.url().includes('tab=exceptions'));
+    await p.getByRole('button',{name:'核查',exact:true}).first().waitFor();
+    assert.equal(await p.getByRole('radio',{name:'全部订单',exact:true}).count(),0);
+    await p.screenshot({path:path.join(output,'pages-exceptions.png'),fullPage:true});
+    pass('original menus only, cached workbench removed, old exception link selects embedded tab');
+    await openOrderFunds(p);
     await p.getByRole('button', { name: '本地付款', exact: true }).click();
     await p.getByRole('button', { name: '确认付款', exact: true }).click();
     await p.waitForFunction(() => JSON.parse(localStorage.getItem('yuneng-original-ui-demo-v1')).operations.payments.length === 1);
-    await p.goto(demo + '#/operations/finance'); await p.getByRole('button', { name: '记入分账', exact: true }).click();
+    await p.goto(demo + '#/operations/finance'); await p.getByRole('tab', {name:'收款与对账',exact:true}).waitFor(); assert(p.url().includes('/operate/balance?')); await p.getByRole('button', { name: '记入分账', exact: true }).click();
     await p.waitForFunction(() => JSON.parse(localStorage.getItem('yuneng-original-ui-demo-v1')).operations.splits.length === 1);
-    await p.goto(demo + '#/operations/orders');
-    await p.getByPlaceholder('订单号 / 充电桩编号').fill('LOCAL_DEMO_0'); await p.getByRole('button', { name: /查询/ }).click();
+    await openOrderFunds(p);
     await p.getByRole('button', { name: '退款', exact: true }).click();
-    let dialog = p.locator('.el-dialog:visible'); await dialog.locator('input').first().fill('5'); await dialog.locator('input').first().press('Tab');
+    let dialog = p.getByRole('dialog', { name: '本地退款', exact: true }); await dialog.locator('input').first().fill('5'); await dialog.locator('input').first().press('Tab');
     await dialog.locator('textarea').fill('页面验收部分退款'); await dialog.getByRole('button', { name: '确认退款', exact: true }).click();
     await p.waitForFunction(() => JSON.parse(localStorage.getItem('yuneng-original-ui-demo-v1')).operations.refunds.length === 1);
-    await p.getByRole('button', { name: '退款', exact: true }).click(); dialog = p.locator('.el-dialog:visible');
+    await p.getByRole('button', { name: '退款', exact: true }).click(); dialog = p.getByRole('dialog', { name: '本地退款', exact: true });
     await dialog.locator('textarea').fill('页面验收剩余全退'); await dialog.getByRole('button', { name: '确认退款', exact: true }).click();
     await p.waitForFunction(() => JSON.parse(localStorage.getItem('yuneng-original-ui-demo-v1')).operations.refunds.length === 2);
     await p.goto(demo + '#/operations/finance'); await p.getByRole('tab', { name: '本地对账', exact: true }).click();
@@ -91,7 +110,7 @@ async function adminToken() {
     await p.waitForTimeout(400); // 等待弹窗过渡结束，确保验收截图可读。
     await p.screenshot({ path: path.join(output, 'pages-reconcile.png'), fullPage: true });
     pass('Pages UI payment, split, partial/full refund, reversal and zero-difference reconciliation');
-    await p.goto(demo + '#/operations/marketing'); await p.getByRole('button', { name: /新建满减券/ }).click();
+    await p.goto(demo + '#/operations/marketing'); await p.getByRole('tab', {name:'优惠券',exact:true}).waitFor(); assert(p.url().includes('/operate/member?')); await p.getByRole('button', { name: /新建满减券/ }).click();
     dialog = p.locator('.el-dialog:visible');
     await dialog.locator('input').nth(0).fill('页面验收券');
     await dialog.locator('input').nth(4).fill('2020-01-01 00:00:00'); await dialog.locator('input').nth(4).press('Tab');
@@ -101,6 +120,11 @@ async function adminToken() {
     const member = await p.evaluate(() => { const list = JSON.parse(localStorage.getItem('yuneng-original-ui-demo-v1')).lists['/operator/member/list']; return (list.data || list.rows)[0].memberId; });
     await p.locator('.el-message-box input').fill(String(member)); await p.locator('.el-message-box').getByRole('button', { name: '确定', exact: true }).click();
     await p.waitForFunction(() => JSON.parse(localStorage.getItem('yuneng-original-ui-demo-v1')).operations.coupons.length === 1);
+    await p.getByRole('button', { name: '向会员发放', exact: true }).click();
+    await p.locator('.el-message-box:visible').waitFor();
+    await p.goto(demo + '#/operate/member?tab=coupons&targetTenantId=9999');
+    await p.locator('.el-message-box:visible').waitFor({ state: 'hidden', timeout: 3000 });
+    assert.equal(await p.evaluate(() => JSON.parse(localStorage.getItem('yuneng-original-ui-demo-v1')).operations.coupons.length), 1);
     await p.getByPlaceholder('留空查看当前运营商').fill('12345'); await p.getByRole('button', { name: '切换运营商', exact: true }).click();
     await p.getByText('暂无数据', { exact: true }).first().waitFor();
     await p.setViewportSize({ width: 1366, height: 900 });

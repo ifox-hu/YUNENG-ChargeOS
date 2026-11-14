@@ -1,6 +1,6 @@
 <template>
-  <div class="app-container">
-    <h2>优惠券营销</h2><operation-scope v-model="target" @change="changeTenant" />
+  <div :class="embedded ? 'embedded-operations' : 'app-container'">
+    <operation-scope v-model="target" @change="changeTenant" />
     <el-alert v-if="error" :title="error" type="error" :closable="false" />
     <el-button v-hasPermi="['operator:operations:write']" type="primary" size="small" icon="el-icon-plus" @click="create">新建满减券</el-button>
     <el-button size="small" icon="el-icon-refresh" @click="load">刷新</el-button>
@@ -17,10 +17,18 @@
 import OperationScope from './scope'
 import { getOperations, saveOperation, operationKey } from '@/api/operator/operations'
 export default {
-  name: 'OperationsMarketing', components: { OperationScope },
-  data() { return { target: this.$route.query.targetTenantId || '', member: '', page: 1, size: 10, report: { records: [], coupons: [], total: 0 }, sequence: 0, context: 0, loading: false, saving: false, error: '', visible: false, form: {}} },
+  name: 'OperationsMarketing', components: { OperationScope }, props: { embedded: Boolean },
+  data() { return { target: this.$route.query.targetTenantId || '', member: '', page: 1, size: 10, report: { records: [], coupons: [], total: 0 }, sequence: 0, context: 0, confirming: false, loading: false, saving: false, error: '', visible: false, form: {}} },
   created() { this.load() },
+  beforeDestroy() { this.closeDialogs() },
+  deactivated() { this.closeDialogs() },
   methods: {
+    closeDialogs() {
+      this.context++
+      if (this.confirming) this.$msgbox.close()
+      this.confirming = false
+      this.visible = false
+    },
     changeTenant() { this.context++; this.page = 1; this.report = { records: [], coupons: [], total: 0 }; this.visible = false; this.form = {}; this.member = ''; this.load() },
     params(extra) { return { targetTenantId: this.target || undefined, ...extra } },
     async load() { const sequence = ++this.sequence; if (this.member && !/^[1-9]\d*$/.test(this.member)) return this.$message.warning('会员ID格式无效'); this.loading = true; this.error = ''; try { const { data } = await getOperations('coupons', this.params({ memberId: this.member || undefined, page: this.page, size: this.size })); if (sequence !== this.sequence) return; this.report = data } catch (error) { if (sequence === this.sequence) { this.report = { records: [], coupons: [], total: 0 }; this.error = '优惠券加载失败，请重试' } } finally { if (sequence === this.sequence) this.loading = false } },
@@ -28,7 +36,15 @@ export default {
     async mutate(path, data) { if (this.saving) return; this.saving = true; try { await saveOperation(path, this.params(data)); this.$message.success('操作成功'); await this.load(); return true } finally { this.saving = false } },
     async save() { if (!this.form.name.trim() || !this.form.validFrom || !this.form.validTo) return this.$message.warning('请填写名称和有效期'); if (await this.mutate('coupon', this.form)) this.visible = false },
     toggle(row) { return this.mutate('coupon', { templateId: row.id, enabled: !Number(row.enabled) }) },
-    async issue(row) { const context = this.context; const { value } = await this.$prompt('输入本运营商会员ID，每次确认发放一张', '发放 ' + row.name, { inputPattern: /^[1-9]\d*$/, inputErrorMessage: '请输入有效会员ID' }); if (context !== this.context) return; await this.mutate('coupon/issue', { templateId: row.id, memberId: Number(value), requestId: operationKey() }) }
+    async issue(row) {
+      const context = this.context
+      this.confirming = true
+      try {
+        const { value } = await this.$prompt('输入本运营商会员ID，每次确认发放一张', '发放 ' + row.name, { inputPattern: /^[1-9]\d*$/, inputErrorMessage: '请输入有效会员ID' })
+        if (context !== this.context) return
+        await this.mutate('coupon/issue', { templateId: row.id, memberId: Number(value), requestId: operationKey() })
+      } catch (error) { if (error !== 'cancel' && error !== 'close') throw error } finally { this.confirming = false }
+    }
   }
 }
 </script>

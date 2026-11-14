@@ -1,6 +1,6 @@
 <template>
   <div class="app-container overview-page">
-    <div class="page-heading"><div><span class="eyebrow">YUNENG · OPERATIONS</span><h2>经营仪表盘</h2><p>经营数据、设备概况与待处理业务</p></div><el-tag effect="plain">{{ isDemo ? '浏览器模拟数据' : '本地后端数据' }}</el-tag></div>
+    <div class="page-heading"><span>经营概览</span><el-tag size="small" type="info" effect="plain">{{ isDemo ? '浏览器模拟数据' : '本地后端数据' }}</el-tag></div>
     <operation-scope v-model="target" @change="changeTenant" />
     <el-card shadow="never" class="filter-card">
       <el-radio-group v-model="period" size="small" @change="setPeriod"><el-radio-button :label="7">近7天</el-radio-button><el-radio-button :label="30">近30天</el-radio-button><el-radio-button :label="0">自定义</el-radio-button></el-radio-group>
@@ -10,14 +10,14 @@
     </el-card>
     <el-alert v-if="error" :title="error" type="error" :closable="false" show-icon class="error-state" />
     <div v-if="report" v-loading="loading">
-      <el-row :gutter="18" class="metric-row">
-        <el-col v-for="metric in metrics" :key="metric.key" :xs="12" :lg="6"><el-card shadow="hover" class="metric-card"><span class="metric-label">{{ metric.label }}</span><i :class="metric.icon" :style="{ color: metric.color }" /><div class="metric-value">{{ metric.key === 'orders' ? report.summary.orders : money(report.summary[metric.key]) }}<small>{{ metric.unit }}</small></div><span class="metric-caption">{{ metric.caption }}</span></el-card></el-col>
+      <el-row :gutter="16" class="metric-row">
+        <el-col v-for="metric in metrics" :key="metric.key" :xs="12" :lg="6"><el-card shadow="never" class="metric-card"><span class="metric-label">{{ metric.label }}</span><i :class="metric.icon" :style="{ color: metric.color }" /><div class="metric-value">{{ metric.key === 'orders' ? report.summary.orders : money(report.summary[metric.key]) }}<small>{{ metric.unit }}</small></div><span class="metric-caption">{{ metric.caption }}</span></el-card></el-col>
       </el-row>
-      <el-row :gutter="18">
+      <el-row :gutter="16">
         <el-col :xs="24" :lg="16"><el-card shadow="never" class="section-card"><div slot="header"><strong>订单与净收趋势</strong><span class="subtle">金额与订单分轴展示</span></div><operation-chart v-if="report.trend.length" :option="trendOption" /><el-empty v-else description="当前日期范围暂无订单" :image-size="100" /></el-card></el-col>
         <el-col :xs="24" :lg="8"><el-card shadow="never" class="section-card"><div slot="header"><strong>设备运行状态</strong><span class="subtle">当前快照</span></div><operation-chart v-if="report.devices.length" :option="deviceOption" /><el-empty v-else description="暂无设备" :image-size="100" /></el-card></el-col>
       </el-row>
-      <el-row :gutter="18">
+      <el-row :gutter="16">
         <el-col :xs="24" :lg="14"><el-card shadow="never" class="section-card"><div slot="header"><strong>站点经营排行</strong></div><el-table :data="report.ranking" size="small" empty-text="暂无站点经营数据"><el-table-column type="index" label="排名" width="60" /><el-table-column prop="name" label="站点名称" /><el-table-column prop="orders" label="订单数" width="90" align="right" /><el-table-column label="本地净收 / 元" align="right"><template slot-scope="scope">{{ money(scope.row.net) }}</template></el-table-column></el-table></el-card></el-col>
         <el-col :xs="24" :lg="10"><el-card shadow="never" class="section-card"><div slot="header"><strong>待处理事项</strong><span class="subtle">点击进入业务页</span></div><button v-for="item in visiblePendingItems" :key="item.key" class="pending-item" @click="openPending(item)"><span><i :class="item.icon" /> {{ item.label }}</span><strong>{{ report.pending[item.key] }} <i class="el-icon-arrow-right" /></strong></button></el-card></el-col>
       </el-row>
@@ -45,7 +45,7 @@ export default {
         { key: 'orders', label: '订单数量', caption: '当前筛选范围内全部订单', unit: '笔', icon: 'el-icon-document', color: '#4f9bea' }
       ],
       pendingItems: [
-        { key: 'exceptions', label: '异常订单待核查', icon: 'el-icon-warning-outline', path: '/operations/orders', query: { exceptions: 'true' }},
+        { key: 'exceptions', label: '异常订单待核查', icon: 'el-icon-warning-outline', path: '/operate/order', query: { tab: 'exceptions', exceptions: 'true' }},
         { key: 'faults', label: '未关闭故障工单', icon: 'el-icon-set-up', path: '/operate/fault', query: { status: 'ACTIVE' }},
         { key: 'points', label: '积分发放失败事件', icon: 'el-icon-present', path: '/operate/order', query: { pointsMonitor: 'true' }}
       ]
@@ -56,7 +56,7 @@ export default {
     isDemo() { return process.env.VUE_APP_DEMO === 'true' },
     trendOption() {
       const rows = this.report.trend
-      return { color: ['#2563eb', '#60a5fa'], tooltip: { trigger: 'axis' }, legend: { data: ['本地净收 / 元', '订单 / 笔'] }, grid: { left: 48, right: 42, top: 48, bottom: 35 }, xAxis: { type: 'category', data: rows.map(row => row.day.slice(5)), boundaryGap: false }, yAxis: [{ type: 'value', name: '元' }, { type: 'value', name: '笔', minInterval: 1 }], series: [{ name: '本地净收 / 元', type: 'line', smooth: true, areaStyle: { opacity: 0.08 }, data: rows.map(row => row.net) }, { name: '订单 / 笔', type: 'line', yAxisIndex: 1, data: rows.map(row => row.orders) }] }
+      return { color: ['#2563eb', '#1ab394'], tooltip: { trigger: 'axis' }, legend: { data: ['本地净收 / 元', '订单 / 笔'] }, grid: { left: 48, right: 42, top: 48, bottom: 35 }, xAxis: { type: 'category', data: rows.map(row => row.day.slice(5)), boundaryGap: false }, yAxis: [{ type: 'value', name: '元' }, { type: 'value', name: '笔', minInterval: 1 }], series: [{ name: '本地净收 / 元', type: 'line', smooth: true, areaStyle: { opacity: 0.08 }, data: rows.map(row => row.net) }, { name: '订单 / 笔', type: 'line', yAxisIndex: 1, data: rows.map(row => row.orders) }] }
     },
     deviceOption() {
       return { color: ['#1ab394', '#aab4c7', '#e6a23c'], tooltip: { trigger: 'item' }, legend: { bottom: 0 }, series: [{ type: 'pie', radius: ['48%', '70%'], center: ['50%', '45%'], label: { formatter: '{b}\n{c} 台' }, data: this.report.devices.map(row => ({ name: String(row.status) === '0' ? '在线' : String(row.status) === '1' ? '离线' : '状态未确认', value: row.count })) }] }
@@ -87,24 +87,20 @@ export default {
 }
 </script>
 <style scoped>
-.overview-page { background: #f3f6fc; min-height: calc(100vh - 84px); }
-.page-heading { display: flex; align-items: center; justify-content: space-between; margin: 4px 0 24px; }
-.eyebrow { color: #7c89a2; font-size: 11px; letter-spacing: 2px; }
-.page-heading h2 { margin: 9px 0; color: #22304b; font-size: 26px; }
-.page-heading p,.basis { color: #8893a6; font-size: 13px; }
-.filter-card { margin-bottom: 20px; border: 0; }
+.page-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; color: #303133; font-size: 16px; }
+.filter-card { margin-bottom: 16px; }
 .filter-card .el-date-editor,.filter-card .el-select,.filter-card .el-button { margin-left: 12px; }
-.metric-card { border: 0; margin-bottom: 20px; border-radius: 9px; }
-.metric-card i { float: right; font-size: 25px; }
-.metric-label { color: #748099; font-size: 13px; }
-.metric-value { font-size: 30px; font-weight: 600; color: #26344f; margin: 22px 0 12px; }
-.metric-value small { font-size: 12px; font-weight: 400; margin-left: 7px; color: #96a0b1; }
-.metric-caption { font-size: 11px; color: #9aa3b3; }
-.section-card { border: 0; margin-bottom: 20px; border-radius: 8px; }
-.subtle { float: right; font-size: 11px; color: #98a1b2; }
-.pending-item { display: flex; width: 100%; padding: 18px 6px; border: 0; background: white; border-bottom: 1px solid #f0f2f7; color: #596781; justify-content: space-between; cursor: pointer; }
-.pending-item strong { color: #2563eb; }
-.pending-item:hover { background: #f7f9ff; }
-.error-state { margin-bottom: 20px; }
-@media(max-width: 900px) { .filter-card .el-date-editor,.filter-card .el-select { margin: 10px 0; max-width: 100%; } .metric-value { font-size: 23px; } }
+.metric-card { margin-bottom: 16px; }
+.metric-card i { float: right; font-size: 22px; }
+.metric-label { color: #606266; font-size: 14px; }
+.metric-value { font-size: 24px; color: #303133; margin: 16px 0 10px; }
+.metric-value small { font-size: 12px; margin-left: 7px; color: #909399; }
+.metric-caption,.basis { font-size: 12px; color: #909399; }
+.section-card { margin-bottom: 16px; }
+.subtle { float: right; font-size: 12px; color: #909399; }
+.pending-item { display: flex; width: 100%; padding: 16px 0; border: 0; background: white; border-bottom: 1px solid #ebeef5; color: #606266; justify-content: space-between; cursor: pointer; }
+.pending-item strong { color: #13ce66; }
+.pending-item:hover { background: #f5f7fa; }
+.error-state { margin-bottom: 16px; }
+@media(max-width: 900px) { .filter-card .el-date-editor,.filter-card .el-select { margin: 10px 0; max-width: 100%; } }
 </style>

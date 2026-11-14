@@ -28,8 +28,18 @@ import Layout from '@/layout'
   }
  */
 
+// 已发布的旧链接只做兼容跳转，不再生成第二套菜单。
+const oldOperationRoutes = [
+  { path: '/operations', hidden: true, redirect: to => ({ path: '/index', query: to.query }) },
+  { path: '/operations/overview', hidden: true, redirect: to => ({ path: '/index', query: to.query }) },
+  { path: '/operations/orders', hidden: true, redirect: to => ({ path: '/operate/order', query: { ...to.query, tab: to.query.exceptions === 'true' ? 'exceptions' : 'list' } }) },
+  { path: '/operations/finance', hidden: true, redirect: to => ({ path: '/operate/balance', query: { ...to.query, tab: 'finance' } }) },
+  { path: '/operations/marketing', hidden: true, redirect: to => ({ path: '/operate/member', query: { ...to.query, tab: 'coupons' } }) }
+]
+
 // 公共路由
 export const constantRoutes = [
+  ...oldOperationRoutes,
   {
     path: '/redirect',
     component: Layout,
@@ -70,7 +80,7 @@ export const constantRoutes = [
         path: 'index',
         component: () => import('@/views/index'),
         name: 'Index',
-        meta: { title: '经营仪表盘', icon: 'dashboard', affix: true }
+        meta: { title: '首页', icon: 'dashboard', affix: true }
       }
     ]
   },

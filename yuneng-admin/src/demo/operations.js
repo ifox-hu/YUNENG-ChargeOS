@@ -24,7 +24,8 @@ function orderView(db, order) {
 
 export function prepareOperationsDemo(db) {
   const routes = db.lists['/system/menu/getRouters'].data
-  if (!routes.some(route => route.path === '/operations')) routes.unshift({ path: '/operations', component: 'Layout', name: 'Operations', meta: { title: '运营工作台', icon: 'dashboard' }, children: ['overview', 'orders', 'finance', 'marketing'].map((path, index) => ({ path, component: 'operator/operations/' + path, name: 'LocalOperations' + index, meta: { title: ['经营仪表盘', '订单与异常', '本地财务', '优惠券营销'][index], icon: ['chart', 'list', 'money', 'edit'][index], noCache: true }})) })
+  // 清除旧浏览器缓存中的独立菜单，功能由原有订单、余额、会员页面承载。
+  for (let i = routes.length - 1; i >= 0; i--) { if (routes[i].path === '/operations') routes.splice(i, 1) }
   if (db.operations) { db.operations.ledgers = db.operations.ledgers || []; return }
   db.operations = { payments: [], refunds: [], splits: [], batches: [], notes: [], logs: [], templates: [], coupons: [], accounts: {}, rules: {}, ledgers: [], nextId: 10000 }
   const op = db.operations
