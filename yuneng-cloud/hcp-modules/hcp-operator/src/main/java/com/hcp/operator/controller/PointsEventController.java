@@ -30,15 +30,21 @@ public class PointsEventController
     @GetMapping
     @RequiresPermissions("operator:order:list")
     public AjaxResult list(@RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int size,
-                           @RequestParam(required = false) String status)
+                           @RequestParam(required = false) String status,
+                           @RequestParam(required = false) Long targetTenantId)
     {
         admin();
         int limit = Math.max(1, Math.min(50, size)), offset = (Math.max(1, Math.min(10000, page)) - 1) * limit;
-        String where = status == null ? "" : " where status=?";
-        Object[] args = status == null ? new Object[] {limit, offset} : new Object[] {status, limit, offset};
+        String where = " WHERE 1=1";
+        java.util.List<Object> args = new java.util.ArrayList<>();
+        if (targetTenantId != null) { where += " AND tenant_id=?"; args.add(targetTenantId); }
+        String countWhere = where;
+        Object[] countArgs = args.toArray();
+        if (status != null) { where += " AND status=?"; args.add(status); }
+        args.add(limit); args.add(offset);
         AjaxResult result = AjaxResult.success(jdbc.queryForList(
-            "select * from c_points_event" + where + " order by created_at desc limit ? offset ?", args));
-        result.put("counts", jdbc.queryForList("select status,count(*) as total from c_points_event group by status"));
+            "select * from c_points_event" + where + " order by created_at desc limit ? offset ?", args.toArray()));
+        result.put("counts", jdbc.queryForList("select status,count(*) as total from c_points_event" + countWhere + " group by status", countArgs));
         return result;
     }
 

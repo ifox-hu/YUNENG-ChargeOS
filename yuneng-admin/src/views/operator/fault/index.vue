@@ -82,12 +82,12 @@ export default {
   name: 'FaultWorkOrders',
   components: { AlarmEvents },
   data() { return {
-    statuses: {NEW:'待分配',ASSIGNED:'已分配',PROCESSING:'处理中',RESOLVED:'待确认',CLOSED:'已关闭'},
+    statuses: {ACTIVE:'未关闭',NEW:'待分配',ASSIGNED:'已分配',PROCESSING:'处理中',RESOLVED:'待确认',CLOSED:'已关闭'},
     types: {OFFLINE:'设备离线',CONNECTOR:'充电枪故障',POWER:'供电异常',OTHER:'其他故障'},
     priorities: {LOW:'低',NORMAL:'普通',HIGH:'高'},
     actionLabels: {ASSIGN:'分配工单',START:'开始处理',RESOLVE:'提交解决结果',CONFIRM:'确认关闭'},
     metrics: [{key:'total',label:'累计工单'},{key:'active',label:'活动工单'},{key:'pending',label:'待分配'},{key:'closed',label:'已关闭'}],
-    query:{pageNum:1,pageSize:10,pileId:'',status:'',faultType:''},rows:[],total:0,stats:{},
+    query:{pageNum:1,pageSize:10,pileId:'',status:this.$route.query.status || '',faultType:'',targetTenantId:this.$route.query.targetTenantId},rows:[],total:0,stats:{},
     loading:false,saving:false,detailLoading:false,alarmVisible:false,detailVisible:false,actionVisible:false,
     alarm:{pileId:'',faultType:'OFFLINE',priority:'NORMAL',description:''},detail:{},assignees:[],
     action:{action:'ASSIGN',note:'',assigneeId:null}
@@ -96,7 +96,7 @@ export default {
   beforeDestroy() { window.removeEventListener('resize',this.resize); if(this.trendChart)this.trendChart.dispose();if(this.typeChart)this.typeChart.dispose() },
   methods:{
     load() { this.loading=true; return api.listFaults(this.query).then(r=>{this.rows=r.data.records;this.total=r.data.total}).finally(()=>{this.loading=false}) },
-    refresh() { this.load(); api.faultStats().then(r=>{this.stats=r.data;this.$nextTick(this.drawCharts)}) },
+    refresh() { this.load(); api.faultStats({ targetTenantId: this.query.targetTenantId }).then(r=>{this.stats=r.data;this.$nextTick(this.drawCharts)}) },
     search() {this.query.pageNum=1;this.load()},
     reset() {this.query={pageNum:1,pageSize:10,pileId:'',status:'',faultType:''};this.load()},
     resize() {if(this.trendChart)this.trendChart.resize();if(this.typeChart)this.typeChart.resize()},

@@ -32,13 +32,25 @@
 				<text class='pay-value f-tar'>¥{{money(form.serviceFee || 0)}}</text>
 			</view>
 			<view class='pay'>
-				<text class='pay-label'>支付金额</text>
+				<text class='pay-label'>结算金额</text>
 				<text class='pay-value f-tar'>¥{{money(form.ordergold || 0)}}</text>
 			</view>
 			<view class='pay'>
 				<text class='pay-label'>支付方式</text>
 				<text class='pay-value f-tar' style='color: #666;'>{{form.payType || '本地模拟结算'}}</text>
 			</view>
+		</view>
+		<view class='card'>
+			<text class='card-title f-db'>本地余额付款</text>
+			<text class='card-info f-db'>仅操作本地余额，不调用微信支付。退款以实际扣款为准。</text>
+			<text v-if='paymentError' class='card-info f-db'>{{paymentError}}</text>
+			<template v-if='paymentInfo'>
+				<text class='card-info f-db'>实付：¥{{money(paymentInfo.order.paid_amount || 0)}} · 已退：¥{{money(paymentInfo.order.refunded_amount || 0)}}</text>
+				<template v-if='!paymentInfo.order.payment_id && ["3","5","7"].includes(String(form.orderState))'>
+					<picker :range='couponLabels' :value='couponIndex' @change='couponIndex = Number($event.detail.value)'><view class='card-info'>优惠券：{{couponLabels[couponIndex]}}</view></picker>
+					<button :loading='payBusy' :disabled='payBusy' @click='payLocal'>确认本地余额付款</button>
+				</template>
+			</template>
 		</view>
 		<view class='card'>
 			<text class='card-title f-db'>订单状态跟踪</text>
@@ -154,7 +166,7 @@
 </style>
 
 <script setup>
-	import { reactive, ref } from 'vue'
+	import { reactive, ref, computed } from 'vue'
 	import { onLoad } from '@dcloudio/uni-app'
 	import navbar from '../../components/navbar/index.vue'
 	import request from '../../components/js/request.js'
@@ -162,6 +174,32 @@
 	
 	const app = getApp()
 	const form = reactive({})
+	const paymentInfo = ref(null)
+	const paymentError = ref('')
+	const payBusy = ref(false)
+	const couponIndex = ref(0)
+	const payRequestId = ref('')
+	const availableCoupons = computed(() => (paymentInfo.value?.coupons || []).filter(c => c.status === 'UNUSED' && Number(c.in_date) === 1 && Number(c.threshold_amount) <= Number(form.ordergold)))
+	const couponLabels = computed(() => ['不使用优惠券', ...availableCoupons.value.map(c => `${c.name} 满${c.threshold_amount}减${c.discount_amount}`)])
+	const loadPayment = () => {
+		if (!form.orderId) return
+		request({ url: '/local/orders/' + encodeURIComponent(form.orderId), success: res => {
+			if (res.data?.code === 200) { paymentInfo.value = res.data.data; paymentError.value = '' }
+			else paymentError.value = res.data?.msg || '本地付款信息暂不可用'
+		}})
+	}
+	const payLocal = () => {
+		if (payBusy.value) return
+		uni.showModal({ title: '本地余额付款', content: '确认从本地模拟余额扣款？不调用微信支付。', success: result => {
+			if (!result.confirm || payBusy.value) return
+			payBusy.value = true
+			if (!payRequestId.value) payRequestId.value = 'MINI-' + Date.now() + '-' + Math.random().toString(36).slice(2)
+			request({ url: '/local/orders/pay', method: 'POST', data: { orderId: form.orderId, requestId: payRequestId.value, couponId: couponIndex.value ? availableCoupons.value[couponIndex.value - 1]?.id : null }, success: res => {
+				uni.showToast({ title: res.data?.code === 200 ? '本地付款成功' : res.data?.msg || '付款失败', icon: 'none' })
+				if (res.data?.code === 200) loadPayment()
+			}, complete: () => { payBusy.value = false } })
+		}})
+	}
 	const show = (params) => {
 		request({
 			url: '/order/orderDetail',
@@ -174,6 +212,7 @@
 				for(let key in res.data.data) {
 					form[key] = res.data.data[key]
 				}
+				loadPayment()
 			}
 		})
 	}

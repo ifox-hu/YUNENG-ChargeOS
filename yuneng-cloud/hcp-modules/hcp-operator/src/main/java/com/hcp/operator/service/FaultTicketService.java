@@ -34,7 +34,7 @@ public class FaultTicketService
         public final String name;
         public final boolean root;
 
-        Scope(Long id, Long tenant, String name, boolean root)
+        public Scope(Long id, Long tenant, String name, boolean root)
         {
             this.id = id;
             this.tenant = tenant;
@@ -217,8 +217,8 @@ public class FaultTicketService
         }
         if (status != null && !status.isEmpty())
         {
-            where.append("AND t.status=? ");
-            args.add(status);
+            if ("ACTIVE".equals(status)) where.append("AND t.status<>'CLOSED' ");
+            else { where.append("AND t.status=? "); args.add(status); }
         }
         if (type != null && !type.isEmpty())
         {

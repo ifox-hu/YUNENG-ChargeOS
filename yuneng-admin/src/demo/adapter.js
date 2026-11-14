@@ -3,6 +3,7 @@ import { seedDemoPorts, refreshDemoPorts, simulateDemoPorts } from './telemetry'
 import { handleDemoAlarms } from './alarms'
 import { createDemoCaptcha, verifyDemoCaptcha } from './captcha'
 import { prepareOperatorDemo, handleDemoOperators } from './operators'
+import { prepareOperationsDemo, handleOperations } from './operations'
 const key = 'yuneng-original-ui-demo-v1'
 const clone = value => JSON.parse(JSON.stringify(value))
 const now = () => new Date().toLocaleString('sv-SE')
@@ -41,6 +42,7 @@ const samples={
 }
 Object.entries(samples).forEach(([url,rows])=>{if(!db.lists[url])db.lists[url]={code:200,data:clone(rows),rows:clone(rows),total:rows.length}})
 prepareOperatorDemo(db)
+prepareOperationsDemo(db)
 persist()
 const ok=data=>({code:200,msg:'演示操作成功',data})
 const fail=msg=>({code:500,msg})
@@ -63,6 +65,8 @@ function handle(config) {
  }
  if(url==='/auth/logout'||url==='/auth/refresh')return ok(7200)
  if(url==='/system/user/getInfo')return {...ok(null),user,roles:['admin'],permissions:['*:*:*']}
+ const operationResult=handleOperations(db,url,method,b,q)
+ if(operationResult){persist();return operationResult}
  const operatorResult=handleDemoOperators(db,url,method,b,q)
  if(operatorResult){persist();return operatorResult}
  if(url==='/system/dict/data/type/sys_tenant_status')return ok([{dictLabel:'正常',dictValue:'0',dictSort:1,status:'0'},{dictLabel:'停用',dictValue:'1',dictSort:2,status:'0'}])
@@ -99,7 +103,8 @@ function handle(config) {
  return fail('此操作尚未接入模拟接口：'+url+'。演示不会连接真实服务。')
 }
 function fault(url,method,b,q){const id=Number(url.split('/')[3]);const ticket=db.faults.find(t=>t.id===id)
- if(url.endsWith('/list')){const r=listResponse(db.faults,q);return ok({records:r.rows,total:r.total})}
+ if(url.endsWith('/list')){const selected = q.targetTenantId && Number(q.targetTenantId)!==9999 ? [] : q.status==='ACTIVE' ? db.faults.filter(t=>t.status!=='CLOSED') : db.faults; const filters={...q}; if(filters.status==='ACTIVE')delete filters.status; delete filters.targetTenantId; const r=listResponse(selected,filters);return ok({records:r.rows,total:r.total})}
+ if(url.endsWith('/stats')&&q.targetTenantId&&Number(q.targetTenantId)!==9999)return ok({total:0,active:0,pending:0,closed:0,trend:[],byType:[]});
  if(url.endsWith('/stats'))return ok({total:db.faults.length,active:db.faults.filter(t=>t.status!=='CLOSED').length,pending:db.faults.filter(t=>t.status==='NEW').length,closed:db.faults.filter(t=>t.status==='CLOSED').length,alarmCount:db.alarmCount,avgResolveMinutes:35,trend:[{day:new Date().toISOString().slice(0,10),count:db.faults.length}],byType:['OFFLINE','CONNECTOR','POWER','OTHER'].map(faultType=>({faultType,count:db.faults.filter(t=>t.faultType===faultType).length}))})
  if(url.endsWith('/simulate-alarm')){if(!b.pileId||!b.description)return fail('请填写设备和描述');db.alarmCount++;const old=db.faults.find(t=>t.pileId===b.pileId&&t.faultType===b.faultType&&t.status!=='CLOSED');if(old){persist();return ok({merged:true,ticket:old})}const t={...b,id:Date.now(),ticketNo:'GD'+Date.now(),status:'NEW',source:'ALARM',createdAt:now(),logs:[]};db.faults.unshift(t);persist();return ok({merged:false,ticket:t})}
  if(url.endsWith('/assignees'))return ok([user])

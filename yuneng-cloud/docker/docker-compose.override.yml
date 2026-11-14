@@ -68,6 +68,7 @@ services:
       hcp-nacos:
         condition: service_healthy
     environment:
+      HCP_OPERATIONS_LOCAL_ENABLED: 'true'
       HCP_DEMO_TENANT_ENABLED: 'true'
       SPRING_CLOUD_NACOS_CONFIG_NAMESPACE: hcp
       JAVA_TOOL_OPTIONS: -Xms64m -Xmx384m -XX:MaxMetaspaceSize=256m

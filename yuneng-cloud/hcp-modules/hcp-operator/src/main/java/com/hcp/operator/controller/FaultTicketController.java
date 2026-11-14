@@ -19,22 +19,31 @@ public class FaultTicketController
     @Resource
     private FaultTicketService tickets;
 
+    private FaultTicketService.Scope readScope(Long target)
+    {
+        FaultTicketService.Scope scope = tickets.operator();
+        if (target == null) return scope;
+        if (!scope.root && !target.equals(scope.tenant)) throw new ServiceException("不能查看其他运营商", 403);
+        return new FaultTicketService.Scope(scope.id, target, scope.name, false);
+    }
+
     @RequiresPermissions("operator:fault:list")
     @GetMapping("/list")
     public R<Map<String, Object>> list(@RequestParam(required = false) String status,
                                        @RequestParam(required = false) String faultType,
                                        @RequestParam(required = false) String pileId,
                                        @RequestParam(defaultValue = "1") int pageNum,
-                                       @RequestParam(defaultValue = "10") int pageSize)
+                                       @RequestParam(defaultValue = "10") int pageSize,
+                                       @RequestParam(required = false) Long targetTenantId)
     {
-        return R.ok(tickets.list(tickets.operator(), null, status, faultType, pileId, pageNum, pageSize));
+        return R.ok(tickets.list(readScope(targetTenantId), null, status, faultType, pileId, pageNum, pageSize));
     }
 
     @RequiresPermissions("operator:fault:list")
     @GetMapping("/stats")
-    public R<Map<String, Object>> stats()
+    public R<Map<String, Object>> stats(@RequestParam(required = false) Long targetTenantId)
     {
-        return R.ok(tickets.stats(tickets.operator()));
+        return R.ok(tickets.stats(readScope(targetTenantId)));
     }
 
     @RequiresPermissions("operator:fault:list")
