@@ -14,7 +14,7 @@
       <p>让数据流动，让连接发生。<br>以智慧，驱动每一种可能。</p>
     </section>
     <span class="ec-ghost-word" aria-hidden="true">ENERGY</span>
-    <energy-scene ref="energyScene" @status="energyStatus = $event" />
+    <energy-scene ref="energyScene" :focused="sceneFocused" :busy="loading" @status="energyStatus = $event" />
     <div class="ec-callout ec-callout-a"><small>ENERGY NEXUS</small><strong><b class="ec-dot" /><span class="ec-status" aria-live="polite">{{ energyStatus }}</span></strong></div>
     <div class="ec-callout ec-callout-b"><small>CONNECTED INTELLIGENCE</small><strong>连接 · 感知 · 进化</strong></div>
     <span class="ec-side-caption" aria-hidden="true">YUNENG / INFINITE POSSIBILITIES</span>
@@ -28,6 +28,8 @@
           :model="loginForm"
           :rules="loginRules"
           class="login-form"
+          @focusin.native="sceneFocused = true"
+          @focusout.native="onFormFocusOut"
         >
           <el-form-item prop="username">
             <label class="field">账号</label>
@@ -130,6 +132,7 @@ export default {
     return {
       codeUrl: '',
       energyStatus: '能量场已就绪',
+      sceneFocused: false,
       isDemo: process.env.VUE_APP_DEMO === 'true',
       loginForm: {
         username: 'admin',
@@ -168,6 +171,9 @@ export default {
     this.getCookie()
   },
   methods: {
+    onFormFocusOut(event) {
+      if (!event.currentTarget.contains(event.relatedTarget)) this.sceneFocused = false
+    },
     getCode() {
       getCodeImg().then((res) => {
         this.captchaEnabled =
@@ -211,7 +217,8 @@ export default {
           }
           this.$store
             .dispatch('Login', this.loginForm)
-            .then(() => {
+            .then(async() => {
+              if (this.$refs.energyScene) await this.$refs.energyScene.complete()
               this.$router.push({ path: this.redirect || '/' }).catch(() => {})
             })
             .catch(() => {
@@ -329,4 +336,32 @@ export default {
 .energy-login .ec-footer-note{font-size:10px;line-height:1.7;color:#8194a8}
 @media(min-width:1200px){.energy-login{min-height:max(900px,100vh)}.energy-login .ec-nav{padding:36px 6vw}.energy-login .ec-hero{margin-left:7vw}.energy-login .ec-hero h1{font-size:64px}.energy-login .ec-stage{top:255px;left:0;width:67%;height:580px}.energy-login .ec-panel-shell{right:7vw;top:180px;width:360px}.energy-login .ec-panel{padding:34px}.energy-login .ec-callout-a{left:7vw;top:440px}.energy-login .ec-callout-b{left:49%;top:640px}.energy-login .ec-footer{left:6vw;right:6vw}}
 @media(max-width:690px){.energy-login{min-height:1450px}.energy-login .ec-panel-shell{top:706px}.energy-login .login-form .el-input__inner{font-size:16px}.energy-login .ec-secure{margin-top:22px}}
+
+/* The scene remains secondary to signing in, especially on a phone. */
+.energy-login .ec-panel-shell{animation:ec-panel-enter .55s ease-out both}
+@keyframes ec-panel-enter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:690px){
+  .energy-login{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto 154px auto auto;gap:14px;min-height:100vh;min-height:100svh;padding-bottom:22px}
+  .energy-login .ec-nav{grid-row:1;padding:23px 24px 8px}
+  .energy-login .ec-hero{grid-row:2;max-width:none;width:auto;margin:0 24px}
+  .energy-login .ec-eyebrow{font-size:7px;letter-spacing:1.4px}
+  .energy-login .ec-hero h1{display:flex;flex-wrap:wrap;gap:0 12px;font-size:clamp(26px,8.2vw,34px);line-height:1.3;letter-spacing:0;margin-top:12px}
+  .energy-login .ec-hero h1 span{display:inline;margin-top:0}
+  .energy-login .ec-hero p{font-size:11px;line-height:1.8;letter-spacing:0;margin-top:9px;max-width:340px}
+  .energy-login .ec-hero p br{display:none}
+  .energy-login .ec-stage{position:relative;grid-row:3;left:auto;top:auto;width:100%;height:154px;mask-image:none;touch-action:pan-y;overflow:hidden}
+  .energy-login .ec-stage canvas{height:154px!important;top:-5px}
+  .energy-login .ec-fallback{width:110px;height:110px;top:42%}
+  .energy-login .ec-fallback:before,.energy-login .ec-fallback:after{inset:-18px}
+  .energy-login .ec-core-hit{height:145px;touch-action:pan-y;pointer-events:none}
+  .energy-login .ec-callout,.energy-login .ec-side-caption,.energy-login .ec-ghost-word{display:none}
+  .energy-login .ec-panel-shell{position:relative;grid-row:4;top:auto;left:auto;right:auto;width:auto;min-width:0;margin:0 20px;border-radius:16px}
+  .energy-login .ec-panel{padding:25px 24px 24px;border-radius:15px}
+  .energy-login .ec-panel-top{margin-bottom:8px;font-size:7px;letter-spacing:1.5px}
+  .energy-login .ec-panel h2{font-size:25px}
+  .energy-login .ec-panel .ec-sub{margin-bottom:20px}
+  .energy-login .ec-footer{position:relative;grid-row:5;left:auto;right:auto;bottom:auto;display:flex;align-items:flex-start;flex-wrap:wrap;gap:10px;margin:10px 24px 0;padding-top:16px}
+  .energy-login .ec-footer-word{font-size:7px;letter-spacing:1.3px}
+  .energy-login .ec-footer-note{text-align:left;font-size:9px}
+}
 </style>

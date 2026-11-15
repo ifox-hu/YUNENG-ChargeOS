@@ -334,9 +334,12 @@ MQ 的“发送成功”只代表 Broker 接收；只有事件变为 `CONSUMED` 
 
 同步发布时按顺序执行：修改说明 → 构建 `site/` → 采集截图 → 回归 → 提交源码、说明、截图及 `site/`。工作流上传的是提交中的 `site/`，不会自动编译后台源码。
 
+登录页的 3D 能量核心使用本地 Three.js r160，金属轨道增加本地生成的环境反射，轨道粒子定向流动。表单聚焦或请求登录时减速，成功后短脉冲过渡；手机首屏显示账号输入区域，模型不拦截页面滑动。场景下方不显示控制按钮；桌面可拖拽和滚轮缩放，聚焦模型后可用 P 暂停 / 恢复、Home 复位。渲染像素倍率受屏幕倍率、设备能力、150 万像素预算和持续帧耗时约束；暂停及减少动态效果时停止连续渲染，隐藏页面暂停，卸载时释放资源，WebGL 不可用时保留静态场景和登录表单。
+
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/build-pages.ps1
 node scripts/capture-admin-showcase.cjs
+node scripts/test-energy-login.cjs
 node scripts/test-dashboard-samples.cjs
 node scripts/test-dashboard-insights.cjs
 node scripts/test-demo-station-coordinates.cjs

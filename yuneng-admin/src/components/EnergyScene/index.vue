@@ -14,11 +14,21 @@ import { loadThree, createEnergyScene } from './scene'
 
 export default {
   name: 'EnergyScene',
+  props: {
+    focused: { type: Boolean, default: false },
+    busy: { type: Boolean, default: false }
+  },
+  watch: {
+    focused(value) { if (this.energyScene) this.energyScene.setFocused(value) },
+    busy(value) { if (this.energyScene) this.energyScene.setBusy(value) }
+  },
   mounted() {
     this.sceneCancelled = false
     loadThree().then(three => {
       if (this.sceneCancelled) return
       this.energyScene = createEnergyScene(this.$el, three, status => this.$emit('status', status))
+      this.energyScene.setFocused(this.focused)
+      this.energyScene.setBusy(this.busy)
     }).catch(() => {
       if (!this.sceneCancelled) this.$emit('status', '能量核心 · 静态展示')
     })
@@ -28,6 +38,9 @@ export default {
     if (this.energyScene) this.energyScene.dispose()
   },
   methods: {
+    complete() {
+      return this.energyScene ? this.energyScene.complete() : Promise.resolve()
+    },
     pulse() {
       if (this.energyScene) this.energyScene.pulse()
     }
