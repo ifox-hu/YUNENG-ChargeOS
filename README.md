@@ -37,22 +37,27 @@
 | **运营后台 · 本地后端** | 部署后访问 `http://127.0.0.1:8001` · `admin` / `admin123` | 连接本地 MySQL、Redis、RocketMQ 及业务服务 |
 | **小程序 · 本地开发** | `yuneng-mini/` · `demo` / `Demo123456!` | 在 HBuilderX / 微信开发者工具中编译并配置 API 地址 |
 
-**推荐体验路线**：登录 → 运营管理 → 充电接口 / 充电订单 → 故障工单 → 告警事件 → 系统管理 → 租户管理 → 运营商开户。
+**推荐体验路线**：登录 → 运营管理 → 仪表盘 → 切换运营商 / 站点与日期 → 经营统计 / 桩分布 / 数据大屏 → 充电订单 → 故障工单与告警事件 → 系统管理 → 租户管理 → 运营商开户。
 
 Pages 可体验查询、部分增改删、模拟充电状态、告警重放与工单处理；顶部提供“重置数据”。其中验证码和登录会话均为浏览器演示，不构成服务端安全验证。Pages 不连接真实后端或 MQ，未接入的操作会给出提示。详见[演示与本地运行说明](docs/development-guide.md#github-pages-演示)。
 
-首页按账号身份展示：**平台管理员默认看全部运营商汇总**，可从列表“查看详情”或下拉选择一家运营商，再查看其站点；**运营商账号只管理自家多个站点**，默认全部站点，可筛选单站，不提供跨运营商切换。数据来源由运行环境确定：本地后台使用业务接口数据，Pages 首页直接展示城区快充、校园慢充、园区运营 3 组样本，不再提供数据源开关。样本明确标记为展示数据，不创建租户、订单或资金流水。
+首页按账号身份展示：**平台管理员默认看全部运营商汇总**，可从列表“查看详情”或下拉选择一家运营商，再查看其站点；**运营商账号只管理自家多个站点**，默认全部站点，不提供跨运营商切换。本地后台读取业务接口，Pages 使用当前浏览器中的演示数据，内置城区快充、校园慢充、园区运营 3 组样本，不提供数据源开关。样本均有“演示”标记，只写入浏览器模拟数据，不创建真实租户、订单或资金流水。
+
+仪表盘支持近 7 天、近 30 天与自定义日期；订单、故障、桩分布和大屏快捷入口继承当前运营范围，其中订单页同时继承日期。经营指标按订单创建日期统计，净收入扣除退款；设备、站点和待办为当前状态。大屏另用近 30 天趋势并每 60 秒刷新，可暂停动效、切换浏览器全屏或返回仪表盘。
 
 ## 功能模块
 
 | 模块 | 已有能力 | 对应源码 |
 | --- | --- | --- |
+| **运营驾驶舱** | 仪表盘、经营统计、桩分布、全屏数据大屏；运营商 / 站点筛选、日期切换与快捷下钻 | [驾驶舱源码](yuneng-admin/src/views/operations) |
+| **经营分析与待办** | 订单 / 净收入 / 充电量趋势、时段分布与订单质量；经营表搜索排序分页、单桩收入、有单设备占比、未关闭工单与离线设备明细 | [仪表盘](yuneng-admin/src/views/operations/dashboard.vue) |
 | **站点与设备** | 站点、充电桩、端口管理；设备状态、心跳与模拟启停 | [运营后台](yuneng-admin/src/views/operator) / [运营服务](yuneng-cloud/hcp-modules/hcp-operator) |
 | **订单与结算** | 充电订单、费用查询、终态校验、并发结算保护与完成日志 | [结算服务](yuneng-cloud/hcp-modules/hcp-operator/src/main/java/com/hcp/operator/service/impl/ChargingOrderServiceImpl.java) |
 | **账户与积分** | 余额与流水、签到、订单奖励；Outbox 事件、消费幂等、失败补偿与人工重投 | [积分链路说明](docs/points-rocketmq.md) |
 | **故障工单** | 用户报修、分配、开始处理、解决、用户确认关闭、时间线与统计 | [工单后台](yuneng-admin/src/views/operator/fault) |
 | **设备告警** | 事件持久化、MQ 异步关联、重复事件保护、活动工单合并、授权重放 | [告警模块说明](docs/device-alarm-processing.md) |
 | **运营商接入** | 配置化开户、管理员初始化、充电规则、白名单与运营商生命周期校验 | [接入指南](docs/operator-onboarding-guide.md) |
+| **运营收款与营销** | 原订单页的异常核查、模拟结算与退款；余额页的收款、分账与对账台账；会员页的优惠券模板与发放 | [运营扩展源码](yuneng-admin/src/views/operator/operations) |
 | **小程序服务** | 站点浏览、端口选择、模拟充电、订单、账户与报修进度 | [小程序源码](yuneng-mini) |
 
 ### 二次开发重点
@@ -67,11 +72,15 @@ Pages 可体验查询、部分增改删、模拟充电状态、告警重放与�
 
 ### 运营后台
 
-以下 9 张截图于 2026-11-15 从当前蓝白最终版重新生成，展示实际页面。登录页保留 3D 场景，品牌标识统一使用蓝色闪电。[截图清单与来源](docs/screenshots/README.md)。
+以下 13 张截图于 **2026-11-15** 从本次 Pages 构建重新采集，展示当前蓝白界面、仪表盘和独立数据大屏。图中经营数据为浏览器演示样本。登录页保留 3D 场景，品牌标识使用蓝色闪电。[截图清单与来源](docs/screenshots/README.md)。
 
-| 品牌登录与图片验证码 | 运营首页（全部运营商） | 站点信息 |
+| 品牌登录与图片验证码 | 仪表盘（全部运营商） | 站点信息 |
 | --- | --- | --- |
 | ![品牌登录](docs/screenshots/admin/login-blue-white.png) | ![运营首页全部运营商样本汇总](docs/screenshots/admin/overview-blue-white.png) | ![站点信息](docs/screenshots/admin/station-list-blue-white.png) |
+
+| 经营统计 | 桩分布与站点列表 | 全屏数据大屏 |
+| --- | --- | --- |
+| ![经营统计与日期筛选](docs/screenshots/admin/statistics-blue-white.png) | ![桩分布与区域地图](docs/screenshots/admin/map-blue-white.png) | ![运营数据大屏](docs/screenshots/admin/screen-blue-white.png) |
 
 | 充电订单 | 模拟充电桩 | 故障工单 |
 | --- | --- | --- |
@@ -80,6 +89,15 @@ Pages 可体验查询、部分增改删、模拟充电状态、告警重放与�
 | 收款与对账（用户余额） | 优惠券（注册用户） | 告警事件 |
 | --- | --- | --- |
 | ![收款与对账](docs/screenshots/admin/finance-blue-white.png) | ![优惠券](docs/screenshots/admin/marketing-blue-white.png) | ![告警事件](docs/screenshots/admin/alarm-events-blue-white.png) |
+
+<details>
+<summary>运营商开户表单</summary>
+
+![运营商开户与管理员初始化](docs/screenshots/admin/operator-onboarding-blue-white.png)
+
+</details>
+
+地图使用随构建打包的区域地理数据；未录入有效坐标的站点不虚构定位。有单设备占比＝所选日期有订单的当前设备数÷当前设备数，不等于时长利用率。
 
 ### 小程序
 
@@ -212,7 +230,15 @@ npm run dev -- --host 127.0.0.1 --port 8080
 powershell -ExecutionPolicy Bypass -File .\scripts\build-pages.ps1
 ```
 
-将更新后的 `site/` 产物一起提交到 `master` 或 `main`，已有 [Pages 工作流](.github/workflows/pages.yml)会发布演示站。小程序编译、接口和回归脚本详见完整开发文档。
+同步更新说明和截图后，将源码与 `site/` 产物一起提交到 `master` 或 `main`，已有 [Pages 工作流](.github/workflows/pages.yml)会发布演示站。工作流发布提交中的静态产物，因此修改演示源码后须先重新构建。小程序编译、接口和回归脚本详见完整开发文档。
+
+```powershell
+node .\scripts\capture-admin-showcase.cjs
+node .\scripts\test-operations-navigation.cjs
+node .\scripts\test-original-demo.cjs
+```
+
+截图脚本使用 Playwright 与本机 Edge，可用 `PLAYWRIGHT_MODULE` 指定 Playwright 安装位置；后台截图仅操作隔离浏览器中的模拟数据。
 
 ## 项目文档
 

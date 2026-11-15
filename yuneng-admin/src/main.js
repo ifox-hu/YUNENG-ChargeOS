@@ -8,6 +8,7 @@ import './assets/styles/element-variables.scss'
 import '@/assets/styles/index.scss' // global css
 import '@/assets/styles/hcp.scss' // vctgo css
 import '@/assets/styles/blue-business.scss' // Shared blue/white business theme
+import '@/assets/styles/brand-blue.scss' // latest deployed blue-white house style
 import App from './App'
 import store from './store'
 import router from './router'

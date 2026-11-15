@@ -28,9 +28,7 @@ import Layout from '@/layout'
   }
  */
 
-// 已发布的旧链接只做兼容跳转，不再生成第二套菜单。
 const oldOperationRoutes = [
-  { path: '/operations', hidden: true, redirect: to => ({ path: '/index', query: to.query }) },
   { path: '/operations/overview', hidden: true, redirect: to => ({ path: '/index', query: to.query }) },
   { path: '/operations/orders', hidden: true, redirect: to => ({ path: '/operate/order', query: { ...to.query, tab: to.query.exceptions === 'true' ? 'exceptions' : 'list' } }) },
   { path: '/operations/finance', hidden: true, redirect: to => ({ path: '/operate/balance', query: { ...to.query, tab: 'finance' } }) },
@@ -72,17 +70,48 @@ export const constantRoutes = [
     hidden: true
   },
   {
-    path: '',
+    path: '/',
+    redirect: '/index',
+    hidden: true
+  },
+  {
+    path: '/operations',
     component: Layout,
-    redirect: 'index', ///operate/total
+    redirect: '/index',
+    alwaysShow: true,
+    name: 'Operations',
+    meta: { title: '运营管理', icon: 'dashboard' },
     children: [
       {
-        path: 'index',
-        component: () => import('@/views/index'),
+        path: '/index',
+        component: () => import('@/views/operations/dashboard'),
         name: 'Index',
-        meta: { title: '首页', icon: 'dashboard', affix: true }
+        meta: { title: '仪表盘', icon: 'dashboard', affix: true, noCache: true }
+      },
+      {
+        path: 'statistics',
+        component: () => import('@/views/total/manager/index'),
+        name: 'OperationsStatistics',
+        meta: { title: '经营统计', icon: 'chart', noCache: true }
+      },
+      {
+        path: 'map',
+        component: () => import('@/views/operations/map'),
+        name: 'OperationsMap',
+        meta: { title: '桩分布', icon: 'international', noCache: true }
+      },
+      {
+        path: 'screen',
+        component: () => import('@/views/operations/screen'),
+        name: 'OperationsScreen',
+        meta: { title: '数据大屏', icon: 'fullscreen', noCache: true, fullscreen: true }
       }
     ]
+  },
+  {
+    path: '/operate/total',
+    redirect: '/operations/statistics',
+    hidden: true
   },
   {
     path: '/user',

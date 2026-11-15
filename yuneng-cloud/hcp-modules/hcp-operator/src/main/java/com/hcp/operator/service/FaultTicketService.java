@@ -46,18 +46,35 @@ public class FaultTicketService
     public Scope operator()
     {
         LoginUser u = SecurityUtils.getLoginUser();
-        if (u == null || u.getSysUser() == null)
-            throw new ServiceException("请先登录", 401);
-        Long id = u.getSysUser().getUserId(), tenant = u.getSysUser().getTenantId();
-        if (id == null || tenant == null)
-            throw new ServiceException("无有效运营身份", 403);
-        return new Scope(id, tenant, u.getSysUser().getUserName(), id == 1L);
+        if (u == null || u.getSysUser() == null) throw new ServiceException("请先登录",401);
+        Long id=u.getSysUser().getUserId(), tenant=u.getSysUser().getTenantId();
+        if (id == null || tenant == null) throw new ServiceException("无有效运营身份",403);
+        return new Scope(id,tenant,u.getSysUser().getUserName(),id == 1L);
     }
-
-    private String text(String value, int max, String label)
-    {
-        if (value == null || value.trim().isEmpty() || value.trim().length() > max)
-            throw new ServiceException(label + "不能为空且不能超过" + max + "字");
+    /** Resolve a read filter against authenticated identity before querying any data. */
+    public Scope operator(Long tenantId,Long stationId) {
+        Scope identity=operator();
+        if (!identity.root && tenantId!=null && !tenantId.equals(identity.tenant))
+            throw new ServiceException("无权查看其他运营商",403);
+        Long selected=identity.root?tenantId:identity.tenant;
+        if(stationId!=null) {
+            List<Object> args=new ArrayList<>();args.add(stationId);
+            String condition="";
+            if(selected!=null){condition=" AND tenant_id=?";args.add(selected);}
+            if(jdbc.queryForObject("SELECT COUNT(*) FROM c_charging_station WHERE station_id=? AND COALESCE(del_flag,0)=0"+condition,Long.class,args.toArray())==0)
+                throw new ServiceException("站点不存在或不属于当前运营商",403);
+        }
+        return new Scope(identity.id,selected,identity.name,identity.root && selected==null);
+    }
+    private String scopeFilter(Scope scope,Long stationId,List<Object> args) {
+        String where="";
+        if(scope!=null && !scope.root){where+=" AND t.tenant_id=?";args.add(scope.tenant);}
+        if(stationId!=null){where+=" AND EXISTS(SELECT 1 FROM c_charging_pile fp WHERE fp.pile_id=t.pile_id AND fp.tenant_id=t.tenant_id AND fp.station_id=?)";args.add(stationId);}
+        return where;
+    }
+    private String text(String value,int max,String label) {
+        if (value == null || value.trim().isEmpty() || value.trim().length()>max)
+            throw new ServiceException(label+"不能为空且不能超过"+max+"字");
         return value.trim();
     }
 
@@ -197,20 +214,16 @@ public class FaultTicketService
         return result;
     }
 
-    public Map<String, Object> list(Scope scope, Long memberId, String status, String type, String pileId, int page,
-                                    int size)
-    {
-        if (page < 1 || page > 100000 || size < 1 || size > 50)
-            throw new ServiceException("分页参数不合法");
-        StringBuilder where = new StringBuilder(" WHERE 1=1 ");
-        List<Object> args = new ArrayList<>();
-        if (scope != null && !scope.root)
-        {
-            where.append("AND t.tenant_id=? ");
-            args.add(scope.tenant);
-        }
-        if (memberId != null)
-        {
+    public Map<String,Object> list(Scope scope,Long memberId,String status,String type,String pileId,int page,int size) {
+        return list(scope,memberId,status,type,pileId,page,size,null,false);
+    }
+    public Map<String,Object> list(Scope scope,Long memberId,String status,String type,String pileId,int page,int size,Long stationId,boolean activeOnly) {
+        if (page<1 || page>100000 || size<1 || size>50) throw new ServiceException("分页参数不合法");
+        StringBuilder where=new StringBuilder(" WHERE 1=1 ");
+        List<Object> args=new ArrayList<>();
+        where.append(scopeFilter(scope,stationId,args));where.append(" ");
+        if(activeOnly) where.append("AND t.status<>'CLOSED' ");
+        if (memberId!=null) {
             memberExists(memberId);
             where.append("AND EXISTS(SELECT 1 FROM c_fault_report r WHERE r.ticket_id=t.id AND r.member_id=?) ");
             args.add(memberId);
@@ -338,30 +351,24 @@ public class FaultTicketService
                                      "FROM sys_user WHERE tenant_id=? AND status='0' AND del_flag='0' ORDER BY user_id",
                                  row.get("tenant_id"));
     }
-
-    public Map<String, Object> stats(Scope scope)
-    {
-        String where = scope.root ? "" : " WHERE tenant_id=?";
-        Object[] args = scope.root ? new Object[] {} : new Object[] {scope.tenant};
-        Map<String, Object> result = jdbc.queryForMap(
+    public Map<String,Object> stats(Scope scope) {
+        return stats(scope,null);
+    }
+    public Map<String,Object> stats(Scope scope,Long stationId) {
+        List<Object> values=new ArrayList<>();
+        String where=" WHERE 1=1"+scopeFilter(scope,stationId,values);
+        Object[] args=values.toArray();
+        Map<String,Object> result=jdbc.queryForMap(
             "SELECT COUNT(*) AS total,COALESCE(SUM(status<>'CLOSED'),0) AS active,"
-                + "COALESCE(SUM(status='NEW'),0) AS pending,COALESCE(SUM(status='CLOSED'),0) AS closed,"
-                +
-                "ROUND(AVG(TIMESTAMPDIFF(MINUTE,created_at,resolved_at)),1) AS avgResolveMinutes FROM c_fault_ticket" +
-                where,
-            args);
-        result.put("byType", jdbc.queryForList("SELECT fault_type AS faultType,COUNT(*) AS count FROM c_fault_ticket" +
-                                                   where + " GROUP BY fault_type",
-                                               args));
-        result.put("trend",
-                   jdbc.queryForList("SELECT DATE_FORMAT(created_at,'%Y-%m-%d') AS day,COUNT(*) AS count "
-                                         + "FROM c_fault_ticket" + (where.isEmpty() ? " WHERE " : where + " AND ") +
-                                         "created_at>=DATE_SUB(CURDATE(),INTERVAL 6 DAY) GROUP BY day ORDER BY day",
-                                     args));
-        result.put("alarmCount", jdbc.queryForObject(
-                                     "SELECT COUNT(*) FROM c_device_alarm a JOIN c_fault_ticket t ON t.id=a.ticket_id" +
-                                         (scope.root ? "" : " WHERE t.tenant_id=?"),
-                                     Long.class, args));
+            +"COALESCE(SUM(status='NEW'),0) AS pending,COALESCE(SUM(status='CLOSED'),0) AS closed,"
+            +"ROUND(AVG(TIMESTAMPDIFF(MINUTE,created_at,resolved_at)),1) AS avgResolveMinutes FROM c_fault_ticket t"+where,args);
+        result.put("byType",jdbc.queryForList("SELECT fault_type AS faultType,COUNT(*) AS count FROM c_fault_ticket t"
+            +where+" GROUP BY fault_type",args));
+        result.put("trend",jdbc.queryForList("SELECT DATE_FORMAT(created_at,'%Y-%m-%d') AS day,COUNT(*) AS count "
+            +"FROM c_fault_ticket t"+where+" AND "
+            +"created_at>=DATE_SUB(CURDATE(),INTERVAL 6 DAY) GROUP BY day ORDER BY day",args));
+        result.put("alarmCount",jdbc.queryForObject("SELECT COUNT(*) FROM c_device_alarm a JOIN c_fault_ticket t ON t.id=a.ticket_id"
+            +where,Long.class,args));
         return result;
     }
 }

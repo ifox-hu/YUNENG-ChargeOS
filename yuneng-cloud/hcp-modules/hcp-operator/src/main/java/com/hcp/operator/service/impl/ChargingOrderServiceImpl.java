@@ -62,6 +62,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class ChargingOrderServiceImpl implements IChargingOrderService
 {
     @Autowired
+    private com.hcp.operator.service.FaultTicketService queryScopes;
+    @Autowired
     private ChargingOrderMapper chargingOrderMapper;
     @Autowired
     private OrderLogMapper orderLogMapper;
@@ -116,6 +118,9 @@ public class ChargingOrderServiceImpl implements IChargingOrderService
     @Override
     public IPage<ChargingOrder> selectChargingOrderPage(ChargingOrder chargingOrder)
     {
+        Long stationId=(Long)chargingOrder.getParams().get("stationId");
+        com.hcp.operator.service.FaultTicketService.Scope scope=queryScopes.operator(chargingOrder.getTenantId(),stationId);
+        chargingOrder.setTenantId(scope.root?null:scope.tenant);
         Page mpPage =new Page(Convert.toLong(ServletUtils.getParameterToInt(MybatisPageConstants.PAGE_NUM),1L)
                 ,Convert.toLong(ServletUtils.getParameterToInt(MybatisPageConstants.PAGE_SIZE),10L));
         return chargingOrderMapper.selectChargingOrderListPage(mpPage,chargingOrder);

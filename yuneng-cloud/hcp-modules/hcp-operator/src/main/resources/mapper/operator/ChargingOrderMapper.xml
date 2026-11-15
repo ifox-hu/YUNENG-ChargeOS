@@ -84,6 +84,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <where>
             <if test="query.userId != null "> and t1.user_Id = #{query.userId}</if>
             <if test="query.orderNumber != null  and query.orderNumber != ''"> and t1.order_number = #{query.orderNumber}</if>
+            <if test="query.tenantId != null"> and t1.tenant_id = #{query.tenantId}</if>
+            <if test="query.params.stationId != null"> and t2.station_id = #{query.params.stationId} and t2.tenant_id = t1.tenant_id</if>
             <if test="query.stationName != null  and query.stationName != ''"> and t3.station_name = #{query.stationName}</if>
             <if test="query.pileId != null  and query.pileId != ''"> and t1.pile_id = #{query.pileId}</if>
             <if test="query.mobile != null  and query.mobile!=''"> and t1.mobile = #{query.mobile}</if>

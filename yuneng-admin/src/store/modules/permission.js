@@ -36,6 +36,8 @@ const permission = {
         getRouters().then(res => {
           const sdata = JSON.parse(JSON.stringify(res.data))
           const rdata = JSON.parse(JSON.stringify(res.data))
+          organizeBusinessMenus(sdata)
+          organizeBusinessMenus(rdata)
           const sidebarRoutes = filterAsyncRouter(sdata)
           const rewriteRoutes = filterAsyncRouter(rdata, false, true)
           const asyncRoutes = filterDynamicRoutes(dynamicRoutes);
@@ -50,6 +52,21 @@ const permission = {
       })
     }
   }
+}
+
+// The four operations views live together in the constant routes. Preserve all
+// authorized business menus while retiring the duplicate statistics entry.
+function organizeBusinessMenus(routes) {
+  routes.forEach(route => {
+    if (route.component === 'total/manager/index') {
+      route.hidden = true
+      route.redirect = '/operations/statistics'
+    }
+    if (route.path === '/operate' && route.meta && route.meta.title === '运营管理') {
+      route.meta.title = '业务管理'
+    }
+    if (route.children) organizeBusinessMenus(route.children)
+  })
 }
 
 // 遍历后台传来的路由字符串，转换为组件对象

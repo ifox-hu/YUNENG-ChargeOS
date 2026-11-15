@@ -171,6 +171,9 @@ export default {
     },
     // 当前激活的路由
     activeRoutes(key) {
+      // Operations belongs to the business section in top-navigation mode.
+      // Keep its four children grouped rather than flattening them away.
+      if (key === '/operations') key = '/operate';
       var routes = [];
       if (this.childrenMenus && this.childrenMenus.length > 0) {
         this.childrenMenus.map((item) => {
@@ -178,6 +181,10 @@ export default {
             routes.push(item);
           }
         });
+      }
+      if (key === '/operate') {
+        const operations = constantRoutes.find(route => route.name === 'Operations');
+        if (operations) routes.unshift(operations);
       }
       if(routes.length > 0) {
         this.$store.commit("SET_SIDEBAR_ROUTERS", routes);

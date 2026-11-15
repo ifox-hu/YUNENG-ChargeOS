@@ -326,6 +326,25 @@ MQ 的“发送成功”只代表 Broker 接收；只有事件变为 `CONSUMED` 
 
 `site/` 由现有 `yuneng-admin` 后台源码构建，复用同一套登录页、布局、侧边菜单和业务页面；通过独立的 `.env.demo` 开关使用浏览器模拟接口。演示使用 hash 路由及相对资源路径，可部署在 GitHub Pages 的仓库子路径下。日常本地后台继续使用真实接口。
 
+### 运营驾驶舱（2026-11-15）
+
+“运营管理”下提供仪表盘、经营统计、桩分布、数据大屏。仪表盘支持运营商 / 站点范围、近 7 天 / 近 30 天 / 自定义日期、趋势切换、时段与订单质量分析、经营排行搜索排序分页和待办下钻。订单快捷入口保留范围和日期，故障、桩分布和大屏保留范围；大屏独立展示近 30 天趋势并每 60 秒刷新。旧 `/operate/total` 兼容跳转至经营统计。
+
+本地后台通过只读 `GET /operator/overview` 聚合登录用户授权范围内的数据；平台管理员可切换运营商，运营商账号只能查看自身范围。Pages 从浏览器模拟数据聚合，并补充带“演示”标记的 3 组样本，不调用真实后端。经营数据按订单创建日期汇总，净收入扣除退款；站点、设备和未关闭工单是当前快照。有单设备占比不是时长利用率。地图随构建打包区域数据，不虚构缺失坐标。
+
+同步发布时按顺序执行：修改说明 → 构建 `site/` → 采集截图 → 回归 → 提交源码、说明、截图及 `site/`。工作流上传的是提交中的 `site/`，不会自动编译后台源码。
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/build-pages.ps1
+node scripts/capture-admin-showcase.cjs
+node scripts/test-dashboard-samples.cjs
+node scripts/test-dashboard-insights.cjs
+node scripts/test-operations-navigation.cjs
+node scripts/test-original-demo.cjs
+```
+
+当前截图文件清单、数据来源和复现说明见 [screenshots/README.md](screenshots/README.md)。
+
 “运营管理 → 故障工单”的告警面板可体验事件筛选、新建异步告警、重复事件保护、关联工单及失败重放。内置待处理/已处理/失败示例；提交或重放后稍候点击刷新。此处为浏览器状态模拟，不运行 RocketMQ，不代表后端压测结果；原有浏览器数据会增量补充告警示例，无需清空存储。
 
 模拟接口覆盖工单查询、告警合并、分配、处理、解决、确认关闭，以及站点等常规列表的查询和增改删。模拟充电桩按钮修改端口演示状态，不产生真实充电。数据保存在浏览器 localStorage，可从顶部“重置数据”恢复。未实现的特殊操作（如真实短信、云存储连接、部分导出）会明确提示，不会连接真实服务。

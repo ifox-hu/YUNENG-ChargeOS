@@ -4,6 +4,9 @@ import { handleDemoAlarms } from './alarms'
 import { createDemoCaptcha, verifyDemoCaptcha } from './captcha'
 import { prepareOperatorDemo, handleDemoOperators } from './operators'
 import { prepareOperationsDemo, handleOperations } from './operations'
+import { demoOverview } from './overview'
+import { prepareDashboardSamples } from './dashboardSamples'
+import { businessToday } from '../views/operations/period'
 const key = 'yuneng-original-ui-demo-v1'
 const clone = value => JSON.parse(JSON.stringify(value))
 const now = () => new Date().toLocaleString('sv-SE')
@@ -43,12 +46,20 @@ const samples={
 Object.entries(samples).forEach(([url,rows])=>{if(!db.lists[url])db.lists[url]={code:200,data:clone(rows),rows:clone(rows),total:rows.length}})
 prepareOperatorDemo(db)
 prepareOperationsDemo(db)
+const sampleDay = businessToday()
+prepareDashboardSamples(db, sampleDay, Math.floor((Date.now() - Date.parse(sampleDay + 'T00:00:00+08:00')) / 1000))
+// File IDs from the backend fixture are not public images on a static host.
+// Use the bundled brand mark as an explicit demonstration placeholder.
+const stationCollection = db.lists['/operator/station/list'] || {}
+;(stationCollection.rows || stationCollection.data || []).forEach(station => {
+  if (!/^(data:|https?:|\.?\/)/.test(station.fileId || '')) station.fileId = './yuneng-blue.svg'
+})
 persist()
 const ok=data=>({code:200,msg:'演示操作成功',data})
 const fail=msg=>({code:500,msg})
 const primaryKeys={station:'stationId',pile:'pileId',port:'portId',order:'orderId',member:'memberId',balance:'id',rule:'ruleId',price:'id',city:'id',miniapp:'id',user:'userId',role:'roleId',post:'postId',notice:'noticeId',tenant:'id',tenantpackage:'packageId',config:'configId',type:'dictId',demo:'demoId'}
 function listResponse(rows,query,original={}) {
-  const filtered=rows.filter(row=>Object.entries(query).every(([k,v])=>!v||['pageNum','pageSize','orderByColumn','isAsc'].includes(k)||!(k in row)||String(row[k]??'').includes(v)))
+  const filtered=rows.filter(row=>Object.entries(query).every(([k,v])=>!v||['pageNum','pageSize','orderByColumn','isAsc'].includes(k)||!(k in row)||(['tenantId','stationId'].includes(k)?String(row[k])===String(v):String(row[k]??'').includes(v))))
   const size=Math.max(1,Number(query.pageSize)||10), page=Math.max(1,Number(query.pageNum)||1)
   const data=filtered.slice((page-1)*size,page*size)
   return {...original,...ok(data),rows:data,total:filtered.length}
@@ -67,6 +78,13 @@ function handle(config) {
  if(url==='/system/user/getInfo')return {...ok(null),user,roles:['admin'],permissions:['*:*:*']}
  const operationResult=handleOperations(db,url,method,b,q)
  if(operationResult){persist();return operationResult}
+ if(url==='/operator/overview'){handleDemoAlarms(db,'/operator/fault/alarms','get',{},{});persist();return ok(demoOverview(db,q))}
+ if(url==='/operator/order/list') {
+   const rows=key=>{const c=db.lists[key]||{};return c.rows||c.data||[]},piles=rows('/operator/pile/list'),stations=rows('/operator/station/list')
+   const orders=rows('/operator/order/list').map(o=>{const pile=piles.find(p=>String(p.pileId)===String(o.pileId)&&String(p.tenantId)===String(o.tenantId));const station=stations.find(s=>pile&&String(s.stationId)===String(pile.stationId));return {...o,stationId:pile&&pile.stationId,stationName:station&&station.stationName}}).filter(o=>(!q.startTime||String(o.createTime).slice(0,10)>=q.startTime)&&(!q.endTime||String(o.createTime).slice(0,10)<=q.endTime))
+   const filters={...q};delete filters.startTime;delete filters.endTime
+   return listResponse(orders,filters)
+ }
  const operatorResult=handleDemoOperators(db,url,method,b,q)
  if(operatorResult){persist();return operatorResult}
  if(url==='/system/dict/data/type/sys_tenant_status')return ok([{dictLabel:'正常',dictValue:'0',dictSort:1,status:'0'},{dictLabel:'停用',dictValue:'1',dictSort:2,status:'0'}])
@@ -103,9 +121,10 @@ function handle(config) {
  return fail('此操作尚未接入模拟接口：'+url+'。演示不会连接真实服务。')
 }
 function fault(url,method,b,q){const id=Number(url.split('/')[3]);const ticket=db.faults.find(t=>t.id===id)
- if(url.endsWith('/list')){const selected = q.targetTenantId && Number(q.targetTenantId)!==9999 ? [] : q.status==='ACTIVE' ? db.faults.filter(t=>t.status!=='CLOSED') : db.faults; const filters={...q}; if(filters.status==='ACTIVE')delete filters.status; delete filters.targetTenantId; const r=listResponse(selected,filters);return ok({records:r.rows,total:r.total})}
- if(url.endsWith('/stats')&&q.targetTenantId&&Number(q.targetTenantId)!==9999)return ok({total:0,active:0,pending:0,closed:0,trend:[],byType:[]});
- if(url.endsWith('/stats'))return ok({total:db.faults.length,active:db.faults.filter(t=>t.status!=='CLOSED').length,pending:db.faults.filter(t=>t.status==='NEW').length,closed:db.faults.filter(t=>t.status==='CLOSED').length,alarmCount:db.alarmCount,avgResolveMinutes:35,trend:[{day:new Date().toISOString().slice(0,10),count:db.faults.length}],byType:['OFFLINE','CONNECTOR','POWER','OTHER'].map(faultType=>({faultType,count:db.faults.filter(t=>t.faultType===faultType).length}))})
+ const c=db.lists['/operator/pile/list']||{},piles=c.rows||c.data||[]
+ const scoped=db.faults.filter(t=>{const pile=piles.find(p=>String(p.pileId)===String(t.pileId));return (!q.tenantId||String(t.tenantId||(pile&&pile.tenantId)||9999)===String(q.tenantId))&&(!q.stationId||pile&&String(pile.stationId)===String(q.stationId))})
+ if(url.endsWith('/list')){const r=listResponse(scoped.filter(t=>q.activeOnly!=='true'||t.status!=='CLOSED'),q);return ok({records:r.rows,total:r.total})}
+ if(url.endsWith('/stats'))return ok({total:scoped.length,active:scoped.filter(t=>t.status!=='CLOSED').length,pending:scoped.filter(t=>t.status==='NEW').length,closed:scoped.filter(t=>t.status==='CLOSED').length,alarmCount:scoped.reduce((sum,t)=>sum+Number(t.alarmCount||0),0),avgResolveMinutes:null,trend:[{day:new Date().toISOString().slice(0,10),count:scoped.length}],byType:['OFFLINE','CONNECTOR','POWER','OTHER'].map(faultType=>({faultType,count:scoped.filter(t=>t.faultType===faultType).length}))})
  if(url.endsWith('/simulate-alarm')){if(!b.pileId||!b.description)return fail('请填写设备和描述');db.alarmCount++;const old=db.faults.find(t=>t.pileId===b.pileId&&t.faultType===b.faultType&&t.status!=='CLOSED');if(old){persist();return ok({merged:true,ticket:old})}const t={...b,id:Date.now(),ticketNo:'GD'+Date.now(),status:'NEW',source:'ALARM',createdAt:now(),logs:[]};db.faults.unshift(t);persist();return ok({merged:false,ticket:t})}
  if(url.endsWith('/assignees'))return ok([user])
  if(!ticket)return fail('工单不存在')

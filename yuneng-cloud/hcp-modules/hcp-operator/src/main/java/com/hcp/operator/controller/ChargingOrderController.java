@@ -46,10 +46,11 @@ public class ChargingOrderController extends BaseController
      */
     @RequiresPermissions("operator:order:list")
     @GetMapping("/list")
-    public AjaxResult list(ChargingOrder chargingOrder)
+    public AjaxResult list(ChargingOrder chargingOrder,@RequestParam(required=false) Long stationId)
     {
         // Operator accounts manage member orders within their authenticated tenant.
         // Backend account IDs and terminal member IDs belong to different identities.
+        chargingOrder.getParams().put("stationId",stationId);
         IPage<ChargingOrder> list = chargingOrderService.selectChargingOrderPage(chargingOrder);
         return AjaxResult.success(list);
     }

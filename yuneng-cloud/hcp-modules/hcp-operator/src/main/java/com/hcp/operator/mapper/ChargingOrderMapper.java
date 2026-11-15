@@ -35,7 +35,9 @@ public interface ChargingOrderMapper extends BaseMapperX<ChargingOrder>
      * @param chargingOrder 充电订单
      * @return
      */
-    Page<ChargingOrder> selectChargingOrderListPage(Page page, @Param("query") ChargingOrder chargingOrder);
+    // This query supplies its validated session/administrator scope explicitly.
+    @InterceptorIgnore(tenantLine = "1")
+    Page<ChargingOrder> selectChargingOrderListPage(Page page,@Param("query") ChargingOrder chargingOrder);
 
     /**
      * 查询充电订单列表

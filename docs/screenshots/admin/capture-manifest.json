@@ -1,7 +1,8 @@
 {
-  "capturedAt": "2026-11-14T23:05:38.513Z",
+  "capturedAt": "2026-11-15T07:24:53.129Z",
   "source": "current site build",
-  "overviewScene": "全部运营商汇总（3组展示样本，非实际业务）",
+  "indexSha256": "4bdd971252aad44ce111896d2735d950bf8281c65b71535874a080a136f6fefd",
+  "overviewScene": "全部运营商 / 全部站点（浏览器演示样本）",
   "viewport": {
     "width": 1440,
     "height": 1000
@@ -9,13 +10,19 @@
   "files": [
     "login-blue-white.png",
     "overview-blue-white.png",
+    "statistics-blue-white.png",
+    "map-blue-white.png",
+    "screen-blue-white.png",
     "station-list-blue-white.png",
     "order-list-blue-white.png",
     "device-list-blue-white.png",
     "fault-list-blue-white.png",
     "finance-blue-white.png",
     "marketing-blue-white.png",
-    "alarm-events-blue-white.png"
+    "alarm-events-blue-white.png",
+    "operator-onboarding-blue-white.png"
   ],
-  "errors": []
+  "errors": [],
+  "external": [],
+  "failed": []
 }

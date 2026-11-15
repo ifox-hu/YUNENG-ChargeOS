@@ -34,8 +34,8 @@ export default {
       let matched = this.$route.matched.filter(item => item.meta && item.meta.title)
       const first = matched[0]
 
-      if (!this.isDashboard(first)) {
-        matched = [{ path: '/index', meta: { title: '首页' }}].concat(matched)
+      if (!this.isDashboard(first) && !matched.some(item => item.name === 'Operations')) {
+        matched = [{ path: '/index', meta: { title: '仪表盘' }}].concat(matched)
       }
 
       this.levelList = matched.filter(item => item.meta && item.meta.title && item.meta.breadcrumb !== false)

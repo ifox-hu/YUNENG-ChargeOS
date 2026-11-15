@@ -1,6 +1,6 @@
 <template>
   <el-image
-    :src="`${realSrc}`"
+    :src="realSrc"
     fit="cover"
     :style="`width:${realWidth};height:${realHeight};`"
     :preview-src-list="realSrcList"
@@ -31,7 +31,7 @@ export default {
   computed: {
     realSrc() {
       if (!this.src) {
-        return;
+        return "";
       }
       let real_src = this.src.split(",")[0];
       return real_src;

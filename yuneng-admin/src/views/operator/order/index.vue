@@ -1,5 +1,6 @@
 <template>
   <div class="app-container">
+    <el-alert v-if="$route.query.tenantId || $route.query.stationId || $route.query.startDate" title="已沿用仪表盘的运营范围与日期筛选" type="info" :closable="false" style="margin-bottom:16px"><el-button type="text" @click="$router.replace({path:'/operate/order',query:{}})">清除快捷筛选</el-button></el-alert>
     <el-tabs v-model="activeTab">
       <el-tab-pane label="充电订单" name="list">
         <points-events />
@@ -289,6 +290,8 @@ export default {
       open: false,
       // 查询参数
       queryParams: {
+        tenantId: null,
+        stationId: null,
         pageNum: 1,
         pageSize: 10,
         userId: null,
@@ -319,15 +322,24 @@ export default {
     };
   },
   created() {
+    this.applyDashboardFilters();
     this.getList();
     this.getUserList();
   },
   watch: {
+    '$route.query'() { if (this.$route.path === '/operate/order') { this.applyDashboardFilters(); this.getList(); } },
     '$route.query.tab'(value) {
       this.activeTab = value === 'exceptions' && this.canView('operator:operations:orders') ? 'exceptions' : 'list';
     }
   },
   methods: {
+    applyDashboardFilters() {
+      const q = this.$route.query;
+      this.queryParams.tenantId = q.tenantId || null;
+      this.queryParams.stationId = q.stationId || null;
+      this.queryParams.pageNum = 1;
+      this.dateRange = q.startDate && q.endDate ? [q.startDate, q.endDate] : [];
+    },
     canView(permission) {
       const permissions = this.$store.getters.permissions || [];
       return permissions.includes('*:*:*') || permissions.includes(permission);

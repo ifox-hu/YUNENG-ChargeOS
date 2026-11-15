@@ -281,7 +281,7 @@ export default {
       queryParams: {
         pageNum: 1,
         pageSize: 10,
-        pileId: null,
+        pileId: this.$route.query.pileId || null,
         name: null,
         cpFeeType: null,
         userId: null,
@@ -320,6 +320,14 @@ export default {
   },
   created() {
     this.getList();
+  },
+  watch: {
+    '$route.query.pileId'(id) {
+      if (this.$route.path !== '/operate/pile') return;
+      this.queryParams.pileId = id || null;
+      this.queryParams.pageNum = 1;
+      this.getList();
+    }
   },
   methods: {
     /** 查询充电桩列表 */
