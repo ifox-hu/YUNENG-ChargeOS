@@ -3,7 +3,7 @@
     <station-map v-if="!ready" :stations="stations" dark class="atlas-fallback" />
     <div ref="stage" class="atlas-stage" role="img" aria-label="中国省级站点分布三维地图，光柱表示省级站点数量，金色圆点为有有效坐标的站点" />
     <div class="atlas-label"><span class="atlas-cross">+</span><span>{{ ready ? '3D GEO ATLAS' : 'GEO ATLAS' }}<b>全国充电网络</b></span></div>
-    <div class="atlas-legend"><span><i />省级汇总光柱</span><span><i class="gold" />已录入坐标站点</span></div>
+    <div class="atlas-legend"><span><i />省级汇总光柱</span><span><i class="gold" />{{ hasDemoLocations ? '站点位置（含演示示意）' : '已录入坐标站点' }}</span></div>
     <div class="atlas-foot">{{ ready ? '立体视图 · 移动指针查看省级统计' : '二维地图模式' }}<span>行政区划：DataV</span></div>
     <div v-if="hover" class="atlas-tooltip">{{ hover }}</div>
   </div>
@@ -17,6 +17,7 @@ export default {
   components: { StationMap },
   props: { stations: { type: Array, default: () => [] }, motion: { type: Boolean, default: true }},
   data() { return { ready: false, hover: '' } },
+  computed: { hasDemoLocations() { return this.stations.some(station => station.coordinateSource === 'DEMO') } },
   watch: { stations() { if (this.atlas) this.atlas.update(this.stations) }, motion(value) { if (this.atlas) this.atlas.setMotion(value) } },
   mounted() { this.initialize() },
   beforeDestroy() { this.cancelled = true; if (this.atlas) this.atlas.dispose() },

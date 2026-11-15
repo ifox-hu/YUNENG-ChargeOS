@@ -51,7 +51,7 @@ const root = path.resolve(process.env.OPERATIONS_SITE_ROOT || path.join(__dirnam
     await page.locator('[data-testid=station-map] canvas').waitFor();
     await page.getByPlaceholder('搜索站点名称或地址').fill('滨江');
     await page.locator('.station-item').first().click();
-    await page.getByText('未录入有效坐标', { exact: true }).waitFor();
+    await page.getByText('演示示意位置，非真实设备定位', { exact: true }).waitFor();
     await page.getByRole('button', { name: '关闭', exact: true }).click();
     await page.getByPlaceholder('搜索站点名称或地址').fill('');
     await page.waitForTimeout(400);

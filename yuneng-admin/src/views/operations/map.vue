@@ -4,15 +4,16 @@
     <el-alert v-if="error" :title="error" type="error" show-icon :closable="false" />
     <el-alert v-if="$route.query.tenantId || $route.query.stationId" title="已沿用仪表盘的站点范围" type="info" :closable="false"><el-button type="text" @click="$router.replace({path:'/operations/map',query:{}})">查看全部可见站点</el-button></el-alert>
     <el-alert v-if="missingCoordinates" :title="missingCoordinates + ' 个站点未录入有效坐标，已按所属地区计入省级统计；补录后可显示精确点位。'" type="info" show-icon :closable="false" />
+    <el-alert v-if="demoLocations" :title="demoLocations + ' 个演示站点已显示示意位置，仅用于功能展示，不代表真实设备定位。'" type="info" show-icon :closable="false" />
     <div class="map-workspace">
       <aside>
         <div class="station-search"><el-input v-model="keyword" clearable placeholder="搜索站点名称或地址" prefix-icon="el-icon-search" /><div class="list-heading"><strong>站点列表 · {{ filteredStations.length }}</strong><el-button v-if="region" type="text" @click="region=null">清除{{ region.name }}筛选</el-button></div></div>
-        <div class="station-list"><button v-for="station in filteredStations" :key="station.stationId" class="station-item" @click="selected=station"><i class="el-icon-location-outline" /><div><strong>{{ station.stationName }}</strong><span>{{ station.address || '地址未填写' }}</span><small>{{ position(station) ? '已录入坐标' : '待补录坐标' }}</small></div><i class="el-icon-arrow-right" /></button><el-empty v-if="!filteredStations.length&&!loading" description="暂无匹配站点" :image-size="70" /></div>
+        <div class="station-list"><button v-for="station in filteredStations" :key="station.stationId" class="station-item" @click="selected=station"><i class="el-icon-location-outline" /><div><strong>{{ station.stationName }}</strong><span>{{ station.address || '地址未填写' }}</span><small>{{ position(station) ? (station.coordinateSource === 'DEMO' ? '演示示意位置（非真实定位）' : '已录入坐标') : '待补录坐标' }}</small></div><i class="el-icon-arrow-right" /></button><el-empty v-if="!filteredStations.length&&!loading" description="暂无匹配站点" :image-size="70" /></div>
       </aside>
       <section class="map-panel"><div class="map-tools"><el-tag effect="plain">{{ region ? region.name : '全国' }}</el-tag><span>已加载 {{ scopedStations.length }} 个站点 · 可拖动、缩放 · 点击省份筛选</span><el-button v-if="region" size="mini" @click="region=null">返回全国</el-button></div><station-map :stations="filteredStations" @select="selected=$event" @region="region=$event" /></section>
     </div>
     <el-dialog title="站点详情" :visible.sync="detailVisible" width="min(520px, 94vw)">
-      <el-descriptions v-if="selected" :column="1" border><el-descriptions-item label="站点名称">{{ selected.stationName }}</el-descriptions-item><el-descriptions-item label="地址">{{ selected.address || '未填写' }}</el-descriptions-item><el-descriptions-item label="地区代码">{{ selected.regionCode || '未填写' }}</el-descriptions-item><el-descriptions-item label="经纬度">{{ position(selected) ? position(selected).join(', ') : '未录入有效坐标' }}</el-descriptions-item></el-descriptions>
+      <el-descriptions v-if="selected" :column="1" border><el-descriptions-item label="站点名称">{{ selected.stationName }}</el-descriptions-item><el-descriptions-item label="地址">{{ selected.address || '未填写' }}</el-descriptions-item><el-descriptions-item label="地区代码">{{ selected.regionCode || '未填写' }}</el-descriptions-item><el-descriptions-item label="经纬度">{{ position(selected) ? position(selected).join(', ') : '未录入有效坐标' }}</el-descriptions-item><el-descriptions-item v-if="selected.coordinateSource === 'DEMO'" label="定位说明">演示示意位置，非真实设备定位</el-descriptions-item></el-descriptions>
       <span slot="footer"><el-button @click="selected=null">关闭</el-button><el-button type="primary" @click="$router.push('/operate/station')">进入站点管理</el-button></span>
     </el-dialog>
   </div>
@@ -33,6 +34,7 @@ export default {
       return this.scopedStations.filter(station => (!this.region || String(station.regionCode || '').slice(0, 2) === this.region.prefix || station.province === this.region.name) && (!keyword || [station.stationName, station.address].some(value => String(value || '').toLowerCase().includes(keyword))))
     },
     missingCoordinates() { return this.scopedStations.filter(station => !stationPosition(station)).length },
+    demoLocations() { return this.scopedStations.filter(station => station.coordinateSource === 'DEMO' && stationPosition(station)).length },
     detailVisible: { get() { return !!this.selected }, set(value) { if (!value) this.selected = null } }
   },
   created() { this.load() },

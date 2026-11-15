@@ -6,6 +6,7 @@ import { prepareOperatorDemo, handleDemoOperators } from './operators'
 import { prepareOperationsDemo, handleOperations } from './operations'
 import { demoOverview } from './overview'
 import { prepareDashboardSamples } from './dashboardSamples'
+import { prepareDemoStationLocations } from './stationLocations'
 import { businessToday } from '../views/operations/period'
 const key = 'yuneng-original-ui-demo-v1'
 const clone = value => JSON.parse(JSON.stringify(value))
@@ -48,6 +49,7 @@ prepareOperatorDemo(db)
 prepareOperationsDemo(db)
 const sampleDay = businessToday()
 prepareDashboardSamples(db, sampleDay, Math.floor((Date.now() - Date.parse(sampleDay + 'T00:00:00+08:00')) / 1000))
+prepareDemoStationLocations(db)
 // File IDs from the backend fixture are not public images on a static host.
 // Use the bundled brand mark as an explicit demonstration placeholder.
 const stationCollection = db.lists['/operator/station/list'] || {}

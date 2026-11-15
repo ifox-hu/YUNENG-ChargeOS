@@ -13,8 +13,8 @@
 | admin/login-blue-white.png | 3D 登录页、蓝色品牌与验证码 |
 | admin/overview-blue-white.png | 新版仪表盘，全部运营商 / 全部站点、日期筛选、快捷入口与经营分析 |
 | admin/statistics-blue-white.png | 经营统计 |
-| admin/map-blue-white.png | 桩分布、区域地图与站点列表 |
-| admin/screen-blue-white.png | 全屏运营数据大屏 |
+| admin/map-blue-white.png | 桩分布、区域地图与 24 个内置演示站点的示意点位（非真实定位） |
+| admin/screen-blue-white.png | 全屏运营数据大屏，含标注为演示的示意点位 |
 | admin/station-list-blue-white.png | 站点列表 |
 | admin/order-list-blue-white.png | 原菜单充电订单 |
 | admin/device-list-blue-white.png | 模拟充电桩与端口 |

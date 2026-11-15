@@ -330,7 +330,7 @@ MQ 的“发送成功”只代表 Broker 接收；只有事件变为 `CONSUMED` 
 
 “运营管理”下提供仪表盘、经营统计、桩分布、数据大屏。仪表盘支持运营商 / 站点范围、近 7 天 / 近 30 天 / 自定义日期、趋势切换、时段与订单质量分析、经营排行搜索排序分页和待办下钻。订单快捷入口保留范围和日期，故障、桩分布和大屏保留范围；大屏独立展示近 30 天趋势并每 60 秒刷新。旧 `/operate/total` 兼容跳转至经营统计。
 
-本地后台通过只读 `GET /operator/overview` 聚合登录用户授权范围内的数据；平台管理员可切换运营商，运营商账号只能查看自身范围。Pages 从浏览器模拟数据聚合，并补充带“演示”标记的 3 组样本，不调用真实后端。经营数据按订单创建日期汇总，净收入扣除退款；站点、设备和未关闭工单是当前快照。有单设备占比不是时长利用率。地图随构建打包区域数据，不虚构缺失坐标。
+本地后台通过只读 `GET /operator/overview` 聚合登录用户授权范围内的数据；平台管理员可切换运营商，运营商账号只能查看自身范围。Pages 从浏览器模拟数据聚合，并补充带“演示”标记的 3 组样本，不调用真实后端。经营数据按订单创建日期汇总，净收入扣除退款；站点、设备和未关闭工单是当前快照。有单设备占比不是时长利用率。地图随构建打包区域数据；Pages 的 24 个内置演示站点使用明确标注的示意位置，列表、详情和悬浮提示会说明“非真实设备定位”。旧浏览器缓存会自动迁移，不需清空数据；已填写的坐标及用户自建站点保持原样，真实数据缺失时不补造坐标。
 
 同步发布时按顺序执行：修改说明 → 构建 `site/` → 采集截图 → 回归 → 提交源码、说明、截图及 `site/`。工作流上传的是提交中的 `site/`，不会自动编译后台源码。
 
@@ -339,6 +339,7 @@ powershell -ExecutionPolicy Bypass -File scripts/build-pages.ps1
 node scripts/capture-admin-showcase.cjs
 node scripts/test-dashboard-samples.cjs
 node scripts/test-dashboard-insights.cjs
+node scripts/test-demo-station-coordinates.cjs
 node scripts/test-operations-navigation.cjs
 node scripts/test-original-demo.cjs
 ```

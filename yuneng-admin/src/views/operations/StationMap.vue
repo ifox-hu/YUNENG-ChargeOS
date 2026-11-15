@@ -65,7 +65,7 @@ export default {
       const points = this.stations.filter(station => stationPosition(station)).map(station => ({ name: station.stationName, value: stationPosition(station), station }))
       this.chart.setOption({
         backgroundColor: 'transparent',
-        tooltip: { trigger: 'item', formatter: item => item.seriesType === 'scatter' ? escape(item.name) + '<br/>' + escape(item.data.station.address) : escape(item.name) + '：' + (item.value || 0) + ' 个站点' },
+        tooltip: { trigger: 'item', formatter: item => item.seriesType === 'scatter' ? escape(item.name) + '<br/>' + escape(item.data.station.address) + (item.data.station.coordinateSource === 'DEMO' ? '<br/>演示示意位置，非真实设备定位' : '') : escape(item.name) + '：' + (item.value || 0) + ' 个站点' },
         visualMap: { min: 0, max: Math.max(1, ...data.map(item => item.value)), left: 12, bottom: 22, text: ['多', '少'], calculable: false, seriesIndex: 0, inRange: { color: this.dark ? ['#102840', '#12678e', '#00c8ed'] : ['#e8f0fa', '#91b8f8', '#2864ee'] }, textStyle: { color: this.dark ? '#a2cde3' : '#60708a' }, itemHeight: 95 },
         geo: { map: 'yuneng-china', roam: true, zoom: 1.12, itemStyle: { areaColor: this.dark ? '#102840' : '#eef3fa', borderColor: this.dark ? '#467e9a' : '#a7bed8' }, emphasis: { label: { show: true, color: this.dark ? '#fff' : '#173971' }, itemStyle: { areaColor: this.dark ? '#087eaf' : '#c1d9ff' }}},
         series: [
