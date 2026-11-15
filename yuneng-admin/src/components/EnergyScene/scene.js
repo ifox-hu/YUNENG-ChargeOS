@@ -57,6 +57,9 @@ export function createEnergyScene(stage, T, onStatus) {
   let stopMotion = () => {}
   let completionTimer
   let finishCompletion
+  let completionPromise
+  let completionStart = null
+  let completionFrames = 0
   const ownedResources = new Set()
   const listeners = []
 
@@ -71,7 +74,7 @@ export function createEnergyScene(stage, T, onStatus) {
   }
 
   function pulse() {
-    if (disposed) return
+    if (disposed || completionPromise) return
     stage.dataset.pulse = String(++pulseCount)
     onStatus(reducedMotion || settings.paused ? '能量已连接' : '能量脉冲已激活')
     if (settings.motion && !settings.paused) {
@@ -82,7 +85,7 @@ export function createEnergyScene(stage, T, onStatus) {
   }
 
   function describeMotion() {
-    stage.dataset.motion = reducedMotion ? 'reduced' : settings.paused ? 'paused' : settings.busy ? 'authenticating' : settings.focused ? 'focused' : 'running'
+    stage.dataset.motion = reducedMotion ? 'reduced' : settings.paused ? 'paused' : completionStart !== null ? 'gathering' : settings.busy ? 'authenticating' : settings.focused ? 'focused' : 'running'
     stage.dataset.speed = String(settings.focused || settings.busy ? 0.18 : 1)
   }
 
@@ -96,7 +99,7 @@ export function createEnergyScene(stage, T, onStatus) {
   }
 
   function setFocused(value) {
-    if (disposed) return
+    if (disposed || completionPromise) return
     settings.focused = value
     tx = ty = 0
     describeMotion()
@@ -104,7 +107,7 @@ export function createEnergyScene(stage, T, onStatus) {
   }
 
   function setBusy(value) {
-    if (disposed) return
+    if (disposed || completionPromise) return
     settings.busy = value
     describeMotion()
     if (value) onStatus('正在验证 · 安全连接')
@@ -112,23 +115,43 @@ export function createEnergyScene(stage, T, onStatus) {
     wake()
   }
 
+  function settleCompletion() {
+    if (!finishCompletion) return
+    clearTimeout(completionTimer)
+    const resolve = finishCompletion
+    finishCompletion = null
+    completionPromise = null
+    completionStart = null
+    stage.dataset.transition = 'complete'
+    resolve()
+  }
+
   function complete() {
+    if (completionPromise) return completionPromise
     settings.busy = false
     if (disposed || document.hidden || reducedMotion || settings.paused) return Promise.resolve()
-    pulse()
-    onStatus('验证通过 · 正在进入')
-    return new Promise(resolve => {
+    stopMotion()
+    settings.focused = false
+    completionStart = performance.now()
+    completionFrames = 0
+    stage.dataset.transition = 'gathering'
+    describeMotion()
+    onStatus('验证通过 · 能量汇聚中')
+    completionPromise = new Promise(resolve => {
       finishCompletion = resolve
-      completionTimer = setTimeout(() => { finishCompletion = null; resolve() }, 280)
+      // Normal navigation resolves after the final rendered frames, not a short delay.
+      // A stalled/lost renderer must never block an authenticated user indefinitely.
+      completionTimer = setTimeout(settleCompletion, 2000)
     })
+    wake()
+    return completionPromise
   }
 
   function dispose() {
     if (disposed) return
     disposed = true
     cancelAnimationFrame(frameId)
-    clearTimeout(completionTimer)
-    if (finishCompletion) finishCompletion()
+    settleCompletion()
     if (ro) ro.disconnect()
     listeners.forEach(remove => remove())
     const resources = new Set(ownedResources)
@@ -228,9 +251,15 @@ export function createEnergyScene(stage, T, onStatus) {
       velocityX = velocityY = tx = ty = 0
       pulsePower = 0
       if (uniforms) uniforms.uPulse.value = 0
+      if (uniforms) uniforms.uGather.value = 0
       world.scale.setScalar(1)
+      core.scale.setScalar(1)
+      wire.scale.setScalar(1)
+      dust.scale.setScalar(1)
+      ;[orbitA, orbitB, orbitC].forEach(orbit => orbit.scale.setScalar(1))
       if (aura) aura.material.opacity = 0.16
       shockwaves.forEach(mesh => { mesh.material.opacity = 0 })
+      settleCompletion()
     }
     resetView = () => {
       viewRotation.setFromEuler(new T.Euler(0.1, -0.2, -0.08))
@@ -254,6 +283,7 @@ export function createEnergyScene(stage, T, onStatus) {
       wake(650)
     }
     listen(hit, 'pointerdown', e => {
+      if (completionPromise) return
       if (e.pointerType === 'mouse' && e.button !== 0) return
       if (!pointers.size) {
         suppressPulse = false
@@ -350,7 +380,7 @@ export function createEnergyScene(stage, T, onStatus) {
         velocityX *= damping
         velocityY *= damping
       }
-      const parallax = pointers.size || !canMove() || settings.focused || settings.busy ? 0 : 1
+      const parallax = pointers.size || !canMove() || settings.focused || settings.busy || completionPromise ? 0 : 1
       tilt.setFromEuler(new T.Euler(ty * parallax, tx * parallax, 0))
       turn.copy(viewRotation).premultiply(tilt)
       const ease = reducedMotion ? 1 : 1 - Math.exp(-16 * dt)
@@ -399,6 +429,9 @@ export function createEnergyScene(stage, T, onStatus) {
       uPulse: {
         value: 0
       },
+      uGather: {
+        value: 0
+      },
       uColor: {
         value: new T.Color(settings.accent)
       }
@@ -406,7 +439,7 @@ export function createEnergyScene(stage, T, onStatus) {
     coreMaterial = new T.ShaderMaterial({
       uniforms,
       vertexShader: 'varying vec3 vP; varying vec3 vN; varying vec3 vV; uniform float uTime; uniform float uPulse; void main(){vP=position; vec3 p=position; float d=sin(p.x*6.0+uTime)*sin(p.y*7.0-uTime*.8)*sin(p.z*5.0+uTime*.5); p+=normal*d*(.012+uPulse*.018); vec4 mv=modelViewMatrix*vec4(p,1.0);vN=normalize(normalMatrix*normal);vV=-mv.xyz;gl_Position=projectionMatrix*mv;}',
-      fragmentShader: 'precision highp float; varying vec3 vP; varying vec3 vN; varying vec3 vV; uniform float uTime; uniform float uPulse; uniform vec3 uColor; void main(){vec3 n=normalize(vN);float fres=pow(1.0-abs(dot(n,normalize(vV))),2.1);float lat=asin(clamp(vP.y,-.999,.999));float lon=atan(vP.z,vP.x);float f=sin(lon*7.0+sin(lat*11.0-uTime)*.7+uTime*.5);float g=sin(lat*18.0+sin(lon*6.0+uTime*.7)*1.1);float fil=pow(max(0.0,1.0-abs(f)*1.5),15.0);float fil2=pow(max(0.0,1.0-abs(g)*1.3),20.0);float weave=fil*.32+fil2*.20;float bands=pow(max(0.0,1.0-abs(sin(lat*38.0+uTime*.3))*1.6),9.0)*.035;float l=max(0.0,dot(n,normalize(vec3(-1.0,1.5,2.0))));vec3 base=mix(vec3(.016,.042,.09),uColor*.20,l);vec3 c=base+uColor*(fres*1.05+weave+bands)*(1.0+uPulse*.8);c+=vec3(.18,.32,.60)*pow(l,18.0);gl_FragColor=vec4(c,1.0);}'
+      fragmentShader: 'precision highp float; varying vec3 vP; varying vec3 vN; varying vec3 vV; uniform float uTime; uniform float uPulse; uniform float uGather; uniform vec3 uColor; void main(){vec3 n=normalize(vN);float fres=pow(1.0-abs(dot(n,normalize(vV))),2.1);float lat=asin(clamp(vP.y,-.999,.999));float lon=atan(vP.z,vP.x);float f=sin(lon*7.0+sin(lat*11.0-uTime)*.7+uTime*.5);float g=sin(lat*18.0+sin(lon*6.0+uTime*.7)*1.1);float fil=pow(max(0.0,1.0-abs(f)*1.5),15.0);float fil2=pow(max(0.0,1.0-abs(g)*1.3),20.0);float weave=fil*.32+fil2*.20;float bands=pow(max(0.0,1.0-abs(sin(lat*38.0+uTime*.3))*1.6),9.0)*.035;float l=max(0.0,dot(n,normalize(vec3(-1.0,1.5,2.0))));vec3 base=mix(vec3(.016,.042,.09),uColor*.20,l);vec3 c=base+uColor*(fres*1.05+weave+bands)*(1.0+uPulse*.8);c+=vec3(.18,.32,.60)*pow(l,18.0);c+=mix(uColor,vec3(.78,1.0,1.0),.6)*uGather*.45;gl_FragColor=vec4(c,1.0);}'
     })
     const core = new T.Mesh(new T.SphereGeometry(0.98, 80, 56), coreMaterial)
     world.add(core)
@@ -601,7 +634,7 @@ export function createEnergyScene(stage, T, onStatus) {
       shards.push(s)
     }
     listen(root, 'pointermove', e => {
-      if (e.pointerType === 'touch' || !canMove() || settings.focused || settings.busy) return
+      if (e.pointerType === 'touch' || !canMove() || settings.focused || settings.busy || completionPromise) return
       const b = root.getBoundingClientRect()
       tx = ((e.clientX - b.left) / b.width - 0.5) * 0.25
       ty = ((e.clientY - b.top) / b.height - 0.5) * 0.18
@@ -678,10 +711,26 @@ export function createEnergyScene(stage, T, onStatus) {
           }
         }
       }
+      if (completionStart !== null) {
+        const progress = Math.min(1, (now - completionStart) / 900)
+        const gather = progress * progress * (3 - 2 * progress)
+        core.scale.setScalar(1 + gather * 0.13)
+        wire.scale.setScalar(1 + gather * 0.13)
+        orbitA.scale.setScalar(1 - gather * 0.22)
+        orbitB.scale.setScalar(1 - gather * 0.25)
+        orbitC.scale.setScalar(1 - gather * 0.29)
+        dust.scale.setScalar(1 - gather * 0.62)
+        uniforms.uGather.value = gather
+        uniforms.uPulse.value = gather * 0.55
+        aura.material.opacity = 0.16 + gather * 0.28
+        stage.dataset.gather = gather.toFixed(3)
+        completionFrames = progress === 1 ? completionFrames + 1 : 0
+      }
       dust.material.uniforms.uPulse.value = uniforms.uPulse.value
       renderer.render(scene, camera)
       stage.dataset.frame = String(++renderedFrames)
       stage.dataset.time = time.toFixed(4)
+      if (completionFrames >= 2) settleCompletion()
       if (canMove()) {
         // Only downgrade sustained slow rendering; never chase isolated startup frames.
         sampledFrames++
@@ -709,6 +758,7 @@ export function createEnergyScene(stage, T, onStatus) {
     listen(document, 'visibilitychange', () => {
       cancelAnimationFrame(frameId)
       frameId = null
+      if (document.hidden) settleCompletion()
       if (!document.hidden && !disposed) {
         clockLast = 0
         wake()
