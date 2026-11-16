@@ -1,10 +1,8 @@
 # 界面截图说明
 
-## 当前版本（2026-11-15）
+## 采集日期：2026-11-15
 
-品牌横幅、蓝色闪电标识、后台主题和小程序配色按已确认的蓝白款统一。截图来自本项目当前源码构建后的实际页面，没有对截图后期换色。
-
-登录页的 3D 能量场景优化了金属轨道反射和粒子流向，隐藏场景控制按钮，表单输入时减速；手机改为紧凑布局，减少动态效果时静止。左上角图标、中文品牌和英文副标统一蓝色调；Pages 使用同一登录页实现。管理后台 13 张截图覆盖新版驾驶舱和原业务页面，从本次 Pages 构建重新采集。
+截图来自蓝白主题的运营后台和小程序 H5 页面，共 26 张。后台使用 Pages 演示数据，小程序连接本地开发接口。
 
 ## 运营后台：13 张
 
@@ -24,14 +22,14 @@
 | admin/alarm-events-blue-white.png | 告警事件面板 |
 | admin/operator-onboarding-blue-white.png | 运营商开户表单（仅打开，未提交） |
 
-先执行 `powershell -ExecutionPolicy Bypass -File scripts/build-pages.ps1`，再运行 `node scripts/capture-admin-showcase.cjs`。页面数据是隔离浏览器中的模拟数据，不连接真实设备、数据库或 RocketMQ；不作为生产或性能测试证据。脚本校验仓库子路径登录、四个快捷入口、全屏布局、原收款 / 优惠券页面，并检查 JavaScript 错误、失败资源与外部请求。采集信息及构建首页 SHA-256 见 admin/capture-manifest.json。
+在仓库根目录先执行 `powershell -ExecutionPolicy Bypass -File scripts/build-pages.ps1`，再运行 `node scripts/capture-admin-showcase.cjs`。脚本使用隔离浏览器中的模拟数据，检查登录、快捷入口、全屏布局及收款 / 优惠券页面，同时记录脚本错误、失败资源和外部请求。采集信息及构建首页 SHA-256 见 [admin/capture-manifest.json](admin/capture-manifest.json)。
 
 ## 小程序：13 张
 
 mini/ 下包含首页距离/价格/智能排序、站点设备、端口选择、订单列表/详情、个人中心、余额、积分、登录、创建报修、我的报修，共 13 张。由当前蓝白小程序源码构建 H5 后，以 390 × 844 视口、2 倍像素采集。
 
-生成命令：`node scripts/capture-mini-h5.cjs`。通过本地演示账号读取开发接口数据，不发起真实支付、充电或报修。它们是 uni-app H5 预览，不能当作微信真机验收截图；Vant Weapp 在 H5 的表现存在差异。采集信息见 mini/capture-manifest.json。
+在仓库根目录运行 `node scripts/capture-mini-h5.cjs`。脚本使用本地演示账号读取已有数据，采集时不提交支付、启充或报修操作。Vant Weapp 等微信专用组件需在微信端另行检查。采集信息见 [mini/capture-manifest.json](mini/capture-manifest.json)。
 
-## 历史素材边界
+## 上游素材
 
-模块 assets/hcp-cloud/ 中保留的上游说明图和 docs/ 中带日期的历史测试材料，不代表当前视觉版本；没有将这些图片冒充本项目新截图。当前展示以仓库首页引用的 26 张截图和本清单为准。上游版权和来源说明保持原样。
+`assets/hcp-cloud/` 中保留上游说明图；仓库首页的界面预览使用本清单中的截图。上游素材的版权及来源见其原有说明。
