@@ -1,8 +1,17 @@
 <template>
   <div v-loading="loading" class="operations-dashboard">
-    <header class="page-heading"><h1>仪表盘</h1><div class="heading-actions"><span class="update-time">{{ updatedAt ? '更新于 ' + updatedAt : '正在获取数据' }}</span><el-button icon="el-icon-refresh" size="small" :loading="loading" @click="refreshOverview">刷新</el-button></div></header>
+    <header class="page-heading">
+      <h1>仪表盘 <el-tag v-if="containsDemoData" type="warning" size="small">含演示样本</el-tag></h1>
+      <div class="heading-actions">
+        <span v-if="updatedAt" class="update-time">更新于 {{ updatedAt }}</span>
+        <el-button icon="el-icon-refresh" size="small" :loading="loading" @click="refreshOverview">刷新</el-button>
+      </div>
+    </header>
     <scope-selector :scope="scope" :operators="operators" :stations="stationOptions" compact @change="changeScope">
-      <div class="dashboard-period"><el-radio-group :value="periodPreset" size="small" @input="choosePeriod"><el-radio-button label="7">近7天</el-radio-button><el-radio-button label="30">近30天</el-radio-button><el-radio-button label="custom" @click.native="openCustomDates">自定义</el-radio-button></el-radio-group><el-date-picker
+      <div class="dashboard-period"><el-radio-group class="period-presets" :value="periodPreset" size="small" aria-label="统计日期" @input="choosePeriod">
+        <el-radio-button v-for="item in presets" :key="item.value" :label="item.value">{{ item.label }}</el-radio-button>
+        <el-radio-button label="custom" @click.native="openCustomDates">自定义</el-radio-button>
+      </el-radio-group><el-date-picker
         ref="periodPicker"
         :value="selectedDates"
         popper-class="dashboard-date-picker"
@@ -20,7 +29,7 @@
     <el-alert v-for="failure in failures" :key="failure" :title="failure" type="warning" :closable="false" show-icon class="data-warning" />
     <section v-if="selectedStation" class="station-detail"><div><el-button type="text" icon="el-icon-back" @click="changeScope({tenantId:scope.tenantId})">返回全部站点</el-button><h2>{{ selectedStation.stationName }}</h2><span>{{ selectedStation.address || '地址待录入' }}</span></div><el-button type="text" @click="stationDetailVisible=true">查看站点详情 <i class="el-icon-arrow-right" /></el-button></section>
     <div class="metric-grid"><section v-for="card in cards" :key="card.label" class="metric-card"><div class="metric-label"><span>{{ card.label }}<small v-if="card.note" class="metric-definition">{{ card.note }}</small></span><i :class="card.icon" /></div><div class="metric-value"><strong>{{ metric(card.value,card.digits) }}</strong><span>{{ card.unit }}</span></div><div v-if="card.key" class="metric-comparison" :class="comparisonFor(card).direction" :title="comparisonPeriod">{{ comparisonFor(card).text }}</div></section></div>
-    <quick-actions :scope="scope" :dates="selectedDates" :permissions="$store.getters.permissions || []" :can-fault="canFault" :pending="loading ? 0 : Number(faultSummary.active) || 0" />
+    <quick-actions v-if="updatedAt" :scope="scope" :dates="selectedDates" :permissions="$store.getters.permissions || []" :can-fault="canFault" :pending="loading ? 0 : Number(faultSummary.active) || 0" />
     <div class="dashboard-analytics">
       <section class="overview-panel analytics-trend"><div class="panel-heading"><h2>{{ trendView==='energy'?'充电量趋势':'订单与净收入趋势' }}</h2><el-radio-group v-model="trendView" size="mini" aria-label="趋势指标"><el-radio-button label="business">订单与收入</el-radio-button><el-radio-button label="energy">充电量</el-radio-button></el-radio-group></div><div class="analytics-chart"><overview-chart :data="trend" :orders="trendView==='business'" :energy="trendView==='energy'" /></div></section>
       <section class="overview-panel dashboard-status"><div class="panel-heading"><h2>设备运行状态</h2><span class="panel-hint">当前快照</span></div><div class="analytics-chart"><overview-chart kind="status" :summary="summary" /></div><div class="device-counts"><span>在线 <b>{{ metric(summary.onLine) }}</b></span><span>离线 <b>{{ metric(summary.offLine) }}</b></span><span>未确认 <b>{{ metric(summary.unknownState) }}</b></span></div></section>
@@ -63,15 +72,31 @@ import OverviewChart from './OverviewChart'
 import QuickActions from './QuickActions'
 import DashboardInsights from './DashboardInsights'
 import { businessMetrics, periodComparison, durationText, ticketStatus } from './insights'
-import { recentPeriod, validatePeriod } from './period'
+import { businessToday, presetPeriod, validatePeriod } from './period'
+
+const presets = [
+  { value: 'today', label: '今天' },
+  { value: 'yesterday', label: '昨天' },
+  { value: '7', label: '近7天' },
+  { value: '30', label: '近30天' }
+]
 export default {
   name: 'Index',
   components: { ScopeSelector, OverviewChart, QuickActions, DashboardInsights },
   mixins: [overview],
-  data() { return { stationDetailVisible: false, pendingVisible: false, pendingKind: 'faults', customMode: false, businessView: 'operators', tablePage: 1, businessKeyword: '', businessSort: { prop: 'revenue', order: 'descending' }, trendView: 'business' } },
+  data() { return { presets, calendarDay: businessToday(), retainOverviewOnFailure: true, stationDetailVisible: false, pendingVisible: false, pendingKind: 'faults', customMode: false, businessView: 'operators', tablePage: 1, businessKeyword: '', businessSort: { prop: 'revenue', order: 'descending' }, trendView: 'business' } },
   computed: {
-    selectedDates() { const q = this.$route.query; return q.startDate || q.endDate ? [q.startDate, q.endDate] : recentPeriod(7) },
-    periodPreset() { if (!this.customMode) for (const n of [7, 30]) if (this.selectedDates.join() === recentPeriod(n).join()) return String(n); return 'custom' },
+    activePreset() {
+      const { periodPreset, startDate, endDate } = this.$route.query
+      if (presets.some(item => item.value === periodPreset)) return periodPreset
+      if (!startDate && !endDate) return '7'
+      return 'custom'
+    },
+    selectedDates() {
+      const { startDate, endDate } = this.$route.query
+      return this.activePreset === 'custom' ? [startDate, endDate] : presetPeriod(this.activePreset, this.calendarDay)
+    },
+    periodPreset() { return this.customMode ? 'custom' : this.activePreset },
     showOperatorTab() { return this.scope.root && !this.scope.tenantId && !this.scope.stationId },
     operatorTable() { return this.showOperatorTab && this.businessView === 'operators' },
     businessRows() {
@@ -85,7 +110,7 @@ export default {
       })
     },
     businessSortLabel() { return '按' + ({ revenue: '净收入', count: '订单数', stationCount: '站点数', deviceCount: '设备数', revenuePerDevice: '单桩收入', activeDeviceRate: '有单设备占比' }[this.businessSort.prop]) + (this.businessSort.order === 'ascending' ? '升序' : '降序') },
-    comparisonPeriod() { const p = this.comparison.period; return p ? '对比时段：' + p.startDate + ' 至 ' + p.endDate + '（前一个等长时段）' : '暂无可比时段' },
+    comparisonPeriod() { const p = this.comparison.period; return p ? '对比时段：' + p.startDate + ' 至 ' + p.endDate : '暂无可比时段' },
     comparisonLabel() { const p = this.comparison.period; const days = p && (Date.parse(p.endDate) - Date.parse(p.startDate)) / 86400000 + 1; return Number.isInteger(days) && days > 0 ? '较前' + days + '天' : '较前一等长时段' },
     visibleBusinessRows() { return this.businessRows.slice((this.tablePage - 1) * 5, this.tablePage * 5) },
     containsDemoData() { return this.stations.some(station => String(station.stationName).startsWith('【演示】')) },
@@ -100,7 +125,7 @@ export default {
     }
   },
   watch: {
-    '$route.query'(query, previous) { this.tablePage = 1; if (query.tenantId !== previous.tenantId || query.stationId !== previous.stationId) this.resetBusinessFilters() },
+    '$route.query'(query, previous) { this.customMode = false; this.pendingVisible = false; this.stationDetailVisible = false; this.tablePage = 1; if (query.tenantId !== previous.tenantId || query.stationId !== previous.stationId) this.resetBusinessFilters() },
     businessView() { this.resetBusinessFilters() },
     businessKeyword() { this.tablePage = 1 }
   },
@@ -113,10 +138,28 @@ export default {
       this.businessKeyword = ''; this.businessSort = { prop: 'revenue', order: 'descending' }; this.tablePage = 1
       this.$nextTick(() => { if (this.$refs.businessTable) this.$refs.businessTable.sort('revenue', 'descending') })
     },
-    overviewParams() { const [startDate, endDate] = validatePeriod(...this.selectedDates); return { tenantId: this.$route.query.tenantId, stationId: this.$route.query.stationId, startDate, endDate } },
-    choosePeriod(value) { this.customMode = value === 'custom'; if (this.customMode) this.openCustomDates(); else this.applyDates(recentPeriod(Number(value))) },
+    overviewParams() {
+      this.calendarDay = businessToday()
+      const [startDate, endDate] = validatePeriod(...this.selectedDates)
+      return { tenantId: this.$route.query.tenantId, stationId: this.$route.query.stationId, startDate, endDate }
+    },
+    choosePeriod(value) {
+      if (value === 'custom') return this.openCustomDates()
+      this.customMode = false
+      return this.applyDates(presetPeriod(value), value)
+    },
     openCustomDates() { this.customMode = true; this.$nextTick(() => this.$refs.periodPicker.focus()) },
-    async applyDates(value) { try { const [startDate, endDate] = validatePeriod(...(value || [])); await this.$router.push({ query: { ...this.$route.query, startDate, endDate }}).catch(() => {}) } catch (e) { this.$message.warning(e.message) } },
+    async applyDates(value, preset) {
+      try {
+        const [startDate, endDate] = validatePeriod(...(value || []))
+        const query = { ...this.$route.query, startDate, endDate }
+        if (preset) query.periodPreset = preset
+        else delete query.periodPreset
+        await this.$router.push({ query }).catch(() => {})
+      } catch (e) {
+        this.$message.warning(e.message)
+      }
+    },
     openBusiness(row) { return this.changeScope(this.operatorTable ? { tenantId: row.tenantId } : { tenantId: row.tenantId, stationId: row.stationId }) },
     openFaults() { this.pendingKind = 'faults'; this.pendingVisible = true },
     openOffline() { this.pendingKind = 'offline'; this.pendingVisible = true },
@@ -125,6 +168,8 @@ export default {
 }
 </script>
 <style scoped>
+.page-heading h1,.heading-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.period-presets{display:flex;flex-wrap:wrap;row-gap:6px}
 .operations-dashboard{padding:22px 24px;background:#f4f7fc;min-height:calc(100vh - 84px);color:#23334e}.page-heading,.heading-actions,.panel-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.page-heading{margin-bottom:16px}h1{margin:0;font-size:20px;font-weight:600}h2{margin:0;font-size:15px;font-weight:600}.update-time,.panel-hint{color:#8b98ac;font-size:12px}.heading-actions{justify-content:flex-end}.dashboard-period{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-left:auto}.dashboard-period .el-date-editor{width:264px}.operations-dashboard ::v-deep .scope-selector{gap:12px;padding:14px 16px;margin-bottom:18px}.operations-dashboard ::v-deep .scope-selector .el-select{width:180px}.metric-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:18px}.metric-card,.overview-panel{background:#fff;border:1px solid #e1e8f3;border-radius:8px;min-width:0}.metric-card{padding:18px 20px}.metric-label{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:#63758f}.metric-label i{font-size:20px;color:#3477ed}.metric-value{display:flex;align-items:baseline;gap:8px;margin:16px 0 10px}.metric-value strong{font-size:27px;font-weight:600;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.metric-value span,.metric-card small{font-size:12px;color:#8b98ac}.dashboard-analytics{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(0,1fr);gap:18px;align-items:start}.overview-panel{padding:16px}.panel-heading{min-height:27px;margin-bottom:10px;flex-wrap:wrap}.analytics-trend,.dashboard-status{height:320px;display:flex;flex-direction:column}.analytics-chart{flex:1;min-height:0}.device-counts{display:flex;justify-content:center;gap:16px;margin-top:6px;color:#8b98ac;font-size:12px}.device-counts b{color:#4f6482;font-weight:500}.business-tabs{display:flex;gap:20px}.business-tabs button{padding:0 0 7px;border:0;border-bottom:2px solid transparent;background:transparent;color:#8390a5;font-size:15px;font-weight:600;cursor:pointer}.business-tabs button.active{border-color:#2563eb;color:#2563eb}.business-tabs button:focus-visible,.pending-row:focus-visible{outline:2px solid #2563eb;outline-offset:3px}.dashboard-business ::v-deep .el-table th{background:#f0f5ff;color:#637b9d}.dashboard-business ::v-deep .el-table td{font-size:12px;padding:8px 0}.dashboard-business ::v-deep .el-table .el-button{padding:7px 0;font-size:12px}.table-pagination{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:12px;font-size:12px;color:#8b98ac}.pending-row{display:flex;align-items:center;justify-content:space-between;width:100%;border:0;border-bottom:1px solid #edf1f7;background:#fff;padding:22px 0;text-align:left;cursor:pointer;color:#64758e;font-size:13px;gap:10px}.pending-row>span{display:flex;align-items:center;gap:8px}.pending-row strong{font-size:19px;font-weight:600;color:#2563eb;font-variant-numeric:tabular-nums}.pending-row .el-icon-arrow-right{font-size:12px;color:#8b98ac}.pending-row:hover:not(:disabled){color:#2563eb;background:#f8faff}.pending-row:disabled{cursor:default}.pending-row:disabled strong{font-size:13px;color:#8b98ac}.demo-note{color:#ad7c25}.dashboard-footnote{margin:16px 0 0;color:#8b98ac;font-size:12px;line-height:1.8}.data-warning{margin-bottom:12px}.station-detail{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}.station-detail>div{display:flex;align-items:center;gap:16px;flex-wrap:wrap}.station-detail span{color:#8b98ac;font-size:12px}.station-detail>.el-button{flex-shrink:0}
 .business-filters{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:4px 0 14px}.business-filters .el-input{width:200px;max-width:100%}.business-filters .el-checkbox{margin:0;color:#64758e}.business-result-count{margin-left:auto;color:#8b98ac;font-size:12px}.business-filters .el-button{margin:0}.dashboard-business ::v-deep .el-table__body-wrapper{overflow-x:auto}
 @media(max-width:520px){.business-filters{gap:10px 12px}.business-filters .el-input{width:100%}.business-result-count{margin-left:0}}

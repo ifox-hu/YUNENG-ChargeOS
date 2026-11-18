@@ -1,10 +1,18 @@
-export function businessToday() {
-  return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+export function businessToday(now = new Date()) {
+  return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now)
 }
-export function recentPeriod(days) {
-  const end = businessToday(); const start = new Date(end + 'T00:00:00Z')
+export function recentPeriod(days, end = businessToday()) {
+  const start = new Date(end + 'T00:00:00Z')
   start.setUTCDate(start.getUTCDate() - days + 1)
   return [start.toISOString().slice(0, 10), end]
+}
+export function presetPeriod(preset, today = businessToday()) {
+  if (preset === 'today') return [today, today]
+  if (preset === 'yesterday') {
+    const [yesterday] = recentPeriod(2, today)
+    return [yesterday, yesterday]
+  }
+  return recentPeriod(Number(preset), today)
 }
 export function validatePeriod(start, end) {
   const valid = value => /^\d{4}-\d{2}-\d{2}$/.test(value || '') && Number.isFinite(Date.parse(value + 'T00:00:00Z')) && new Date(value + 'T00:00:00Z').toISOString().slice(0, 10) === value

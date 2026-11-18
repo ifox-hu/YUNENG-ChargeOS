@@ -52,6 +52,14 @@ export default {
   methods: {
     metric,
     overviewParams() { return { tenantId: this.$route.query.tenantId, stationId: this.$route.query.stationId } },
+    clearOverview() {
+      Object.assign(this, {
+        summary: {}, comparison: {}, hourly: [], orderQuality: {}, actionSummary: {},
+        stations: [], stationTotal: null, faultSummary: {}, alarms: [], pendingFaults: [],
+        offlineDevices: [], trend: [], ranking: [], operatorStats: [], stationStats: [], updatedAt: ''
+      })
+      this.loadedOverviewKey = null
+    },
     async changeScope(value) {
       const station = this.stationOptions.find(item => String(item.stationId) === String(value.stationId))
       if (this.scope.root && value.stationId && !value.tenantId && station) value = { ...value, tenantId: station.tenantId }
@@ -65,10 +73,13 @@ export default {
       const sequence = this.requestSequence = (this.requestSequence || 0) + 1
       this.loading = true
       this.failures = []
-      this.summary = {}; this.stations = []; this.stationTotal = null; this.faultSummary = {}; this.alarms = []; this.pendingFaults = []; this.offlineDevices = []; this.trend = []; this.ranking = []; this.operatorStats = []; this.stationStats = []; this.updatedAt = ''
-      this.comparison = {}; this.hourly = []; this.orderQuality = {}; this.actionSummary = {}
+      let keepPrevious = false
       try {
-        const { data } = await request({ url: '/operator/overview', method: 'get', params: this.overviewParams() })
+        const params = this.overviewParams()
+        const key = JSON.stringify([this.$store.getters.userId, params])
+        keepPrevious = Boolean(this.retainOverviewOnFailure && this.loadedOverviewKey === key)
+        if (!keepPrevious) this.clearOverview()
+        const { data } = await request({ url: '/operator/overview', method: 'get', params })
         if (sequence !== this.requestSequence || this._isDestroyed || this._isBeingDestroyed) return
         this.scope = data.scope
         this.operators = data.operators || []
@@ -89,8 +100,19 @@ export default {
         this.operatorStats = data.operatorStats || []
         this.stationStats = data.stationStats || []
         this.canFault = data.canFault !== false
-        this.updatedAt = new Date().toLocaleTimeString('zh-CN', { hour12: false })
-      } catch (error) { if (sequence === this.requestSequence) this.failures = ['当前范围数据获取失败，请检查权限或连接后重试'] } finally { if (sequence === this.requestSequence) this.loading = false }
+        this.loadedOverviewKey = key
+        this.updatedAt = new Date().toLocaleTimeString('zh-CN', { hour12: false, timeZone: 'Asia/Shanghai' })
+      } catch (error) {
+        if (sequence !== this.requestSequence) return
+        const status = error && error.response && error.response.status
+        const canKeep = keepPrevious && error instanceof Error && !(status >= 400 && status < 500)
+        if (!canKeep) this.clearOverview()
+        this.failures = [canKeep
+          ? '刷新失败，正在显示上次成功更新（' + this.updatedAt + '）的数据'
+          : '当前范围数据获取失败，请检查权限或连接后重试']
+      } finally {
+        if (sequence === this.requestSequence) this.loading = false
+      }
     }
   }
 }
