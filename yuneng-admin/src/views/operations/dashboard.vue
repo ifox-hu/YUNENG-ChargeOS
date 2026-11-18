@@ -1,7 +1,7 @@
 <template>
   <div v-loading="loading" class="operations-dashboard">
     <header class="page-heading">
-      <h1>仪表盘 <el-tag v-if="containsDemoData" type="warning" size="small">含演示样本</el-tag></h1>
+      <h1>仪表盘</h1>
       <div class="heading-actions">
         <span v-if="updatedAt" class="update-time">更新于 {{ updatedAt }}</span>
         <el-button icon="el-icon-refresh" size="small" :loading="loading" @click="refreshOverview">刷新</el-button>
