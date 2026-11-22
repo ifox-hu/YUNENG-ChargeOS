@@ -70,6 +70,8 @@ module.exports = {
   },
   chainWebpack(config) {
     if (process.env.VUE_APP_DEMO === 'true') {
+      config.entry('app').clear().add(resolve('src/demo-entry.js'))
+
       // Vue CLI 4 keys the Babel cache by NODE_ENV, but custom modes set BABEL_ENV separately.
       config.module.rule('js').use('cache-loader').tap(options => ({
         ...options,
@@ -119,7 +121,8 @@ module.exports = {
           elementUI: {
             name: 'chunk-elementUI', // split elementUI into a single package
             test: /[\\/]node_modules[\\/]_?element-ui(.*)/, // in order to adapt to cnpm
-            priority: 20 // the weight needs to be larger than libs and app or it will be packaged into libs or app
+            priority: 20,
+            chunks: process.env.VUE_APP_DEMO === 'true' ? 'initial' : 'all'
           },
           commons: {
             name: 'chunk-commons',

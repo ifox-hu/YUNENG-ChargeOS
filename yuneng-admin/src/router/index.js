@@ -51,9 +51,7 @@ export const constantRoutes = [
   },
   {
     path: '/login',
-    component: process.env.VUE_APP_DEMO === 'true'
-      ? () => import(/* webpackMode: 'eager' */ '@/views/login')
-      : () => import('@/views/login'),
+    component: () => import('@/views/login'),
     hidden: true
   },
   {

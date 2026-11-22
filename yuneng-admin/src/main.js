@@ -83,9 +83,13 @@ Vue.use(Element, {
 
 Vue.config.productionTip = false
 
-new Vue({
-  el: '#app',
-  router,
-  store,
-  render: h => h(App)
-})
+export function mountAdmin() {
+  new Vue({
+    el: '#app',
+    router,
+    store,
+    render: h => h(App)
+  })
+}
+
+if (process.env.VUE_APP_DEMO !== 'true') mountAdmin()

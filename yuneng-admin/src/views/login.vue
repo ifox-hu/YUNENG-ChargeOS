@@ -119,7 +119,6 @@
 </template>
 
 <script>
-import { getCodeImg } from '@/api/login'
 import Cookies from 'js-cookie'
 import { encrypt, decrypt } from '@/utils/jsencrypt'
 
@@ -128,6 +127,9 @@ import EnergyScene from '@/components/EnergyScene'
 export default {
   name: 'Login',
   components: { EnergyScene },
+  props: {
+    services: { type: Object, default: null }
+  },
   data() {
     return {
       codeUrl: '',
@@ -161,7 +163,7 @@ export default {
   watch: {
     $route: {
       handler: function(route) {
-        this.redirect = route.query && route.query.redirect
+        this.redirect = route && route.query.redirect
       },
       immediate: true
     }
@@ -175,7 +177,10 @@ export default {
       if (!event.currentTarget.contains(event.relatedTarget)) this.sceneFocused = false
     },
     getCode() {
-      getCodeImg().then((res) => {
+      const challenge = this.services
+        ? this.services.getCode()
+        : import('@/api/login').then(({ getCodeImg }) => getCodeImg())
+      challenge.then(res => {
         this.captchaEnabled =
           res.captchaEnabled === undefined ? true : res.captchaEnabled
         if (this.captchaEnabled) {
@@ -198,7 +203,16 @@ export default {
         rememberMe: rememberMe === undefined ? false : Boolean(rememberMe)
       }
     },
+    async signIn() {
+      const completeScene = () => this.$refs.energyScene && this.$refs.energyScene.complete()
+      if (this.services) return this.services.signIn(this.loginForm, completeScene)
+
+      await this.$store.dispatch('Login', this.loginForm)
+      await completeScene()
+      await this.$router.push({ path: this.redirect || '/' }).catch(() => {})
+    },
     handleLogin() {
+      if (this.loading) return
       this.$refs.loginForm.validate((valid) => {
         if (valid) {
           this.loading = true
@@ -215,18 +229,11 @@ export default {
             Cookies.remove('password')
             Cookies.remove('rememberMe')
           }
-          this.$store
-            .dispatch('Login', this.loginForm)
-            .then(async() => {
-              if (this.$refs.energyScene) await this.$refs.energyScene.complete()
-              this.$router.push({ path: this.redirect || '/' }).catch(() => {})
-            })
-            .catch(() => {
-              this.loading = false
-              if (this.captchaEnabled) {
-                this.getCode()
-              }
-            })
+          this.signIn().catch(error => {
+            this.loading = false
+            if (this.services) this.services.showError(error)
+            if (this.captchaEnabled) this.getCode()
+          })
         }
       })
     }

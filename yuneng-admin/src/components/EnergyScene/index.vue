@@ -24,20 +24,31 @@ export default {
   },
   mounted() {
     this.sceneCancelled = false
-    loadThree().then(three => {
-      if (this.sceneCancelled) return
-      this.energyScene = createEnergyScene(this.$el, three, status => this.$emit('status', status))
-      this.energyScene.setFocused(this.focused)
-      this.energyScene.setBusy(this.busy)
-    }).catch(() => {
-      if (!this.sceneCancelled) this.$emit('status', '能量核心 · 静态展示')
-    })
+    if (process.env.VUE_APP_DEMO === 'true') {
+      // Give the login form a paint before starting the WebGL download.
+      this.sceneFrame = requestAnimationFrame(() => {
+        this.sceneFrame = requestAnimationFrame(this.startScene)
+      })
+    } else {
+      this.startScene()
+    }
   },
   beforeDestroy() {
     this.sceneCancelled = true
+    cancelAnimationFrame(this.sceneFrame)
     if (this.energyScene) this.energyScene.dispose()
   },
   methods: {
+    startScene() {
+      loadThree().then(three => {
+        if (this.sceneCancelled) return
+        this.energyScene = createEnergyScene(this.$el, three, status => this.$emit('status', status))
+        this.energyScene.setFocused(this.focused)
+        this.energyScene.setBusy(this.busy)
+      }).catch(() => {
+        if (!this.sceneCancelled) this.$emit('status', '能量核心 · 静态展示')
+      })
+    },
     complete() {
       return this.energyScene ? this.energyScene.complete() : Promise.resolve()
     },

@@ -1,7 +1,8 @@
 import fixtures from './fixtures.json'
 import { seedDemoPorts, refreshDemoPorts, simulateDemoPorts } from './telemetry'
 import { handleDemoAlarms } from './alarms'
-import { createDemoCaptcha, verifyDemoCaptcha } from './captcha'
+import { createDemoCaptcha } from './captcha'
+import { createDemoSession } from './authentication'
 import { prepareOperatorDemo, handleDemoOperators } from './operators'
 import { prepareOperationsDemo, handleOperations } from './operations'
 import { demoOverview } from './overview'
@@ -72,9 +73,7 @@ function handle(config) {
  const method=(config.method||'get').toLowerCase()
  if(url==='/code')return {...ok(null),...createDemoCaptcha()}
  if(url==='/auth/login'){
-  const error=verifyDemoCaptcha(b.code,b.uuid)
-  if(error)return fail(error)
-  return ok({access_token:'DEMO_BROWSER_ONLY',expires_in:7200,tenant_id:9999})
+  try { return ok(createDemoSession(b)) } catch (error) { return fail(error.message) }
  }
  if(url==='/auth/logout'||url==='/auth/refresh')return ok(7200)
  if(url==='/system/user/getInfo')return {...ok(null),user,roles:['admin'],permissions:['*:*:*']}
