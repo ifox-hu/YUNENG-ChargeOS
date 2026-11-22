@@ -69,6 +69,14 @@ module.exports = {
     ],
   },
   chainWebpack(config) {
+    if (process.env.VUE_APP_DEMO === 'true') {
+      // Vue CLI 4 keys the Babel cache by NODE_ENV, but custom modes set BABEL_ENV separately.
+      config.module.rule('js').use('cache-loader').tap(options => ({
+        ...options,
+        cacheIdentifier: options.cacheIdentifier + `-demo-${process.env.BABEL_ENV}`
+      }))
+    }
+
     config.plugins.delete('preload') // TODO: need test
     config.plugins.delete('prefetch') // TODO: need test
 

@@ -144,8 +144,7 @@ export function filterDynamicRoutes(routes) {
 
 export const loadView = (view) => {
   if (process.env.VUE_APP_DEMO === 'true') {
-    const pages = require.context('../../views', true, /\.vue$/)
-    return () => Promise.resolve(pages('./' + view + '.vue'))
+    return () => import(`@/views/${view}.vue`)
   }
   if (process.env.NODE_ENV === 'development') {
     return (resolve) => require([`@/views/${view}`], resolve)
