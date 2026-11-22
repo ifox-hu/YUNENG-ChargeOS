@@ -4,7 +4,7 @@ const sessionKey = 'yuneng-demo-sessions-v1'
 const lifetime = 7200
 const accounts = {
   admin: { root: true, tenantId: 9999, password: 'admin123' },
-  demo: { root: false, tenantId: 9999, password: 'Demo123456!' }
+  demo: { root: false, tenantId: 887001, password: 'Demo123456!' }
 }
 
 function readSessions() {

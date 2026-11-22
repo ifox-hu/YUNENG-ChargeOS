@@ -42,11 +42,14 @@ test('platform and tenant logins return different routes and scope operator reco
   const demoResult = await login('demo', 'Demo123456!')
   assert.equal(adminResult.code, 200)
   assert.equal(demoResult.code, 200)
+  assert.equal(demoResult.data.tenant_id, 887001)
   const admin = adminResult.data.access_token
   const demo = demoResult.data.access_token
   assert.notEqual(admin, demo)
   assert.notEqual((await login('admin', 'wrong-password')).code, 200)
-  assert.equal((await request('/system/user/getInfo', demo)).user.userName, 'demo')
+  const demoProfile = (await request('/system/user/getInfo', demo)).user
+  assert.equal(demoProfile.userName, 'demo')
+  assert.equal(demoProfile.tenantId, 887001)
   assert.equal((await request('/system/user/getInfo', admin)).user.userName, 'admin')
   assert.equal((await request('/system/menu/getRouters', demo)).data.some(r => r.path === '/system'), false)
   assert.equal((await request('/system/menu/getRouters', admin)).data.some(r => r.path === '/system'), true)
@@ -54,7 +57,11 @@ test('platform and tenant logins return different routes and scope operator reco
   assert.equal((await request('/system/tenant/onboard', demo, 'post', {})).code, 403)
   assert.equal((await request('/operator/fault/alarms', demo, 'post', {})).code, 403)
   assert.equal((await request('/operator/station', demo, 'put', {})).code, 403)
-  assert.equal((await request('/operator/overview', demo)).data.scope.root, false)
+  const overview = (await request('/operator/overview', demo)).data
+  assert.equal(overview.scope.root, false)
+  assert.equal(overview.scope.tenantId, 887001)
+  assert.equal(overview.operators[0].name, '城际快充 · 演示')
+  assert.equal(overview.stationOptions.length, 3)
   assert.equal((await request('/operator/overview', admin)).data.scope.root, true)
   for (const [endpoint, key] of [
     ['/operator/station/list', 'stationId'],
@@ -63,12 +70,12 @@ test('platform and tenant logins return different routes and scope operator reco
     ['/operator/fault/list', 'id']
   ]) {
     const all = await request(endpoint + '?pageSize=50', admin)
-    const own = await request(endpoint + '?pageSize=50', demo, 'get', undefined, { 'tenant-id': '887001' })
+    const own = await request(endpoint + '?pageSize=50', demo, 'get', undefined, { 'tenant-id': '9999' })
     assert.equal(own.code, 200, endpoint)
     const allRows = all.rows || all.data.records
     const ownRows = own.rows || own.data.records
-    assert(ownRows.length > 0 && ownRows.every(row => Number(row.tenantId) === 9999), endpoint)
-    const foreign = allRows.find(row => Number(row.tenantId) === 887001)
+    assert(ownRows.length > 0 && ownRows.every(row => Number(row.tenantId) === 887001), endpoint)
+    const foreign = allRows.find(row => Number(row.tenantId) === 9999)
     assert.ok(foreign, endpoint)
     const detail = endpoint.endsWith('/list') ? endpoint.slice(0, -5) : endpoint
     assert.equal((await request(detail + '/' + ownRows[0][key], demo)).code, 200, endpoint)
@@ -77,7 +84,7 @@ test('platform and tenant logins return different routes and scope operator reco
     if (key === 'orderId') {
       assert.equal((await request(detail + '/getOrderByOrderNumber/' + foreign.orderNumber, demo)).code, 404)
     }
-    assert.equal((await request(endpoint + '?tenantId=887001', demo)).code, 403, endpoint)
+    assert.equal((await request(endpoint + '?tenantId=9999', demo)).code, 403, endpoint)
   }
   assert.equal((await request('/auth/logout', demo, 'delete')).code, 200)
   assert.equal((await request('/operator/station/list', demo)).code, 401)

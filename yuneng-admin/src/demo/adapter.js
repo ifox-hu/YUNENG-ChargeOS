@@ -94,7 +94,11 @@ function handle(config) {
    if(q.tenantId&&!same(q.tenantId,identity.tenantId))return forbidden()
    if(q.stationId&&!rows('/operator/station/list').some(row=>visible(identity,row)&&same(row.stationId,q.stationId)))return forbidden()
  }
- if(url==='/system/user/getInfo')return {...ok(null),user:identity.root?user:tenantUser,roles:[identity.root?'admin':demoTenantRole],permissions:identity.root?['*:*:*']:tenantPermissions}
+ if(url==='/system/user/getInfo'){
+  const operator=rows('/system/tenant/list').find(row=>same(row.id,identity.tenantId))
+  const profile=identity.root?user:{...tenantUser,tenantId:identity.tenantId,nickName:operator?.tenantName||tenantUser.nickName}
+  return {...ok(null),user:profile,roles:[identity.root?'admin':demoTenantRole],permissions:identity.root?['*:*:*']:tenantPermissions}
+ }
  if(url==='/system/menu/getRouters'&&!identity.root){
   const route=db.lists[url].data.find(route=>route.path==='/operate')
   return ok([{...route,children:route.children.filter(child=>['station','order','ordertDetail','fault'].includes(child.path))}])

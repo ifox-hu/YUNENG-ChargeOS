@@ -1,7 +1,7 @@
 <template>
   <div class="scope-selector" :class="{ 'scope-dark': dark }" data-testid="overview-scope">
     <label v-if="scope.root"><span>运营商</span><el-select :value="scope.tenantId || ''" filterable size="small" aria-label="选择运营商" @change="operatorChanged"><el-option label="全部运营商" value="" /><el-option v-for="item in operators" :key="item.id" :label="item.name" :value="item.id" /></el-select></label>
-    <span v-else class="scope-identity"><i class="el-icon-office-building" /> 本运营商</span>
+    <span v-else class="scope-identity"><i class="el-icon-office-building" /> {{ operatorName }}</span>
     <i class="el-icon-arrow-right scope-arrow" />
     <label><span>站点</span><el-select :value="scope.stationId || ''" filterable size="small" aria-label="选择站点" @change="stationChanged"><el-option label="全部站点" value="" /><el-option v-for="item in stations" :key="item.stationId" :label="item.stationName" :value="item.stationId" /></el-select></label>
     <slot />
@@ -12,6 +12,11 @@
 export default {
   name: 'ScopeSelector',
   props: { scope: { type: Object, required: true }, operators: { type: Array, default: () => [] }, stations: { type: Array, default: () => [] }, dark: Boolean, compact: Boolean },
+  computed: {
+    operatorName() {
+      return this.operators.find(item => String(item.id) === String(this.scope.tenantId))?.name || '本运营商'
+    }
+  },
   methods: {
     operatorChanged(tenantId) { this.$emit('change', { tenantId, stationId: null }) },
     stationChanged(stationId) { this.$emit('change', { tenantId: this.scope.tenantId, stationId }) }

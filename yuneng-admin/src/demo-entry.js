@@ -21,7 +21,7 @@ import './assets/icons/svg/validCode.svg'
 import { createDemoCaptcha } from './demo/captcha'
 import { createDemoSession } from './demo/authentication'
 import { getDemoSession, updateDemoSession } from './demo/session'
-import { getToken, setToken, setExpiresIn, setTenant, removeToken, removeExpiresIn, removeTenant } from './utils/auth'
+import { getToken, getTenant, setToken, setExpiresIn, setTenant, removeToken, removeExpiresIn, removeTenant } from './utils/auth'
 
 const loadAdmin = () => import(/* webpackChunkName: 'admin' */ './main')
 const requestedRoute = location.hash.slice(1)
@@ -44,6 +44,7 @@ if (token && !identity) {
   removeExpiresIn()
   removeTenant()
 }
+if (identity && getTenant() !== String(identity.tenantId)) setTenant(identity.tenantId)
 
 if (identity || requestedPath === '/register') {
   loadAdmin().then(({ mountAdmin }) => mountAdmin()).catch(showLoadError)
