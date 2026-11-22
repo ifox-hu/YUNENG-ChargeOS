@@ -17,12 +17,29 @@ export function getStation(stationId) {
   })
 }
 
-export function getDemoStationDevices(stationId, tenantId) {
+function devicesUrl(stationId) {
+  return '/operator/station/' + encodeURIComponent(stationId) + '/devices'
+}
+
+export function getStationDevices(stationId, tenantId) {
   return request({
-    url: '/operator/station/' + encodeURIComponent(stationId) + '/devices',
+    url: devicesUrl(stationId),
     method: 'get',
     params: { tenantId }
   })
+}
+
+export function getStationDeviceRates(stationId) {
+  return request({ url: devicesUrl(stationId) + '/rates', method: 'get' })
+}
+
+export function addStationDevice(stationId, data) {
+  return request({ url: devicesUrl(stationId), method: 'post', data })
+}
+
+export function setStationDeviceSimulation(pileId, online) {
+  const action = online ? 'start' : 'stop'
+  return request({ url: '/simulator/evcs/sim/v1/station-device/' + action, method: 'post', data: { pileId } })
 }
 
 // 新增站点

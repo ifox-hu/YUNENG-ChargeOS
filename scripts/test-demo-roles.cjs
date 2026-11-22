@@ -80,6 +80,27 @@ test('platform and tenant logins return different routes and scope operator reco
   assert.equal((await request(otherDevices, admin)).code, 200)
   assert.equal((await request(otherDevices, demo)).code, 404)
 
+  const rates = (await request(otherDevices + '/rates', admin)).data
+  assert.ok(rates.length)
+  const newPile = {
+    pileId: 'SIM-QA-001', name: '验收双枪桩', wxRuleId: rates[0].id, pileType: 1,
+    voltage: '750', electricity: '200', maxPower: 120, gunCount: 2
+  }
+  assert.equal((await request(otherDevices, demo, 'post', newPile)).code, 403)
+  assert.notEqual((await request(otherDevices, admin, 'post', { ...newPile, wxRuleId: -1 })).code, 200)
+  assert.notEqual((await request(otherDevices, admin, 'post', { ...newPile, gunCount: 0 })).code, 200)
+  assert.equal((await request(otherDevices, admin, 'post', newPile)).code, 200)
+  assert.notEqual((await request(otherDevices, admin, 'post', newPile)).code, 200)
+  const snapshot = async () => (await request(otherDevices, admin)).data.piles.find(pile => pile.pileId === newPile.pileId)
+  assert.equal((await snapshot()).runningStatus, 1)
+  assert.deepEqual(Array.from((await snapshot()).ports, port => port.deviceId), ['1', '2'])
+  assert.equal((await snapshot()).wxRuleId, newPile.wxRuleId)
+  const simulator = '/simulator/evcs/sim/v1/station-device/start'
+  assert.equal((await request(simulator, demo, 'post', { pileId: newPile.pileId })).code, 403)
+  assert.equal((await request(simulator, admin, 'post', { pileId: newPile.pileId })).code, 200)
+  assert.equal((await snapshot()).runningStatus, 0)
+  assert.ok((await snapshot()).lastHeartbeat)
+
   const pileId = devices.data.piles[0].pileId
   const filter = '?tenantId=887001&stationId=' + stationId + '&pileId=' + pileId
   const alarm = (await request('/operator/fault/alarms' + filter, demo)).data.records[0]

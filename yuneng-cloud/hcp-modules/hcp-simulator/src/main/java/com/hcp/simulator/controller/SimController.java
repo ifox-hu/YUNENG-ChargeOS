@@ -2,6 +2,7 @@ package com.hcp.simulator.controller;
 
 import com.hcp.common.core.domain.R;
 import com.hcp.common.core.exception.base.BaseException;
+import com.hcp.common.security.annotation.RequiresPermissions;
 import com.hcp.simulator.common.SimCenter;
 import com.hcp.simulator.dto.ChargingOrderDTO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -20,6 +21,17 @@ public class SimController {
 
     @Autowired
     private SimCenter simCenter;
+
+    @RequiresPermissions({"operator:station:list", "operator:pile:add", "operator:port:add"})
+    @PostMapping("/station-device/{action}")
+    public R<String> stationDevice(@PathVariable String action, @RequestBody ChargingOrderDTO request) {
+        try {
+            simCenter.stationDevice(action, request.getPileId());
+            return R.ok();
+        } catch (BaseException ex) {
+            return R.fail(ex.getDefaultMessage());
+        }
+    }
 
     @Operation(summary = "启动模拟充电桩")
     @GetMapping("/start")

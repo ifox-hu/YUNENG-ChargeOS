@@ -118,21 +118,72 @@ function handle(config) {
  if(operationResult){persist();return operationResult}
  if(url==='/operator/overview'){handleDemoAlarms(db,'/operator/fault/alarms','get',{},{});persist();return ok(demoOverview(db,q,identity))}
  if(url==='/operator/station/list'&&!identity.root)return listResponse(rows(url).filter(row=>visible(identity,row)),q)
+ if(url==='/operator/station'&&method==='post'){
+  const stationId=String(Date.now())
+  rows('/operator/station/list').unshift({...b,stationId,tenantId:identity.tenantId,delFlag:0,createTime:now()})
+  persist()
+  return ok({stationId})
+ }
  const stationDevices=url.match(/^\/operator\/station\/([^/]+)\/devices$/)
- if(stationDevices&&method==='get'){
-  const station=rows('/operator/station/list').find(row=>visible(identity,row)&&same(row.stationId,decodeURIComponent(stationDevices[1]))&&(!q.tenantId||same(row.tenantId,q.tenantId))&&!Number(row.delFlag))
+ const stationRates=url.match(/^\/operator\/station\/([^/]+)\/devices\/rates$/)
+ if(stationDevices||stationRates){
+  const station=rows('/operator/station/list').find(row=>visible(identity,row)&&same(row.stationId,decodeURIComponent((stationDevices||stationRates)[1]))&&(!q.tenantId||same(row.tenantId,q.tenantId))&&!Number(row.delFlag))
   if(!station)return fail('站点不存在',404)
   const owned=row=>same(row.tenantId,station.tenantId)
+  const carStation=same(station.deviceType,4)
+  const rates=rows('/operator/rule/list').filter(row=>owned(row)&&same(row.deviceType,4)&&same(row.ruleType,10002))
+  if(stationRates)return method==='get'&&identity.root&&carStation?ok(rates):forbidden()
+  const stationPiles=rows('/operator/pile/list')
+  const ports=rows('/operator/port/list')
+  if(method==='post'){
+    if(!identity.root||!carStation)return forbidden()
+    const pileId=String(b.pileId??'').trim(),name=String(b.name??'').trim()
+    const positive=value=>/^[0-9]{1,7}(\.[0-9]{1,3})?$/.test(value)&&Number(value)>0
+    const rate=rates.find(row=>same(row.id,b.wxRuleId))
+    if(!/^[A-Za-z0-9_-]{1,64}$/.test(pileId)||!name||name.length>64)return fail('请填写有效的桩编号和名称')
+    if(![0,1].includes(b.pileType)||!Number.isInteger(b.gunCount)||b.gunCount<1||b.gunCount>8)return fail('请选择充电桩类型并填写 1 至 8 个枪口')
+    if(!positive(b.voltage)||!positive(b.electricity)||!Number.isInteger(b.maxPower)||b.maxPower<1||b.maxPower>2147483647)return fail('请填写有效的额定电压、电流和功率')
+    if(!rate)return fail('请选择本运营商的汽车充电费率')
+    if(stationPiles.some(row=>String(row.pileId).toLowerCase()===pileId.toLowerCase()))return fail('桩编号已存在')
+    const {tenantId,stationId}=station
+    const portId=ports.reduce((max,row)=>Math.max(max,Number(row.portId)||0),0)
+    const guns=Array.from({length:b.gunCount},(_,i)=>({
+      portId:portId+i+1,pileId,tenantId,stationId,deviceId:String(i+1),name:`${i+1} 号枪`,
+      runningStatus:1,state:'N',gunStatus:0,canUse:0
+    }))
+    stationPiles.push({pileId,name,tenantId,stationId,deviceType:4,pileType:b.pileType,pileStatus:1,
+      runningStatus:1,deleted:0,wxRuleId:rate.id,voltage:b.voltage,electricity:b.electricity,maxPower:b.maxPower})
+    ports.push(...guns)
+    persist()
+    return ok({pileId})
+  }
+  if(method!=='get')return forbidden()
   const portsByPile=new Map()
-  for(const port of rows('/operator/port/list').filter(port=>owned(port)&&!Number(port.deleted)&&!Number(port.delFlag))){
+  for(const port of ports.filter(port=>owned(port)&&!Number(port.deleted)&&!Number(port.delFlag))){
     const pileId=String(port.pileId)
     if(!portsByPile.has(pileId))portsByPile.set(pileId,[])
     portsByPile.get(pileId).push(port)
   }
-  const piles=rows('/operator/pile/list')
+  const piles=stationPiles
     .filter(pile=>owned(pile)&&same(pile.stationId,station.stationId)&&!Number(pile.deleted))
-    .map(pile=>({...pile,ports:portsByPile.get(String(pile.pileId))||[]}))
-  return ok({station,piles})
+    .map(pile=>({...pile,rateName:rates.find(rate=>same(rate.id,pile.wxRuleId))?.changeName,ports:portsByPile.get(String(pile.pileId))||[]}))
+  return ok({station,piles,canManage:identity.root&&carStation})
+ }
+ const simulation=url.match(/^\/simulator\/evcs\/sim\/v1\/station-device\/(start|stop)$/)
+ if(simulation&&method==='post'){
+  if(!identity.root)return forbidden()
+  const pile=rows('/operator/pile/list').find(row=>same(row.pileId,b.pileId)&&!Number(row.deleted))
+  const station=pile&&rows('/operator/station/list').find(row=>same(row.stationId,pile.stationId)&&same(row.tenantId,pile.tenantId)&&!Number(row.delFlag))
+  if(!station||!/^SIM-[A-Za-z0-9_-]{1,60}$/.test(pile.pileId))return fail('模拟桩不存在')
+  const guns=rows('/operator/port/list').filter(row=>same(row.tenantId,pile.tenantId)&&same(row.pileId,pile.pileId))
+  const online=simulation[1]==='start'
+  const matchedRate=rows('/operator/rule/list').some(rate=>same(rate.id,pile.wxRuleId)&&same(rate.tenantId,pile.tenantId)&&same(rate.deviceType,4)&&same(rate.ruleType,10002))
+  if(online&&(!guns.length||!matchedRate||!same(pile.pileStatus,1)))return fail('请先启用模拟桩并绑定费率及枪口')
+  pile.runningStatus=online?0:1
+  if(online)pile.lastHeartbeat=now()
+  guns.forEach(row=>{row.runningStatus=online?2:1})
+  persist()
+  return ok(null)
  }
  if(url==='/operator/order/list'&&method==='get') {
    const byTenant=(tenantId,id)=>tenantId+':'+id

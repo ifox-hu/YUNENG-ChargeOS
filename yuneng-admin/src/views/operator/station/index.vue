@@ -138,7 +138,6 @@
       <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
         <template slot-scope="scope">
           <el-button
-            v-if="demoMode"
             size="mini"
             type="text"
             @click="openDevices(scope.row)"
@@ -163,7 +162,7 @@
       </el-table-column>
     </el-table>
     <station-devices
-      v-if="demoMode && $route.name === 'Station' && $route.query.stationId"
+      v-if="$route.name === 'Station' && $route.query.stationId"
       :key="`${$route.query.tenantId}:${$route.query.stationId}:${$route.query.pileId}`"
       :station-id="String($route.query.stationId)"
       :tenant-id="$route.query.tenantId"
@@ -185,17 +184,20 @@
         <el-form-item label="站点名称" prop="stationName">
           <el-input v-model="form.stationName" placeholder="请输入站点名称"/>
         </el-form-item>
+        <el-form-item label="站点编号" prop="stationCode">
+          <el-input v-model.trim="form.stationCode" placeholder="请输入站点编号"/>
+        </el-form-item>
         <el-form-item label="地址" prop="address">
           <el-input v-model="form.address" placeholder="请输入地址"/>
         </el-form-item>
         <el-form-item label="所属地区代码" prop="regionCode">
           <el-input v-model="form.regionCode" placeholder="请输入所属地区代码"/>
         </el-form-item>
-        <el-form-item label="经度" prop="lat">
-          <el-input v-model="form.lat" placeholder="请输入经度"/>
+        <el-form-item label="经度" prop="lng">
+          <el-input v-model="form.lng" placeholder="请输入经度"/>
         </el-form-item>
-        <el-form-item label="纬度" prop="lng">
-          <el-input v-model="form.lng" placeholder="请输入纬度"/>
+        <el-form-item label="纬度" prop="lat">
+          <el-input v-model="form.lat" placeholder="请输入纬度"/>
         </el-form-item>
         <el-form-item label="停车信息" prop="parkCarInfo">
           <el-input v-model="form.parkCarInfo" placeholder="请输入停车信息"/>
@@ -263,7 +265,6 @@ export default {
   dicts: ['plot_supporting_facilities', 'sys_yes_no', 'device_type', 'plot_park_car_status', 'plot_receipt_status'],
   data() {
     return {
-      demoMode: process.env.VUE_APP_DEMO === 'true',
       // 遮罩层
       loading: true,
       // 选中数组
@@ -398,18 +399,19 @@ export default {
     submitForm() {
       this.$refs["form"].validate(valid => {
         if (valid) {
-          this.form.supportingFacilities = this.form.supportingFacilities.join(",");
+          const payload = { ...this.form, supportingFacilities: this.form.supportingFacilities.join(",") };
           if (this.form.stationId != null) {
-            updateStation(this.form).then(response => {
+            updateStation(payload).then(() => {
               this.$modal.msgSuccess("修改成功");
               this.open = false;
               this.getList();
             });
           } else {
-            addStation(this.form).then(response => {
+            addStation(payload).then(({ data }) => {
               this.$modal.msgSuccess("新增成功");
               this.open = false;
               this.getList();
+              if (data && data.stationId) this.openDevices(data);
             });
           }
         }

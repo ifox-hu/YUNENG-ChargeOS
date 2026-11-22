@@ -1,6 +1,7 @@
 package com.hcp.operator.controller;
 
 import java.util.List;
+import java.util.Collections;
 import javax.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -10,12 +11,15 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.hcp.common.log.annotation.Log;
 import com.hcp.common.log.enums.BusinessType;
 import com.hcp.common.security.annotation.RequiresPermissions;
+import com.hcp.operator.domain.StationDeviceRequest;
 import com.hcp.system.api.domain.ChargingStation;
 import com.hcp.operator.service.IChargingStationService;
+import com.hcp.operator.service.StationDeviceService;
 import com.hcp.common.core.web.controller.BaseController;
 import com.hcp.common.core.web.domain.AjaxResult;
 import com.hcp.common.core.utils.poi.ExcelUtil;
@@ -33,6 +37,30 @@ public class ChargingStationController extends BaseController
 {
     @Autowired
     private IChargingStationService chargingStationService;
+    @Autowired
+    private StationDeviceService stationDeviceService;
+
+    @RequiresPermissions("operator:station:list")
+    @GetMapping("/{stationId}/devices")
+    public AjaxResult devices(@PathVariable Long stationId, @RequestParam(required = false) Long tenantId)
+    {
+        return success(stationDeviceService.devices(stationId, tenantId));
+    }
+
+    @RequiresPermissions({"operator:station:list", "operator:pile:add", "operator:port:add", "operator:rule:list"})
+    @GetMapping("/{stationId}/devices/rates")
+    public AjaxResult deviceRates(@PathVariable Long stationId)
+    {
+        return success(stationDeviceService.rates(stationId));
+    }
+
+    @RequiresPermissions({"operator:station:list", "operator:pile:add", "operator:port:add", "operator:rule:list"})
+    @Log(title = "站内充电设备", businessType = BusinessType.INSERT)
+    @PostMapping("/{stationId}/devices")
+    public AjaxResult addDevice(@PathVariable Long stationId, @RequestBody StationDeviceRequest input)
+    {
+        return success(Collections.singletonMap("pileId", stationDeviceService.add(stationId, input)));
+    }
 
     /**
      * 查询站点列表
@@ -76,7 +104,9 @@ public class ChargingStationController extends BaseController
     @PostMapping
     public AjaxResult add(@RequestBody ChargingStation chargingStation)
     {
-        return toAjax(chargingStationService.insertChargingStation(chargingStation));
+        if (chargingStationService.insertChargingStation(chargingStation) != 1)
+            return error("创建站点失败");
+        return success(Collections.singletonMap("stationId", chargingStation.getStationId().toString()));
     }
 
     /**

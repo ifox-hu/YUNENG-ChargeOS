@@ -1,7 +1,7 @@
 <template>
   <div class="app-container fault-page">
     <div class="headline"><div><h2>故障工单</h2><p>从设备告警到问题解决，追踪每一步处理进度</p></div>
-      <el-button type="primary" icon="el-icon-bell" v-hasPermi="['operator:fault:add']" @click="alarmVisible=true">模拟设备告警</el-button>
+      <el-button type="primary" icon="el-icon-bell" v-hasPermi="['operator:fault:add']" @click="openAlarm">模拟设备告警</el-button>
     </div>
     <el-row :gutter="16" class="metrics">
       <el-col :span="6" v-for="item in metrics" :key="item.key"><div class="metric"><span>{{item.label}}</span><strong>{{stats[item.key] || 0}}</strong></div></el-col>
@@ -100,7 +100,7 @@ export default {
   computed: {
     alarmScope() {
       const { view, tenantId, stationId, pileId } = this.$route.query
-      return process.env.VUE_APP_DEMO === 'true' && view === 'alarms' && stationId && pileId
+      return view === 'alarms' && stationId && pileId
         ? { tenantId, stationId, pileId }
         : {}
     }
@@ -127,6 +127,10 @@ export default {
       this.typeChart.setOption({color:['#2563eb','#4f8ff7','#edaa45','#9ba7b8'],tooltip:{trigger:'item'},series:[{type:'pie',radius:['40%','65%'],data:(this.stats.byType||[]).map(x=>({name:this.types[x.faultType],value:x.count}))}]});
     },
     openDetail(id) {this.detailLoading=true;return api.getFault(id).then(r=>{this.detail=r.data;this.detailVisible=true}).finally(()=>{this.detailLoading=false})},
+    openAlarm() {
+      this.alarm = { pileId: this.alarmScope.pileId || '', faultType: 'OFFLINE', priority: 'NORMAL', description: '' }
+      this.alarmVisible = true
+    },
     createAlarm() {
       if(!this.alarm.pileId||!this.alarm.description)return this.$message.warning('请填写设备编号和故障描述');
       this.saving=true;api.simulateAlarm(this.alarm).then(r=>{this.$message.success(r.data.merged?'告警已合并到活动工单':'已生成工单');this.alarmVisible=false;this.refresh();this.openDetail(r.data.ticket.id)}).finally(()=>{this.saving=false})

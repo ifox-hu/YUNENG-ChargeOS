@@ -31,7 +31,7 @@
 
 | 体验方式 | 入口与账号 | 说明 |
 | --- | --- | --- |
-| **运营后台 · Pages** | [立即体验](https://ifox-hu.github.io/YUNENG-ChargeOS/) · `admin` / `admin123` · `demo` / `Demo123456!` | 默认填入 `admin`，可查看全平台并体验运营商开户。`demo` 只读查看「城际快充 · 演示」的站点、订单、告警和工单。可手动输入验证码或点击「一键填入」 |
+| **运营后台 · Pages** | [立即体验](https://ifox-hu.github.io/YUNENG-ChargeOS/) · `admin` / `admin123` · `demo` / `Demo123456!` | 登录页默认填入 `admin`，密码框留空。点击「一键填入」可填入演示密码和验证码。`admin` 可管理全平台并体验运营商开户，`demo` 只读查看「城际快充 · 演示」的站点、订单、告警和工单 |
 | **运营后台 · 本地后端** | 部署后访问 `http://127.0.0.1:8001` · `admin` / `admin123` | 连接本地 MySQL、Redis、RocketMQ 及业务服务 |
 | **小程序 · 本地开发** | `yuneng-mini/` · `demo` / `Demo123456!` | 在 HBuilderX / 微信开发者工具中编译并配置 API 地址 |
 

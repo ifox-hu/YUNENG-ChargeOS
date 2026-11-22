@@ -7,6 +7,7 @@ import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.RandomUtil;
 import com.hcp.common.core.exception.base.BaseException;
+import com.hcp.common.security.utils.SecurityUtils;
 import com.hcp.simulator.dto.ChargingOrderDTO;
 import com.hcp.simulator.service.ChargingOrderService;
 import com.hcp.system.api.domain.ChargingOrder;
@@ -42,6 +43,29 @@ public class SimCenter {
     @Autowired
     private org.springframework.jdbc.core.JdbcTemplate jdbc;
 
+    public void stationDevice(String action, String pileId)
+    {
+        if (pileId == null || !pileId.matches("SIM-[A-Za-z0-9_-]{1,60}") ||
+            (!"start".equals(action) && !"stop".equals(action)))
+            throw new BaseException("仅支持以 SIM- 开头的模拟桩");
+        if (jdbc.queryForList("SELECT p.pile_id FROM c_charging_pile p JOIN c_charging_station s" +
+            " ON s.station_id=p.station_id AND s.tenant_id=p.tenant_id" +
+            " WHERE p.pile_id=? AND p.tenant_id=? AND p.device_type=4 AND p.deleted=0 AND COALESCE(s.del_flag,0)=0",
+            pileId, SecurityUtils.getTenantId()).isEmpty())
+            throw new BaseException("模拟桩不存在或不属于本运营商");
+        if ("stop".equals(action))
+        {
+            stop(pileId);
+            return;
+        }
+        if (jdbc.queryForList("SELECT p.pile_id FROM c_charging_pile p JOIN c_rule r" +
+            " ON r.id=p.wx_rule_id AND r.tenant_id=p.tenant_id AND r.device_type=4 AND r.rule_type='10002'" +
+            " WHERE p.pile_id=? AND p.tenant_id=? AND p.pile_status=1",
+            pileId, SecurityUtils.getTenantId()).isEmpty())
+            throw new BaseException("请先启用模拟桩并绑定本运营商的汽车充电费率");
+        start(pileId);
+    }
+
     /** Simulator persistence follows the stored device owner, never the demo default/header. */
     private void withDeviceTenant(String pileId, Runnable action)
     {
@@ -64,7 +88,7 @@ public class SimCenter {
         withDeviceTenant(pileId, () -> startWithinTenant(pileId));
     }
 
-    private void startWithinTenant(String pileId)
+    private synchronized void startWithinTenant(String pileId)
     {
         log.info("启动模态充电桩：{}", pileId);
         if (pileMap.containsKey(pileId)) {
@@ -94,10 +118,14 @@ public class SimCenter {
         }
         catch (BaseException ex)
         {
+            pileClient.stop();
+            pileMap.remove(pileId, pileClient);
             throw ex;
         }
         catch (Exception ex)
         {
+            pileClient.stop();
+            pileMap.remove(pileId, pileClient);
             throw new BaseException("未知错误");
         }
     }
@@ -106,7 +134,7 @@ public class SimCenter {
         withDeviceTenant(pileId, () -> stopWithinTenant(pileId));
     }
 
-    private void stopWithinTenant(String pileId)
+    private synchronized void stopWithinTenant(String pileId)
     {
         if (!pileMap.containsKey(pileId)) {
             throw new BaseException("模态桩未启动");

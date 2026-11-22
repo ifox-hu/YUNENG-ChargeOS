@@ -145,7 +145,7 @@ export default {
       isDemo,
       loginForm: {
         username: 'admin',
-        password: 'admin123',
+        password: isDemo ? '' : 'admin123',
         rememberMe: false,
         code: '',
         uuid: ''
