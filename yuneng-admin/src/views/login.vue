@@ -130,6 +130,7 @@ import { getDemoCaptchaAnswer } from '@/demo/captcha'
 import EnergyScene from '@/components/EnergyScene'
 
 const isDemo = process.env.VUE_APP_DEMO === 'true'
+const defaultPassword = 'admin123'
 
 export default {
   name: 'Login',
@@ -145,7 +146,7 @@ export default {
       isDemo,
       loginForm: {
         username: 'admin',
-        password: isDemo ? '' : 'admin123',
+        password: isDemo ? '' : defaultPassword,
         rememberMe: false,
         code: '',
         uuid: ''
@@ -205,7 +206,7 @@ export default {
         await this.getCode()
         code = getDemoCaptchaAnswer(this.loginForm.uuid)
       }
-      this.loginForm.password = 'Demo123456!'
+      this.loginForm.password = defaultPassword
       this.loginForm.code = code || ''
       this.$nextTick(() => this.$refs.loginForm.clearValidate(['password', 'code']))
     },

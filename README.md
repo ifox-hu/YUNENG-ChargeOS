@@ -31,7 +31,7 @@
 
 | 体验方式 | 入口与账号 | 说明 |
 | --- | --- | --- |
-| **运营后台 · Pages** | [立即体验](https://ifox-hu.github.io/YUNENG-ChargeOS/) · `admin` / `Demo123456!` | 免部署体验；点击「一键填入」后登录，也可手动填写，操作保存在当前浏览器 |
+| **运营后台 · Pages** | [立即体验](https://ifox-hu.github.io/YUNENG-ChargeOS/) · `admin` / `admin123` | 免部署体验；点击「一键填入」后登录，也可手动填写，操作保存在当前浏览器 |
 | **运营后台 · 本地后端** | 部署后访问 `http://127.0.0.1:8001` · `admin` / `admin123` | 连接本地 MySQL、Redis、RocketMQ 及业务服务 |
 | **小程序 · 本地开发** | `yuneng-mini/` · `demo` / `Demo123456!` | 在 HBuilderX / 微信开发者工具中编译并配置 API 地址 |
 
