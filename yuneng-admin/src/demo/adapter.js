@@ -1,10 +1,11 @@
 import fixtures from './fixtures.json'
+import { prepareAdminSamples } from './adminSamples'
 import { seedDemoPorts, refreshDemoPorts, simulateDemoPorts } from './telemetry'
 import { handleDemoAlarms, prepareDemoAlarmScopes } from './alarms'
 import { createDemoCaptcha } from './captcha'
 import { createDemoSession } from './authentication'
 import { prepareOperatorDemo, handleDemoOperators } from './operators'
-import { prepareOperationsDemo, handleOperations } from './operations'
+import { prepareOperationsDemo, prepareOperationsSamples, handleOperations } from './operations'
 import { demoOverview } from './overview'
 import { prepareDashboardSamples } from './dashboardSamples'
 import { prepareDemoStationLocations } from './stationLocations'
@@ -45,12 +46,13 @@ const samples={
  '/system/tenantpackage/list':[{packageId:1,packageName:'演示运营套餐',status:'0',remark:'静态演示'}],
  '/system/config/list':[{configId:1,configName:'演示开关',configKey:'demo.enabled',configValue:'true',configType:'Y'}],
  '/system/dict/type/list':[{dictId:1,dictName:'充电桩类型',dictType:'pile_type',status:'0'}],
- '/monitor/online/list':[{tokenId:'DEMO_ONLY',userName:'demo',ipaddr:'127.0.0.1',loginTime:now()}],
  '/demo/demo/list':[{demoId:1,name:'演示数据',remark:'浏览器模拟记录'}]
 }
 Object.entries(samples).forEach(([url,rows])=>{if(!db.lists[url])db.lists[url]={code:200,data:clone(rows),rows:clone(rows),total:rows.length}})
+prepareAdminSamples(db)
 prepareOperatorDemo(db)
 prepareOperationsDemo(db)
+prepareOperationsSamples(db)
 const sampleDay = businessToday()
 prepareDashboardSamples(db, sampleDay, Math.floor((Date.now() - Date.parse(sampleDay + 'T00:00:00+08:00')) / 1000))
 prepareDemoStationLocations(db)
@@ -70,12 +72,21 @@ const same=(a,b)=>String(a)===String(b)
 const visible=(identity,row)=>identity.root||same(row.tenantId,identity.tenantId)
 const tenantRead=/^\/operator\/(?:overview|station\/[^/]+|order\/(?:getOrderByOrderNumber\/)?[^/]+|fault\/(?:list|stats|\d+|alarms(?:\/\d+)?))$/
 const tenantCommon=/^\/system\/(?:menu\/getRouters|user\/getInfo|dict\/data\/type\/\w+|config\/configKey\/[\w.]+)$/
-const primaryKeys={station:'stationId',pile:'pileId',port:'portId',order:'orderId',member:'memberId',balance:'id',rule:'ruleId',price:'id',city:'id',miniapp:'id',user:'userId',role:'roleId',post:'postId',notice:'noticeId',tenant:'id',tenantpackage:'packageId',config:'configId',type:'dictId',demo:'demoId'}
+const primaryKeys={station:'stationId',pile:'pileId',port:'portId',order:'orderId',member:'memberId',balance:'id',rule:'ruleId',price:'id',city:'id',miniapp:'id',user:'userId',role:'roleId',post:'postId',notice:'noticeId',tenant:'id',tenantpackage:'id',config:'configId',type:'dictId',demo:'demoId',online:'tokenId',operlog:'operId',logininfor:'infoId',data:'dictCode'}
 function listResponse(rows,query,original={}) {
   const filtered=rows.filter(row=>Object.entries(query).every(([k,v])=>!v||['pageNum','pageSize','orderByColumn','isAsc'].includes(k)||!(k in row)||(['tenantId','stationId'].includes(k)?String(row[k])===String(v):String(row[k]??'').includes(v))))
   const size=Math.max(1,Number(query.pageSize)||10), page=Math.max(1,Number(query.pageNum)||1)
   const data=filtered.slice((page-1)*size,page*size)
   return {...original,...ok(data),rows:data,total:filtered.length}
+}
+function menuRows(routes, parentId = 0, result = []) {
+  routes.forEach((route,index) => {
+    const menuId=result.length+1
+    result.push({menuId,menuName:route.meta.title,parentId,path:route.path,component:route.component,
+      menuType:route.children?'M':'C',orderNum:index+1,status:'0',visible:route.hidden?'1':'0'})
+    if(route.children)menuRows(route.children,menuId,result)
+  })
+  return result
 }
 function handle(config) {
  const parsed=new URL(config.url,'https://demo.invalid'),url=parsed.pathname,q=Object.fromEntries(parsed.searchParams);let b=config.data||{}
@@ -126,6 +137,7 @@ function handle(config) {
   const row=rows('/operator/'+resource+'/list').find(row=>visible(identity,row)&&same(row[field],decodeURIComponent(id)))
   return row?ok(row):fail('演示记录不存在',404)
  }
+ if(url==='/system/tenantpackage/get-simple-list')return ok(rows('/system/tenantpackage/list').filter(row=>same(row.status,0)))
  const operatorResult=handleDemoOperators(db,url,method,b,q)
  if(operatorResult){persist();return operatorResult}
  if(url==='/system/dict/data/type/sys_tenant_status')return ok([{dictLabel:'正常',dictValue:'0',dictSort:1,status:'0'},{dictLabel:'停用',dictValue:'1',dictSort:2,status:'0'}])
@@ -145,16 +157,31 @@ function handle(config) {
   refreshDemoPorts(collection.rows||collection.data||[])
   persist()
  }
+ if(url==='/system/dept/list'||url==='/system/user/deptTree')return ok(rows('/system/dept/list').filter(row=>!q.deptName||row.deptName.includes(q.deptName)).map(row=>url.endsWith('deptTree')?{...row,id:row.deptId,label:row.deptName}:row))
+ if(url.startsWith('/system/dept/list/exclude/'))return ok(rows('/system/dept/list').filter(row=>!same(row.deptId,url.split('/').pop())))
  if(db.lists[url]&&method==='get'){const r=clone(db.lists[url]);if(Array.isArray(r.rows)||url.endsWith('/list'))return listResponse(r.rows||r.data||[],q,r);return r}
  if(db.lists[url]&&url.includes('/total/'))return clone(db.lists[url])
  if(url==='/system/user/userList'||url==='/system/user/getUserList')return listResponse([user],q)
- if(url==='/system/user/'||url==='/system/user/1')return {...ok(url.endsWith('/1')?user:null),roles:samples['/system/role/list'],posts:samples['/system/post/list'],roleIds:[1],postIds:[1]}
- if(url==='/system/menu/list')return ok(fixtures['/system/menu/getRouters'].data.map((r,i)=>({menuId:i+1,menuName:r.meta.title,parentId:0,path:r.path,menuType:'M',orderNum:i,status:'0',visible:'0'})))
- if(url==='/job/group/getSelectAll')return ok([{id:1,appName:'demo',title:'演示执行器',addressType:0,addressList:''}])
+ if(method==='get'&&/^\/system\/user\/\d*$/.test(url)){
+  const id=url.split('/').pop()
+  const account=rows('/system/user/list').find(row=>same(row.userId,id))
+  return {...ok(account||null),roles:rows('/system/role/list'),posts:rows('/system/post/list'),roleIds:account?[account.userId]:[],postIds:account?[account.userId]:[]}
+ }
+ if(url==='/system/menu/list')return ok(menuRows(db.lists['/system/menu/getRouters'].data).filter(row=>!q.menuName||row.menuName.includes(q.menuName)))
+ if(url==='/job/group/getSelectAll')return ok(rows('/job/group/list'))
+ if(url==='/job/log/logDetailCat'){
+  const log=rows('/job/log/list').find(row=>same(row.id,q.id??b.id))
+  const escapeHtml=value=>String(value??'').replace(/[&<>]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;'})[char])
+  return log?ok({fromLineNum:1,toLineNum:2,end:true,logContent:[log.triggerMsg,log.handleMsg].map(escapeHtml).join('<br>')}):fail('演示日志不存在',404)
+ }
+ if(method==='get'&&/^\/job\/log\/\d+$/.test(url)){
+  const log=rows('/job/log/list').find(row=>same(row.id,url.split('/').pop()))
+  return log?ok(log):fail('演示日志不存在',404)
+ }
  if(/dept/i.test(url)&&/tree|list/i.test(url))return {...ok([{id:100,label:'运营部',deptId:100,deptName:'运营部',parentId:0,children:[]}]),rows:[]}
  if(url.includes('role')&&url.endsWith('/list'))return listResponse([{roleId:1,roleName:'演示管理员',roleKey:'admin',status:'0',roleSort:1}],q)
  if(url.includes('post')&&url.endsWith('/list'))return listResponse([{postId:1,postName:'运营管理',postCode:'demo',status:'0',postSort:1}],q)
- if(url.includes('/dict/data/type/'))return ok([])
+ if(url.includes('/dict/data/type/'))return ok(rows('/system/dict/data/list').filter(row=>row.dictType===url.split('/').pop()))
  const base=url.replace(/\/(list|\d+|[\d,]+|add|edit)$/,'');const collection=db.lists[base+'/list'];
  if(collection){const rows=collection.rows||collection.data||[];const idKey=primaryKeys[base.split('/').pop()]||Object.keys(rows[0]||{}).find(k=>/Id$/.test(k)&&k!=='tenantId')||'id';const id=url.split('/').pop();if(method==='get')return ok(rows.find(r=>String(r[idKey])===id)||{});if(method==='post'||method==='put'){if(method==='put'){const i=rows.findIndex(r=>String(r[idKey])===String(b[idKey]));if(i<0)return fail('演示记录不存在');rows.splice(i,1,{...rows[i],...b})}else rows.unshift({...b,[idKey]:b[idKey]||Date.now(),createTime:now()});persist();return ok(null)}if(method==='delete'){const ids=id.split(',');collection.rows=rows.filter(r=>!ids.includes(String(r[idKey])));collection.data=collection.rows;persist();return ok(null)}}
  if(method==='get'&&/list|select|tree|List/.test(url))return {...ok([]),rows:[],total:0}

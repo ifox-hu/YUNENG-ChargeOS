@@ -45,6 +45,39 @@ export function prepareOperationsDemo(db) {
   list.total = records.length
 }
 
+export function prepareOperationsSamples(db) {
+  const op = db.operations
+  if (op.samplesVersion === 1) return
+  const targetTenantId = 9999
+  const orders = rows(db, '/operator/order/list').filter(row => Number(row.tenantId) === targetTenantId)
+  const example = orders.find(row => row.orderId === 'LOCAL_DEMO_0')
+  if (example && Object.prototype.hasOwnProperty.call(op.accounts, example.userId)) {
+    const stamp = days => new Date(Date.now() + days * 86400000).toLocaleString('sv-SE')
+    const run = (action, values) => handleOperations(db, '/operator/operations/' + action, 'post', { targetTenantId, ...values }, {})
+    const validFrom = stamp(-7), validTo = stamp(30)
+    for (const [name, thresholdAmount, discountAmount] of [['周末充电券（满20减3）', 20, 3], ['新会员充电券（满10减2）', 10, 2]]) {
+      if (!op.templates.some(row => own(row, targetTenantId) && row.name === name)) {
+        const result = run('coupon', { name, thresholdAmount, discountAmount, totalCount: 100, validFrom, validTo })
+        const template = op.templates.find(row => own(row, targetTenantId) && row.name === name)
+        if (result.code === 200 && template) run('coupon/issue', { templateId: template.id, memberId: example.userId, requestId: 'sample-coupon-' + template.id })
+      }
+    }
+    const coupon = op.coupons.find(row => own(row, targetTenantId) && row.name === '周末充电券（满20减3）' && row.status === 'UNUSED')
+    const usedOrders = ['LOCAL_DEMO_0', 'LOCAL_DEMO_1', 'LOCAL_DEMO_2']
+    let seeded = false
+    usedOrders.forEach((orderId, index) => {
+      if (op.payments.some(row => own(row, targetTenantId) && row.order_id === orderId)) return
+      const result = run('pay', { orderId, requestId: 'sample-payment-' + index, couponId: index === 0 && coupon ? coupon.id : undefined })
+      if (result.code !== 200) return
+      seeded = true
+      run('split', { orderId })
+      if (index === 1) run('refund', { orderId, requestId: 'sample-refund-1', amount: 3, reason: '演示：部分充电费用退回' })
+    })
+    if (seeded) run('reconcile', { businessDay: stamp(0).slice(0, 10) })
+  }
+  op.samplesVersion = 1
+}
+
 export function handleOperations(db, url, method, body, query) {
   if (!url.startsWith('/operator/operations/')) return null
   const op = db.operations; const target = tenant(method === 'get' ? query : body)
