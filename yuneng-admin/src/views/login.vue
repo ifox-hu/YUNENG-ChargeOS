@@ -144,7 +144,7 @@ export default {
       sceneFocused: false,
       isDemo,
       loginForm: {
-        username: isDemo ? 'demo' : 'admin',
+        username: 'admin',
         password: isDemo ? '' : 'admin123',
         rememberMe: false,
         code: '',
