@@ -6,7 +6,7 @@
         <points-events />
         <el-form :model="queryParams" ref="queryForm" size="small" :inline="true" v-show="showSearch" label-width="68px">
 
-          <el-form-item label="" prop="userId">
+          <el-form-item v-if="!tenantDemo" label="" prop="userId">
             <el-select clearable v-model="queryParams.userId" placeholder="用户">
               <el-option
                 v-for="item in userList"
@@ -261,12 +261,16 @@ import {listOrder, getOrder, delOrder, addOrder, updateOrder} from "@/api/operat
 import {parseTime} from "@/utils/hcp";
 import {getUserList} from "@/api/system/user";
 import PointsEvents from './PointsEvents.vue';
+import { isDemoTenant } from '@/demo/session';
 
 import OperationsOrders from '../operations/orders.vue';
 
 export default {
   name: "Order",
   components: { PointsEvents, OperationsOrders },
+  computed: {
+    tenantDemo() { return isDemoTenant(this.$store.getters.roles); }
+  },
   dicts: ['charging_order_status', 'charging_order_billing_type','charging_order_type', 'charging_status', 'charging_is_free', 'device_type'],
   data() {
     return {
@@ -324,7 +328,7 @@ export default {
   created() {
     this.applyDashboardFilters();
     this.getList();
-    this.getUserList();
+    if (!this.tenantDemo) this.getUserList();
   },
   watch: {
     '$route.query'() { if (this.$route.path === '/operate/order') { this.applyDashboardFilters(); this.getList(); } },

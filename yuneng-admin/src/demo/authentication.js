@@ -1,7 +1,10 @@
 import { verifyDemoCaptcha } from './captcha'
+import { startDemoSession } from './session'
 
-export function createDemoSession({ code, uuid }) {
+export function createDemoSession({ username, password, code, uuid }) {
   const error = verifyDemoCaptcha(code, uuid)
   if (error) throw new Error(error)
-  return { access_token: 'DEMO_BROWSER_ONLY', expires_in: 7200, tenant_id: 9999 }
+  const session = startDemoSession(typeof username === 'string' && username.trim(), password)
+  if (!session) throw new Error('演示账号或密码错误')
+  return session
 }

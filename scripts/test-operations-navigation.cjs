@@ -24,8 +24,8 @@ const root = path.resolve(process.env.OPERATIONS_SITE_ROOT || path.join(__dirnam
     page.on('pageerror', error => errors.push(error.message));
     const base = 'http://127.0.0.1:' + server.address().port;
     await page.goto(base + '/#/login');
-    await page.locator('.login-form input').first().fill('demo');
-    await page.locator('.login-form input[type=password]').fill('Demo123456!');
+    await page.locator('.login-form input').first().fill('admin');
+    await page.locator('.login-form input[type=password]').fill('admin123');
     await fillDemoCaptcha(page);
     await page.locator('.login-form button').last().click();
     await page.waitForURL('**/#/index');

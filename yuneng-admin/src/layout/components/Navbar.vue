@@ -6,7 +6,7 @@
     <top-nav id="topmenu-container" class="topmenu-container" v-if="topNav"/>
 
     <div class="right-menu">
-      <span v-if="demoMode" style="color:#2563eb;margin-right:18px;font-size:13px">模拟演示 · 不连接后端 <el-button size="mini" @click="resetDemoData">重置数据</el-button></span>
+      <span v-if="demoMode" style="color:#2563eb;margin-right:18px;font-size:13px">{{ tenantDemo ? 'demo · 本运营商' : 'admin · 全平台' }} <el-button v-if="!tenantDemo" size="mini" @click="resetDemoData">重置数据</el-button></span>
       <template v-if="device!=='mobile'">
         <search id="header-search" class="right-menu-item" />
 
@@ -35,7 +35,7 @@
           <i class="el-icon-caret-bottom" />
         </div>
         <el-dropdown-menu slot="dropdown">
-          <router-link to="/user/profile">
+          <router-link v-if="!tenantDemo" to="/user/profile">
             <el-dropdown-item>个人中心</el-dropdown-item>
           </router-link>
           <el-dropdown-item @click.native="setting = true">
@@ -60,6 +60,7 @@ import VctgoDoc from '@/components/Vctgo/Doc'
 import VctgoBlog from '@/components/Vctgo/Blog'
 import Search from '@/components/HeaderSearch'
 import { resetDemo } from '@/demo/adapter'
+import { isDemoTenant } from '@/demo/session'
 
 export default {
   components: {
@@ -76,6 +77,7 @@ export default {
   computed: {
     brandAvatar() { return require('@/assets/logo/yuneng.svg') },
     demoMode() { return process.env.VUE_APP_DEMO === 'true' },
+    tenantDemo() { return isDemoTenant(this.$store.getters.roles) },
     ...mapGetters([
       'sidebar',
       'avatar',
@@ -110,7 +112,11 @@ export default {
         type: 'warning'
       }).then(() => {
         this.$store.dispatch('LogOut').then(() => {
-          location.href = this.demoMode ? location.pathname + location.search + '#/login' : '/index';
+          if (this.demoMode) {
+            this.$router.replace('/login').then(() => location.reload())
+          } else {
+            location.href = '/index'
+          }
         })
       }).catch(() => {});
     }

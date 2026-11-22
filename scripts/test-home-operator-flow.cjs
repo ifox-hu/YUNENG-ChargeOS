@@ -9,7 +9,7 @@ const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http:
  const browser=await chromium.launch({channel:'msedge',headless:true});
  try{
   const page=await browser.newPage({viewport:{width:1600,height:1100}}),errors=[],requests=[];page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(/\/(prod-api|demo-api|dev-api)\//.test(r.url()))requests.push(r.url())});
-  await page.goto(base+'#/login');await page.getByPlaceholder('请输入账号').fill('demo');await page.getByPlaceholder('请输入密码').fill('Demo123456!');await fillDemoCaptcha(page);await page.locator('.login-actions button').click();await page.waitForURL('**/#/index');
+  await page.goto(base+'#/login');await page.getByPlaceholder('请输入账号').fill('admin');await page.getByPlaceholder('请输入密码').fill('admin123');await fillDemoCaptcha(page);await page.locator('.login-actions button').click();await page.waitForURL('**/#/index');
   const ready=()=>page.waitForFunction(()=>{const el=document.querySelector('.overview-page');return el&&el.__vue__&&el.__vue__.report&&!el.__vue__.loading});
   const read=()=>page.locator('.overview-page').evaluate(el=>{const v=el.__vue__;return JSON.parse(JSON.stringify({target:v.target,isPlatform:v.isPlatform,isSample:v.isSample,allOperators:v.allOperators,report:v.report,station:v.station,operators:v.operators}))});
   const choose=async name=>{await page.locator('.operator-selector').click();await page.locator('.el-select-dropdown:visible').getByText(name,{exact:true}).click();await ready()};

@@ -8,6 +8,8 @@
   </nav>
 </template>
 <script>
+import { isDemoTenant } from '@/demo/session'
+
 export default {
   name: 'DashboardQuickActions',
   props: { scope: { type: Object, required: true }, dates: { type: Array, required: true }, permissions: { type: Array, default: () => [] }, canFault: Boolean, pending: { type: Number, default: 0 }},
@@ -17,12 +19,14 @@ export default {
       if (this.scope.tenantId) query.tenantId = String(this.scope.tenantId)
       if (this.scope.stationId) query.stationId = String(this.scope.stationId)
       const permitted = permission => this.permissions.includes('*:*:*') || this.permissions.includes(permission)
+      const tenant = isDemoTenant(this.$store.getters.roles)
       return [
         { key: 'orders', title: '充电订单', description: '查看当前范围订单', icon: 'el-icon-document', permission: 'operator:order:list', to: { path: '/operate/order', query: { ...query, startDate: this.dates[0], endDate: this.dates[1] }}},
         { key: 'faults', title: '故障处理', description: '跟进未关闭工单', icon: 'el-icon-warning-outline', permission: 'operator:fault:list', to: { path: '/operate/fault', query: { ...query, activeOnly: 'true' }}},
         { key: 'map', title: '桩分布', description: '查看站点地理分布', icon: 'el-icon-location-outline', permission: 'operator:station:list', to: { path: '/operations/map', query: { ...query }}},
         { key: 'screen', title: '数据大屏', description: '进入全屏运营视图', icon: 'el-icon-full-screen', permission: 'operator:station:list', to: { path: '/operations/screen', query: { ...query }}}
-      ].filter(item => permitted(item.permission) && (item.key !== 'faults' || this.canFault))
+      ].filter(item => permitted(item.permission) && (item.key !== 'faults' || this.canFault) &&
+        (!tenant || ['orders', 'faults'].includes(item.key)))
     }
   }
 }

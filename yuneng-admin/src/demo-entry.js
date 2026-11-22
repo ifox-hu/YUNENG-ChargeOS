@@ -20,6 +20,7 @@ import './assets/icons/svg/password.svg'
 import './assets/icons/svg/validCode.svg'
 import { createDemoCaptcha } from './demo/captcha'
 import { createDemoSession } from './demo/authentication'
+import { getDemoSession, updateDemoSession } from './demo/session'
 import { getToken, setToken, setExpiresIn, setTenant, removeToken, removeExpiresIn, removeTenant } from './utils/auth'
 
 const loadAdmin = () => import(/* webpackChunkName: 'admin' */ './main')
@@ -36,7 +37,15 @@ function showLoadError() {
   title.textContent = '后台加载失败，请刷新页面重试'
 }
 
-if (getToken() || requestedPath === '/register') {
+const token = getToken()
+const identity = token && getDemoSession({ Authorization: 'Bearer ' + token })
+if (token && !identity) {
+  removeToken()
+  removeExpiresIn()
+  removeTenant()
+}
+
+if (identity || requestedPath === '/register') {
   loadAdmin().then(({ mountAdmin }) => mountAdmin()).catch(showLoadError)
 } else {
   ;[Form, FormItem, Input, Button, Checkbox].forEach(component => Vue.use(component))
@@ -61,6 +70,8 @@ if (getToken() || requestedPath === '/register') {
       try {
         admin = await loadAdmin()
       } catch {
+        const identity = getDemoSession({ Authorization: 'Bearer ' + session.access_token })
+        if (identity) updateDemoSession(identity, true)
         removeToken()
         removeExpiresIn()
         removeTenant()

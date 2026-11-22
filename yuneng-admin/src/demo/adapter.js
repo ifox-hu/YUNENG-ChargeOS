@@ -1,6 +1,6 @@
 import fixtures from './fixtures.json'
 import { seedDemoPorts, refreshDemoPorts, simulateDemoPorts } from './telemetry'
-import { handleDemoAlarms } from './alarms'
+import { handleDemoAlarms, prepareDemoAlarmScopes } from './alarms'
 import { createDemoCaptcha } from './captcha'
 import { createDemoSession } from './authentication'
 import { prepareOperatorDemo, handleDemoOperators } from './operators'
@@ -8,6 +8,7 @@ import { prepareOperationsDemo, handleOperations } from './operations'
 import { demoOverview } from './overview'
 import { prepareDashboardSamples } from './dashboardSamples'
 import { prepareDemoStationLocations } from './stationLocations'
+import { demoTenantRole, getDemoSession, updateDemoSession } from './session'
 import { businessToday } from '../views/operations/period'
 const key = 'yuneng-original-ui-demo-v1'
 const clone = value => JSON.parse(JSON.stringify(value))
@@ -31,8 +32,10 @@ function prepareTelemetry() {
   persist()
 }
 prepareTelemetry()
-export function resetDemo(){db=initial();prepareTelemetry();location.reload()}
-const user={userId:1,userName:'demo',nickName:'演示管理员',avatar:'',deptId:100,tenantId:9999,status:'0',phonenumber:'13800000000',email:'demo@example.com',dept:{deptName:'运营部'}}
+export function resetDemo(){localStorage.removeItem(key);location.reload()}
+const user={userId:1,userName:'admin',nickName:'演示平台管理员',avatar:'',deptId:100,tenantId:9999,status:'0',phonenumber:'13800000000',email:'demo@example.com',dept:{deptName:'运营部'}}
+const tenantUser={...user,userId:2,userName:'demo',nickName:'演示运营商',email:'demo@example.com'}
+const tenantPermissions=['operator:station:list','operator:order:list','operator:fault:list']
 const samples={
  '/system/user/list':[user],
  '/system/role/list':[{roleId:1,roleName:'演示管理员',roleKey:'admin',roleSort:1,status:'0',createTime:now()}],
@@ -51,15 +54,22 @@ prepareOperationsDemo(db)
 const sampleDay = businessToday()
 prepareDashboardSamples(db, sampleDay, Math.floor((Date.now() - Date.parse(sampleDay + 'T00:00:00+08:00')) / 1000))
 prepareDemoStationLocations(db)
-// File IDs from the backend fixture are not public images on a static host.
-// Use the bundled brand mark as an explicit demonstration placeholder.
-const stationCollection = db.lists['/operator/station/list'] || {}
-;(stationCollection.rows || stationCollection.data || []).forEach(station => {
+// Backend file IDs have no public image equivalent on the static host.
+const stations = db.lists['/operator/station/list']
+for (const station of stations.rows || stations.data || []) {
   if (!/^(data:|https?:|\.?\/)/.test(station.fileId || '')) station.fileId = './yuneng-blue.svg'
-})
+}
+prepareDemoAlarmScopes(db)
+handleDemoAlarms(db,'/operator/fault/alarms','get')
 persist()
 const ok=data=>({code:200,msg:'演示操作成功',data})
-const fail=msg=>({code:500,msg})
+const fail=(msg,code=500)=>({code,msg})
+const forbidden=()=>fail('此账号无权访问该演示功能或数据',403)
+const rows=url=>{const collection=db.lists[url]||{};return collection.rows||collection.data||[]}
+const same=(a,b)=>String(a)===String(b)
+const visible=(identity,row)=>identity.root||same(row.tenantId,identity.tenantId)
+const tenantRead=/^\/operator\/(?:overview|station\/[^/]+|order\/(?:getOrderByOrderNumber\/)?[^/]+|fault\/(?:list|stats|\d+|alarms(?:\/\d+)?))$/
+const tenantCommon=/^\/system\/(?:menu\/getRouters|user\/getInfo|dict\/data\/type\/\w+|config\/configKey\/[\w.]+)$/
 const primaryKeys={station:'stationId',pile:'pileId',port:'portId',order:'orderId',member:'memberId',balance:'id',rule:'ruleId',price:'id',city:'id',miniapp:'id',user:'userId',role:'roleId',post:'postId',notice:'noticeId',tenant:'id',tenantpackage:'packageId',config:'configId',type:'dictId',demo:'demoId'}
 function listResponse(rows,query,original={}) {
   const filtered=rows.filter(row=>Object.entries(query).every(([k,v])=>!v||['pageNum','pageSize','orderByColumn','isAsc'].includes(k)||!(k in row)||(['tenantId','stationId'].includes(k)?String(row[k])===String(v):String(row[k]??'').includes(v))))
@@ -75,16 +85,42 @@ function handle(config) {
  if(url==='/auth/login'){
   try { return ok(createDemoSession(b)) } catch (error) { return fail(error.message) }
  }
- if(url==='/auth/logout'||url==='/auth/refresh')return ok(7200)
- if(url==='/system/user/getInfo')return {...ok(null),user,roles:['admin'],permissions:['*:*:*']}
+ const identity=getDemoSession(config.headers)
+ if(!identity)return fail('演示会话已过期，请重新登录',401)
+ if(url==='/auth/logout'&&method==='delete')return ok(updateDemoSession(identity,true))
+ if(url==='/auth/refresh'&&method==='post')return ok(updateDemoSession(identity,false))
+ if(!identity.root){
+   if(method!=='get'||!(tenantRead.test(url)||tenantCommon.test(url)))return forbidden()
+   if(q.tenantId&&!same(q.tenantId,identity.tenantId))return forbidden()
+   if(q.stationId&&!rows('/operator/station/list').some(row=>visible(identity,row)&&same(row.stationId,q.stationId)))return forbidden()
+ }
+ if(url==='/system/user/getInfo')return {...ok(null),user:identity.root?user:tenantUser,roles:[identity.root?'admin':demoTenantRole],permissions:identity.root?['*:*:*']:tenantPermissions}
+ if(url==='/system/menu/getRouters'&&!identity.root){
+  const route=db.lists[url].data.find(route=>route.path==='/operate')
+  return ok([{...route,children:route.children.filter(child=>['station','order','ordertDetail','fault'].includes(child.path))}])
+ }
  const operationResult=handleOperations(db,url,method,b,q)
  if(operationResult){persist();return operationResult}
- if(url==='/operator/overview'){handleDemoAlarms(db,'/operator/fault/alarms','get',{},{});persist();return ok(demoOverview(db,q))}
- if(url==='/operator/order/list') {
-   const rows=key=>{const c=db.lists[key]||{};return c.rows||c.data||[]},piles=rows('/operator/pile/list'),stations=rows('/operator/station/list')
-   const orders=rows('/operator/order/list').map(o=>{const pile=piles.find(p=>String(p.pileId)===String(o.pileId)&&String(p.tenantId)===String(o.tenantId));const station=stations.find(s=>pile&&String(s.stationId)===String(pile.stationId));return {...o,stationId:pile&&pile.stationId,stationName:station&&station.stationName}}).filter(o=>(!q.startTime||String(o.createTime).slice(0,10)>=q.startTime)&&(!q.endTime||String(o.createTime).slice(0,10)<=q.endTime))
+ if(url==='/operator/overview'){handleDemoAlarms(db,'/operator/fault/alarms','get',{},{});persist();return ok(demoOverview(db,q,identity))}
+ if(url==='/operator/station/list'&&!identity.root)return listResponse(rows(url).filter(row=>visible(identity,row)),q)
+ if(url==='/operator/order/list'&&method==='get') {
+   const byTenant=(tenantId,id)=>tenantId+':'+id
+   const piles=new Map(rows('/operator/pile/list').map(pile=>[byTenant(pile.tenantId,pile.pileId),pile]))
+   const stations=new Map(rows('/operator/station/list').map(station=>[byTenant(station.tenantId,station.stationId),station]))
+   const orders=rows(url).filter(order=>visible(identity,order)).map(order=>{
+     const stationId=piles.get(byTenant(order.tenantId,order.pileId))?.stationId
+     const station=stations.get(byTenant(order.tenantId,stationId))
+     return {...order,stationId,stationName:station?.stationName}
+   }).filter(order=>(!q.startTime||String(order.createTime).slice(0,10)>=q.startTime)&&(!q.endTime||String(order.createTime).slice(0,10)<=q.endTime))
    const filters={...q};delete filters.startTime;delete filters.endTime
    return listResponse(orders,filters)
+ }
+ const detail=url.match(/^\/operator\/(station|order)\/(getOrderByOrderNumber\/)?([^/]+)$/)
+ if(detail&&method==='get'&&(detail[1]==='order'||!identity.root)){
+  const [,resource,byNumber,id]=detail
+  const field=byNumber?'orderNumber':primaryKeys[resource]
+  const row=rows('/operator/'+resource+'/list').find(row=>visible(identity,row)&&same(row[field],decodeURIComponent(id)))
+  return row?ok(row):fail('演示记录不存在',404)
  }
  const operatorResult=handleDemoOperators(db,url,method,b,q)
  if(operatorResult){persist();return operatorResult}
@@ -92,8 +128,8 @@ function handle(config) {
  if(url.includes('/config/configKey/'))return ok('false')
  if(url==='/system/user/profile')return {...ok(user),roleGroup:'演示管理员',postGroup:'运营'}
  if(url==='/demo/operation-logs')return ok(db.faults.flatMap(t=>t.logs.map(l=>({...l,ticketNo:t.ticketNo}))))
- if(url==='/operator/fault/alarms'||url.startsWith('/operator/fault/alarms/')){const result=handleDemoAlarms(db,url,method,b,q);persist();return result}
- if(url.includes('/fault'))return fault(url,method,b,q)
+ if(url==='/operator/fault/alarms'||url.startsWith('/operator/fault/alarms/')){const result=handleDemoAlarms(db,url,method,b,q,Date.now(),identity.root?q.tenantId:identity.tenantId);persist();return result}
+ if(url.includes('/fault'))return fault(url,method,b,q,identity)
  if(url.startsWith('/simulator/evcs/sim/v1/')){
   const args={...q,...b},action=url.split('/').pop(),ports=db.lists['/operator/port/list'].rows||db.lists['/operator/port/list'].data
   const error=simulateDemoPorts(ports,action,args)
@@ -115,20 +151,21 @@ function handle(config) {
  if(url.includes('role')&&url.endsWith('/list'))return listResponse([{roleId:1,roleName:'演示管理员',roleKey:'admin',status:'0',roleSort:1}],q)
  if(url.includes('post')&&url.endsWith('/list'))return listResponse([{postId:1,postName:'运营管理',postCode:'demo',status:'0',postSort:1}],q)
  if(url.includes('/dict/data/type/'))return ok([])
- if(url.includes('/getOrderByOrderNumber/'))return ok((db.lists['/operator/order/list'].rows||db.lists['/operator/order/list'].data).find(r=>r.orderNumber===url.split('/').pop())||{})
  const base=url.replace(/\/(list|\d+|[\d,]+|add|edit)$/,'');const collection=db.lists[base+'/list'];
  if(collection){const rows=collection.rows||collection.data||[];const idKey=primaryKeys[base.split('/').pop()]||Object.keys(rows[0]||{}).find(k=>/Id$/.test(k)&&k!=='tenantId')||'id';const id=url.split('/').pop();if(method==='get')return ok(rows.find(r=>String(r[idKey])===id)||{});if(method==='post'||method==='put'){if(method==='put'){const i=rows.findIndex(r=>String(r[idKey])===String(b[idKey]));if(i<0)return fail('演示记录不存在');rows.splice(i,1,{...rows[i],...b})}else rows.unshift({...b,[idKey]:b[idKey]||Date.now(),createTime:now()});persist();return ok(null)}if(method==='delete'){const ids=id.split(',');collection.rows=rows.filter(r=>!ids.includes(String(r[idKey])));collection.data=collection.rows;persist();return ok(null)}}
  if(method==='get'&&/list|select|tree|List/.test(url))return {...ok([]),rows:[],total:0}
  return fail('此操作尚未接入模拟接口：'+url+'。演示不会连接真实服务。')
 }
-function fault(url,method,b,q){const id=Number(url.split('/')[3]);const ticket=db.faults.find(t=>t.id===id)
- const c=db.lists['/operator/pile/list']||{},piles=c.rows||c.data||[]
- const scoped=db.faults.filter(t=>{const pile=piles.find(p=>String(p.pileId)===String(t.pileId));return (!q.tenantId||String(t.tenantId||(pile&&pile.tenantId)||9999)===String(q.tenantId))&&(!q.stationId||pile&&String(pile.stationId)===String(q.stationId))})
+function fault(url,method,b,q,identity){
+ const id=Number(url.split('/')[3])
+ const piles=rows('/operator/pile/list')
+ const scoped=db.faults.filter(t=>visible(identity,t)&&(!q.tenantId||same(t.tenantId,q.tenantId))&&(!q.stationId||piles.some(p=>same(p.pileId,t.pileId)&&same(p.tenantId,t.tenantId)&&same(p.stationId,q.stationId))))
+ const ticket=scoped.find(t=>t.id===id)
  if(url.endsWith('/list')){const r=listResponse(scoped.filter(t=>q.activeOnly!=='true'||t.status!=='CLOSED'),q);return ok({records:r.rows,total:r.total})}
  if(url.endsWith('/stats'))return ok({total:scoped.length,active:scoped.filter(t=>t.status!=='CLOSED').length,pending:scoped.filter(t=>t.status==='NEW').length,closed:scoped.filter(t=>t.status==='CLOSED').length,alarmCount:scoped.reduce((sum,t)=>sum+Number(t.alarmCount||0),0),avgResolveMinutes:null,trend:[{day:new Date().toISOString().slice(0,10),count:scoped.length}],byType:['OFFLINE','CONNECTOR','POWER','OTHER'].map(faultType=>({faultType,count:scoped.filter(t=>t.faultType===faultType).length}))})
- if(url.endsWith('/simulate-alarm')){if(!b.pileId||!b.description)return fail('请填写设备和描述');db.alarmCount++;const old=db.faults.find(t=>t.pileId===b.pileId&&t.faultType===b.faultType&&t.status!=='CLOSED');if(old){persist();return ok({merged:true,ticket:old})}const t={...b,id:Date.now(),ticketNo:'GD'+Date.now(),status:'NEW',source:'ALARM',createdAt:now(),logs:[]};db.faults.unshift(t);persist();return ok({merged:false,ticket:t})}
+ if(url.endsWith('/simulate-alarm')){if(!b.pileId||!b.description)return fail('请填写设备和描述');const pile=piles.find(p=>same(p.pileId,b.pileId));if(!pile)return fail('演示设备不存在');const tenantId=pile.tenantId;db.alarmCount++;const old=db.faults.find(t=>same(t.pileId,b.pileId)&&same(t.tenantId,tenantId)&&t.faultType===b.faultType&&t.status!=='CLOSED');if(old){persist();return ok({merged:true,ticket:old})}const t={...b,tenantId,id:Date.now(),ticketNo:'GD'+Date.now(),status:'NEW',source:'ALARM',createdAt:now(),logs:[]};db.faults.unshift(t);persist();return ok({merged:false,ticket:t})}
  if(url.endsWith('/assignees'))return ok([user])
- if(!ticket)return fail('工单不存在')
+ if(!ticket)return fail('工单不存在',404)
  if(method==='post'){const allowed={ASSIGN:['NEW','ASSIGNED'],START:['ASSIGNED'],RESOLVE:['PROCESSING'],CONFIRM:['RESOLVED']};if(!allowed[b.action]?.includes(ticket.status))return fail('当前状态不允许该操作');if(!b.note)return fail('请填写处理说明');if(b.action==='ASSIGN'){if(!b.assigneeId)return fail('请选择处理人');ticket.assigneeId=1;ticket.assigneeName=user.nickName}ticket.status={ASSIGN:'ASSIGNED',START:'PROCESSING',RESOLVE:'RESOLVED',CONFIRM:'CLOSED'}[b.action];ticket.logs.push({id:Date.now(),toStatus:ticket.status,actorName:user.nickName,note:b.note,createdAt:now()});persist()}
  return ok({ticket,logs:ticket.logs,reports:[]})
 }

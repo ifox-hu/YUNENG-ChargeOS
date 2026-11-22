@@ -1,5 +1,5 @@
 import auth from '@/plugins/auth'
-import router, { constantRoutes, dynamicRoutes } from '@/router'
+import router, { visibleConstantRoutes, dynamicRoutes } from '@/router'
 import { getRouters } from '@/api/menu'
 import Layout from '@/layout/index'
 import ParentView from '@/components/ParentView'
@@ -14,12 +14,12 @@ const permission = {
     sidebarRouters: []
   },
   mutations: {
-    SET_ROUTES: (state, routes) => {
+    SET_ROUTES: (state, { routes, base }) => {
       state.addRoutes = routes
-      state.routes = constantRoutes.concat(routes)
+      state.routes = base.concat(routes)
     },
     SET_DEFAULT_ROUTES: (state, routes) => {
-      state.defaultRoutes = constantRoutes.concat(routes)
+      state.defaultRoutes = routes
     },
     SET_TOPBAR_ROUTES: (state, routes) => {
       state.topbarRouters = routes
@@ -30,25 +30,23 @@ const permission = {
   },
   actions: {
     // 生成路由
-    GenerateRoutes({ commit }) {
-      return new Promise(resolve => {
-        // 向后端请求路由数据
-        getRouters().then(res => {
-          const sdata = JSON.parse(JSON.stringify(res.data))
-          const rdata = JSON.parse(JSON.stringify(res.data))
-          organizeBusinessMenus(sdata)
-          organizeBusinessMenus(rdata)
-          const sidebarRoutes = filterAsyncRouter(sdata)
-          const rewriteRoutes = filterAsyncRouter(rdata, false, true)
-          const asyncRoutes = filterDynamicRoutes(dynamicRoutes);
-          rewriteRoutes.push({ path: '*', redirect: '/404', hidden: true })
-          router.addRoutes(asyncRoutes);
-          commit('SET_ROUTES', rewriteRoutes)
-          commit('SET_SIDEBAR_ROUTERS', constantRoutes.concat(sidebarRoutes))
-          commit('SET_DEFAULT_ROUTES', sidebarRoutes)
-          commit('SET_TOPBAR_ROUTES', sidebarRoutes)
-          resolve(rewriteRoutes)
-        })
+    GenerateRoutes({ commit, rootGetters }) {
+      return getRouters().then(res => {
+        const sdata = JSON.parse(JSON.stringify(res.data))
+        const rdata = JSON.parse(JSON.stringify(res.data))
+        organizeBusinessMenus(sdata)
+        organizeBusinessMenus(rdata)
+        const sidebarRoutes = filterAsyncRouter(sdata)
+        const rewriteRoutes = filterAsyncRouter(rdata, false, true)
+        const asyncRoutes = filterDynamicRoutes(dynamicRoutes);
+        rewriteRoutes.push({ path: '*', redirect: '/404', hidden: true })
+        router.addRoutes(asyncRoutes);
+        const base = visibleConstantRoutes(rootGetters.roles)
+        commit('SET_ROUTES', { routes: rewriteRoutes, base })
+        commit('SET_SIDEBAR_ROUTERS', base.concat(sidebarRoutes))
+        commit('SET_DEFAULT_ROUTES', base.concat(sidebarRoutes))
+        commit('SET_TOPBAR_ROUTES', sidebarRoutes)
+        return rewriteRoutes
       })
     }
   }

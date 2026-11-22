@@ -35,7 +35,7 @@
 </template>
 
 <script>
-import { constantRoutes } from "@/router";
+import { visibleConstantRoutes } from "@/router";
 
 export default {
   data() {
@@ -89,7 +89,7 @@ export default {
           childrenMenus.push(router.children[item]);
         }
       });
-      return constantRoutes.concat(childrenMenus);
+      return visibleConstantRoutes(this.$store.getters.roles).concat(childrenMenus);
     },
     // 默认激活的菜单
     activeMenu() {
@@ -183,7 +183,7 @@ export default {
         });
       }
       if (key === '/operate') {
-        const operations = constantRoutes.find(route => route.name === 'Operations');
+        const operations = visibleConstantRoutes(this.$store.getters.roles).find(route => route.name === 'Operations');
         if (operations) routes.unshift(operations);
       }
       if(routes.length > 0) {

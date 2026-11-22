@@ -1,10 +1,11 @@
-import router from './router'
+import router, { platformDemoRoute } from './router'
 import store from './store'
 import { Message } from 'element-ui'
 import NProgress from 'nprogress'
 import 'nprogress/nprogress.css'
 import { getToken } from '@/utils/auth'
 import { isRelogin } from '@/utils/request'
+import { isDemoTenant } from '@/demo/session'
 
 NProgress.configure({ showSpinner: false })
 
@@ -39,6 +40,9 @@ router.beforeEach((to, from, next) => {
               NProgress.done()
             })
           })
+      } else if (isDemoTenant(store.getters.roles) &&
+        (platformDemoRoute(to) || ['OperationsStatistics', 'OperationsMap', 'OperationsScreen', 'Profile'].includes(to.name))) {
+        next({ path: '/404', replace: true })
       } else {
         next()
       }

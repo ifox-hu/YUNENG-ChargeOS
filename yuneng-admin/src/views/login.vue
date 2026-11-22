@@ -22,7 +22,7 @@
       <div class="ec-panel">
         <div class="ec-panel-top"><span>ACCESS YOUR WORKSPACE</span><i class="el-icon-full-screen" aria-hidden="true" /></div>
         <h2 id="login-heading">欢迎回来</h2>
-        <p class="ec-sub">登录管理平台，连接无限可能</p>
+        <p class="ec-sub">{{ isDemo ? 'admin · 全平台管理　/　demo · 本运营商只读' : '登录管理平台，连接无限可能' }}</p>
         <el-form
           ref="loginForm"
           :model="loginForm"
@@ -130,7 +130,6 @@ import { getDemoCaptchaAnswer } from '@/demo/captcha'
 import EnergyScene from '@/components/EnergyScene'
 
 const isDemo = process.env.VUE_APP_DEMO === 'true'
-const defaultPassword = 'admin123'
 
 export default {
   name: 'Login',
@@ -146,7 +145,7 @@ export default {
       isDemo,
       loginForm: {
         username: 'admin',
-        password: isDemo ? '' : defaultPassword,
+        password: 'admin123',
         rememberMe: false,
         code: '',
         uuid: ''
@@ -206,7 +205,7 @@ export default {
         await this.getCode()
         code = getDemoCaptchaAnswer(this.loginForm.uuid)
       }
-      this.loginForm.password = defaultPassword
+      this.loginForm.password = this.loginForm.username.trim() === 'demo' ? 'Demo123456!' : 'admin123'
       this.loginForm.code = code || ''
       this.$nextTick(() => this.$refs.loginForm.clearValidate(['password', 'code']))
     },

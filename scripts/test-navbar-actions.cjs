@@ -13,7 +13,7 @@ const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http:
   if(process.env.NAVBAR_LIVE==='true'){
    const {execFileSync}=require('child_process'),api='http://127.0.0.1:38080',code=await(await fetch(api+'/code')).json();let answer=execFileSync('docker',['exec','hcp-redis','redis-cli','-n','5','GET','captcha_codes:'+code.uuid],{encoding:'utf8'}).trim();try{answer=JSON.parse(answer)}catch{}
    const login=await(await fetch(api+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:'admin',password:'admin123',code:answer,uuid:code.uuid})})).json();assert.equal(login.code,200);await context.addCookies([{name:'Admin-Token',value:login.data.access_token,url:base},{name:'Admin-Tenant',value:'9999',url:base}]);await page.goto(base.replace(/\/$/,'')+'/index');
-  }else{await page.goto(base+'#/login');await page.getByPlaceholder('请输入账号').fill('demo');await page.getByPlaceholder('请输入密码').fill('Demo123456!');await fillDemoCaptcha(page);await page.locator('.login-actions button').click();await page.waitForURL('**/#/index')}
+  }else{await page.goto(base+'#/login');await page.getByPlaceholder('请输入账号').fill('admin');await page.getByPlaceholder('请输入密码').fill('admin123');await fillDemoCaptcha(page);await page.locator('.login-actions button').click();await page.waitForURL('**/#/index')}
   await page.locator('.metric-card').first().waitFor();
   const more=page.locator('.topmenu-container > .el-submenu'),title=more.locator('.el-submenu__title');
   const opened=value=>page.waitForFunction(value=>document.querySelector('.topmenu-container > .el-submenu')?.classList.contains('is-opened')===value,value,{timeout:2500});

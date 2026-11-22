@@ -5,6 +5,7 @@ Vue.use(Router)
 
 /* Layout */
 import Layout from '@/layout'
+import { isDemoTenant } from '@/demo/session'
 
 /**
  * Note: 路由配置项
@@ -202,6 +203,18 @@ export const dynamicRoutes = [
     ]
   }
 ]
+
+export function platformDemoRoute(route) {
+  return route.path === '/user' || route.path === '/user/profile' ||
+    route.path === '/operate/total' || /^\/operations\/(statistics|map|screen|finance|marketing)\/?$/i.test(route.path)
+}
+
+export function visibleConstantRoutes(roles) {
+  if (!isDemoTenant(roles)) return constantRoutes
+  return constantRoutes.filter(route => !platformDemoRoute(route)).map(route => route.name === 'Operations'
+    ? { ...route, children: route.children.filter(child => child.name === 'Index') }
+    : route)
+}
 
 // 防止连续点击多次路由报错
 let routerPush = Router.prototype.push;
