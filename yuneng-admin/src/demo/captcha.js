@@ -19,6 +19,10 @@ export function createDemoCaptcha(now = Date.now()) {
   return { captchaEnabled: true, uuid, img: btoa(svg), imageType: 'image/svg+xml' }
 }
 
+export function getDemoCaptchaAnswer(uuid, now = Date.now()) {
+  if (current && current.uuid === uuid && now < current.expiresAt) return current.code
+}
+
 export function verifyDemoCaptcha(code, uuid, now = Date.now()) {
   if (!current || !uuid || current.uuid !== uuid) return '验证码已失效，请刷新后重试'
   const challenge = current

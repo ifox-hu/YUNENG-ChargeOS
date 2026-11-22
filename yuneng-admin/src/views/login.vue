@@ -89,8 +89,13 @@
           </el-form-item>
 
           <div class="login-options">
-            <el-checkbox v-model="loginForm.rememberMe">记住密码</el-checkbox>
-            <span class="login-options__hint">忘记密码请联系管理员</span>
+            <button v-if="isDemo" type="button" class="demo-fill" :disabled="loading" @click="fillDemoLogin">
+              一键填入
+            </button>
+            <template v-else>
+              <el-checkbox v-model="loginForm.rememberMe">记住密码</el-checkbox>
+              <span class="login-options__hint">忘记密码请联系管理员</span>
+            </template>
           </div>
 
           <el-form-item class="login-actions">
@@ -121,8 +126,10 @@
 <script>
 import Cookies from 'js-cookie'
 import { encrypt, decrypt } from '@/utils/jsencrypt'
-
+import { getDemoCaptchaAnswer } from '@/demo/captcha'
 import EnergyScene from '@/components/EnergyScene'
+
+const isDemo = process.env.VUE_APP_DEMO === 'true'
 
 export default {
   name: 'Login',
@@ -135,10 +142,10 @@ export default {
       codeUrl: '',
       energyStatus: '能量场已就绪',
       sceneFocused: false,
-      isDemo: process.env.VUE_APP_DEMO === 'true',
+      isDemo,
       loginForm: {
-        username: 'admin',
-        password: 'admin123',
+        username: isDemo ? 'demo' : 'admin',
+        password: isDemo ? '' : 'admin123',
         rememberMe: false,
         code: '',
         uuid: ''
@@ -170,7 +177,7 @@ export default {
   },
   created() {
     this.getCode()
-    this.getCookie()
+    if (!isDemo) this.getCookie()
   },
   methods: {
     onFormFocusOut(event) {
@@ -180,7 +187,7 @@ export default {
       const challenge = this.services
         ? this.services.getCode()
         : import('@/api/login').then(({ getCodeImg }) => getCodeImg())
-      challenge.then(res => {
+      return challenge.then(res => {
         this.captchaEnabled =
           res.captchaEnabled === undefined ? true : res.captchaEnabled
         if (this.captchaEnabled) {
@@ -190,6 +197,17 @@ export default {
           this.$nextTick(() => this.$refs.loginForm.clearValidate('code'))
         }
       })
+    },
+    async fillDemoLogin() {
+      if (!isDemo || this.loading) return
+      let code = getDemoCaptchaAnswer(this.loginForm.uuid)
+      if (!code) {
+        await this.getCode()
+        code = getDemoCaptchaAnswer(this.loginForm.uuid)
+      }
+      this.loginForm.password = 'Demo123456!'
+      this.loginForm.code = code || ''
+      this.$nextTick(() => this.$refs.loginForm.clearValidate(['password', 'code']))
     },
     getCookie() {
       const username = Cookies.get('username')
@@ -201,6 +219,17 @@ export default {
         password:
           password === undefined ? this.loginForm.password : decrypt(password),
         rememberMe: rememberMe === undefined ? false : Boolean(rememberMe)
+      }
+    },
+    saveLoginCookie() {
+      if (this.loginForm.rememberMe) {
+        Cookies.set('username', this.loginForm.username, { expires: 30 })
+        Cookies.set('password', encrypt(this.loginForm.password), { expires: 30 })
+        Cookies.set('rememberMe', this.loginForm.rememberMe, { expires: 30 })
+      } else {
+        Cookies.remove('username')
+        Cookies.remove('password')
+        Cookies.remove('rememberMe')
       }
     },
     async signIn() {
@@ -216,19 +245,7 @@ export default {
       this.$refs.loginForm.validate((valid) => {
         if (valid) {
           this.loading = true
-          if (this.loginForm.rememberMe) {
-            Cookies.set('username', this.loginForm.username, { expires: 30 })
-            Cookies.set('password', encrypt(this.loginForm.password), {
-              expires: 30
-            })
-            Cookies.set('rememberMe', this.loginForm.rememberMe, {
-              expires: 30
-            })
-          } else {
-            Cookies.remove('username')
-            Cookies.remove('password')
-            Cookies.remove('rememberMe')
-          }
+          if (!isDemo) this.saveLoginCookie()
           this.signIn().catch(error => {
             this.loading = false
             if (this.services) this.services.showError(error)
@@ -331,6 +348,9 @@ export default {
 .energy-login .login-options .is-checked .el-checkbox__inner{background:#177b78;border-color:#64f4e2}
 .energy-login .login-options .is-checked+.el-checkbox__label{color:#9af8eb}
 .energy-login .login-options__hint{font-size:11px;color:#91a1b7}
+.energy-login .demo-fill{margin-left:auto;padding:6px 12px;border:1px solid #79d8df55;border-radius:6px;background:#75ecff0d;color:#b3f5f3;font-size:12px}
+.energy-login .demo-fill:hover:not(:disabled){background:#75ecff22;border-color:#79d8df}
+.energy-login .demo-fill:disabled{opacity:.55;cursor:default}
 .energy-login .login-form .login-actions{margin-bottom:0}
 .energy-login .login-actions .el-button{width:100%;height:46px;padding:0 16px;border-radius:7px;border:1px solid #d8faff7a;background:linear-gradient(110deg,#99c7ff,#64f4e2);color:#0a2936;box-shadow:0 5px 28px #6be9de22;font-size:13px;font-weight:600;letter-spacing:2px}
 .energy-login .login-actions .el-button:hover{filter:brightness(1.08)}
