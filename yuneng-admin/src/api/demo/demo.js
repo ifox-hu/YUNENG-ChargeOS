@@ -42,3 +42,10 @@ export function delDemo(demoId) {
     method: 'delete'
   })
 }
+
+export function listDemoOperationLogs() {
+  return request({
+    url: '/demo/operation-logs',
+    method: 'get'
+  })
+}

@@ -16,24 +16,50 @@
   </view>
 </template>
 <script setup>
-import {ref} from 'vue'
-import {onShow,onPullDownRefresh} from '@dcloudio/uni-app'
-import {faultRequest,statuses,faultLabel} from '../../components/js/fault-api.js'
+import { ref } from 'vue'
+import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
+import { faultRequest, statuses, faultLabel } from '../../components/js/fault-api.js'
 import pageHeader from '../../components/page-header/index.vue'
-const rows=ref([]),total=ref(0),page=ref(1),loading=ref(false),error=ref('')
-function goCreate(){uni.navigateTo({url:'/pages/repair/create'})}
-function goDetail(id){uni.navigateTo({url:'/pages/repair/detail?id='+id})}
-async function load(reset){
-  if(loading.value)return
-  if(!uni.getStorageSync('token')){rows.value=[];total.value=0;return uni.navigateTo({url:'/pages/user/login'})}
-  loading.value=true;error.value=''
-  const next=reset?1:page.value+1
-  try{const data=await faultRequest('mine','GET',{pageNum:next,pageSize:10});rows.value=reset?data.records:rows.value.concat(data.records);total.value=data.total;page.value=next}
-  catch(e){error.value=e.message}
-  finally{loading.value=false;uni.stopPullDownRefresh()}
+
+const rows = ref([])
+const total = ref(0)
+const page = ref(1)
+const loading = ref(false)
+const error = ref('')
+
+function goCreate() {
+  uni.navigateTo({ url: '/pages/repair/create' })
 }
-onShow(()=>load(true))
-onPullDownRefresh(()=>load(true))
+
+function goDetail(id) {
+  uni.navigateTo({ url: `/pages/repair/detail?id=${id}` })
+}
+
+async function load(reset) {
+  if (loading.value) return
+  if (!uni.getStorageSync('token')) {
+    rows.value = []
+    total.value = 0
+    return uni.navigateTo({ url: '/pages/user/login' })
+  }
+  loading.value = true
+  error.value = ''
+  const next = reset ? 1 : page.value + 1
+  try {
+    const data = await faultRequest('mine', 'GET', { pageNum: next, pageSize: 10 })
+    rows.value = reset ? data.records : rows.value.concat(data.records)
+    total.value = data.total
+    page.value = next
+  } catch (failure) {
+    error.value = failure.message
+  } finally {
+    loading.value = false
+    uni.stopPullDownRefresh()
+  }
+}
+
+onShow(() => load(true))
+onPullDownRefresh(() => load(true))
 </script>
 <style scoped>
 .list-caption{display:block;font-size:23rpx;color:#818895;margin-top:12rpx}.top button{height:88rpx;line-height:88rpx;font-size:26rpx;padding:0 22rpx;flex-shrink:0}.card-pressed{background:#e7ecf4!important}.empty-mark{width:100rpx;height:100rpx;line-height:100rpx;border-radius:30rpx;background:#e5eaf2;color:#2563eb;font-size:46rpx;margin:12rpx auto 26rpx}.empty-title{display:block;font-size:30rpx;font-weight:600;color:#364256}.empty-caption{display:block;font-size:25rpx;line-height:1.8;margin:16rpx 0 30rpx}.empty-action{font-size:27rpx;color:#2563eb;background:#e5eaf2;min-height:88rpx}.empty-action::after{border:0}

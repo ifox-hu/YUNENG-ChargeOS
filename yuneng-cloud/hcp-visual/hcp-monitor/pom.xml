@@ -87,10 +87,6 @@
             <groupId>com.jcraft</groupId>
             <artifactId>jsch</artifactId>
         </dependency>
-        <dependency>
-            <groupId>com.zkhz</groupId>
-            <artifactId>hcp-common-datascope</artifactId>
-        </dependency>
 
         <dependency>
             <groupId>com.zkhz</groupId>

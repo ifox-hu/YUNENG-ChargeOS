@@ -55,12 +55,44 @@
 			"style": {
 				"navigationStyle": "custom"
 			}
+		},
+		{
+			"path": "pages/repair/create",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "设备故障报修"
+			}
+		},
+		{
+			"path": "pages/repair/list",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "我的报修",
+				"enablePullDownRefresh": true
+			}
+		},
+		{
+			"path": "pages/repair/detail",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "报修进度",
+				"enablePullDownRefresh": true
+			}
+		},
+		{
+			"path": "pages/wallet/balance",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "账户余额"
+			}
+		},
+		{
+			"path": "pages/wallet/points",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "积分中心"
+			}
 		}
-		,{"path":"pages/repair/create","style":{"navigationStyle":"custom","navigationBarTitleText":"设备故障报修"}}
-		,{"path":"pages/repair/list","style":{"navigationStyle":"custom","navigationBarTitleText":"我的报修","enablePullDownRefresh":true}}
-		,{"path":"pages/repair/detail","style":{"navigationStyle":"custom","navigationBarTitleText":"报修进度","enablePullDownRefresh":true}}
-		,{"path":"pages/wallet/balance","style":{"navigationStyle":"custom","navigationBarTitleText":"账户余额"}}
-		,{"path":"pages/wallet/points","style":{"navigationStyle":"custom","navigationBarTitleText":"积分中心"}}
 	],
 	"globalStyle": {
 		"navigationBarTextStyle": "black",

@@ -9,7 +9,7 @@
         <el-button size="small" :loading="loading" @click="load">刷新</el-button>
         <span v-for="item in counts" :key="item.status">{{ labels[item.status] }}：{{ item.total }}</span>
       </div>
-      <el-table :data="rows" v-loading="loading">
+      <el-table v-loading="loading" :data="rows">
         <el-table-column prop="order_id" label="订单" min-width="150" show-overflow-tooltip />
         <el-table-column prop="member_id" label="会员" width="85" />
         <el-table-column label="状态" width="110"><template slot-scope="scope">
@@ -34,30 +34,71 @@
   </div>
 </template>
 <script>
-import request from '@/utils/request'
+import { listPointsEvents, retryPointsEvent } from '@/api/operator/points'
+
 export default {
   name: 'PointsEvents',
   data() {
-    return { demoMode: process.env.VUE_APP_DEMO === 'true', visible: false, loading: false, retrying: false, rows: [], counts: [], page: 1, status: '',
-      labels: { PENDING: '待投递', PUBLISHING: '投递中', SENT: '等待到账', RETRY: '待重试', CONSUMED: '已到账', DEAD: '失败终止' } }
+    return {
+      demoMode: process.env.VUE_APP_DEMO === 'true',
+      visible: false,
+      loading: false,
+      retrying: false,
+      rows: [],
+      counts: [],
+      page: 1,
+      status: '',
+      labels: {
+        PENDING: '待投递',
+        PUBLISHING: '投递中',
+        SENT: '等待到账',
+        RETRY: '待重试',
+        CONSUMED: '已到账',
+        DEAD: '失败终止'
+      }
+    }
   },
-  mounted() { if (this.$route.query.pointsMonitor === 'true' && !this.demoMode && Number(this.$store.state.user.id) === 1) { this.status = 'DEAD'; this.open() } },
+  mounted() {
+    if (this.$route.query.pointsMonitor === 'true' && !this.demoMode && Number(this.$store.state.user.id) === 1) {
+      this.status = 'DEAD'
+      this.open()
+    }
+  },
   methods: {
-    open() { this.visible = true; this.page = 1; this.load() },
+    open() {
+      this.visible = true
+      this.page = 1
+      this.load()
+    },
     async load() {
       this.loading = true
       try {
-        const result = await request({ url: '/operator/points/events', params: { page: this.page, size: 20, status: this.status || undefined, targetTenantId: this.$route.query.targetTenantId } })
-        this.rows = result.data || []; this.counts = result.counts || []
-      } finally { this.loading = false }
+        const result = await listPointsEvents({
+          page: this.page,
+          size: 20,
+          status: this.status || undefined,
+          targetTenantId: this.$route.query.targetTenantId
+        })
+        this.rows = result.data || []
+        this.counts = result.counts || []
+      } finally {
+        this.loading = false
+      }
     },
     async retry(row) {
-      try { await this.$confirm('修复失败原因后，重新投递此积分事件？', '确认补偿') } catch (_) { return }
+      try {
+        await this.$confirm('修复失败原因后，重新投递此积分事件？', '确认补偿')
+      } catch (_) {
+        return
+      }
       this.retrying = true
       try {
-        await request({ url: '/operator/points/events/' + encodeURIComponent(row.event_id) + '/retry', method: 'post' })
-        this.$message.success('已加入补偿队列'); await this.load()
-      } finally { this.retrying = false }
+        await retryPointsEvent(row.event_id)
+        this.$message.success('已加入补偿队列')
+        await this.load()
+      } finally {
+        this.retrying = false
+      }
     }
   }
 }

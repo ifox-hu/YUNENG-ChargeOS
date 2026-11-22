@@ -1,11 +1,27 @@
 import request from '@/utils/request'
 
+export function getOperationOverview(params) {
+  return request({
+    url: '/operator/overview',
+    method: 'get',
+    params
+  })
+}
+
 export function getOperations(resource, params) {
-  return request({ url: '/operator/operations/' + resource, method: 'get', params })
+  return request({
+    url: '/operator/operations/' + resource,
+    method: 'get',
+    params
+  })
 }
 
 export function saveOperation(resource, data) {
-  return request({ url: '/operator/operations/' + resource, method: 'post', data })
+  return request({
+    url: '/operator/operations/' + resource,
+    method: 'post',
+    data
+  })
 }
 
 export function operationKey() {

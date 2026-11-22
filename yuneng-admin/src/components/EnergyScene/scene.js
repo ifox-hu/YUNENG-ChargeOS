@@ -1,34 +1,5 @@
-// Three.js r160 is self-hosted and loaded only on the login route.
-let runtimePromise
-export function loadThree() {
-  if (window.THREE && window.THREE.REVISION === '160') return Promise.resolve(window.THREE)
-  if (!runtimePromise) {
-    runtimePromise = new Promise((resolve, reject) => {
-      const script = document.createElement('script')
-      const timeout = setTimeout(() => {
-        script.remove()
-        reject(new Error('Energy runtime timeout'))
-      }, 15000)
-      script.src = process.env.BASE_URL + 'vendor/three-r160.min.js'
-      script.async = true
-      script.onload = () => {
-        clearTimeout(timeout)
-        if (window.THREE && window.THREE.REVISION === '160') resolve(window.THREE)
-        else reject(new Error('Energy runtime unavailable'))
-      }
-      script.onerror = () => {
-        clearTimeout(timeout)
-        script.remove()
-        reject(new Error('Energy runtime unavailable'))
-      }
-      document.head.appendChild(script)
-    }).catch(error => {
-      runtimePromise = null
-      throw error
-    })
-  }
-  return runtimePromise
-}
+import { coreVertexShader, coreFragmentShader, dustVertexShader, dustFragmentShader } from './shaders'
+
 export function createEnergyScene(stage, T, onStatus) {
   const root = stage.closest('.energy-login')
   const hit = stage.querySelector('.ec-core-hit')
@@ -438,8 +409,8 @@ export function createEnergyScene(stage, T, onStatus) {
     }
     coreMaterial = new T.ShaderMaterial({
       uniforms,
-      vertexShader: 'varying vec3 vP; varying vec3 vN; varying vec3 vV; uniform float uTime; uniform float uPulse; void main(){vP=position; vec3 p=position; float d=sin(p.x*6.0+uTime)*sin(p.y*7.0-uTime*.8)*sin(p.z*5.0+uTime*.5); p+=normal*d*(.012+uPulse*.018); vec4 mv=modelViewMatrix*vec4(p,1.0);vN=normalize(normalMatrix*normal);vV=-mv.xyz;gl_Position=projectionMatrix*mv;}',
-      fragmentShader: 'precision highp float; varying vec3 vP; varying vec3 vN; varying vec3 vV; uniform float uTime; uniform float uPulse; uniform float uGather; uniform vec3 uColor; void main(){vec3 n=normalize(vN);float fres=pow(1.0-abs(dot(n,normalize(vV))),2.1);float lat=asin(clamp(vP.y,-.999,.999));float lon=atan(vP.z,vP.x);float f=sin(lon*7.0+sin(lat*11.0-uTime)*.7+uTime*.5);float g=sin(lat*18.0+sin(lon*6.0+uTime*.7)*1.1);float fil=pow(max(0.0,1.0-abs(f)*1.5),15.0);float fil2=pow(max(0.0,1.0-abs(g)*1.3),20.0);float weave=fil*.32+fil2*.20;float bands=pow(max(0.0,1.0-abs(sin(lat*38.0+uTime*.3))*1.6),9.0)*.035;float l=max(0.0,dot(n,normalize(vec3(-1.0,1.5,2.0))));vec3 base=mix(vec3(.016,.042,.09),uColor*.20,l);vec3 c=base+uColor*(fres*1.05+weave+bands)*(1.0+uPulse*.8);c+=vec3(.18,.32,.60)*pow(l,18.0);c+=mix(uColor,vec3(.78,1.0,1.0),.6)*uGather*.45;gl_FragColor=vec4(c,1.0);}'
+      vertexShader: coreVertexShader,
+      fragmentShader: coreFragmentShader
     })
     const core = new T.Mesh(new T.SphereGeometry(0.98, 80, 56), coreMaterial)
     world.add(core)
@@ -544,8 +515,8 @@ export function createEnergyScene(stage, T, onStatus) {
           value: renderer.getPixelRatio()
         }
       },
-      vertexShader: 'uniform float uScale; uniform float uTime; uniform float uPulse; varying vec3 vColor; void main(){vColor=color;float r=length(position.xz);float a=atan(position.z,position.x)+uTime*(.18+.07/r);vec3 p=vec3(cos(a)*r,position.y,sin(a)*r)*(1.0+uPulse*.09);vec4 mv=modelViewMatrix*vec4(p,1.0);gl_PointSize=clamp(13.0/-mv.z,1.0,3.5)*uScale;gl_Position=projectionMatrix*mv;}',
-      fragmentShader: 'varying vec3 vColor; void main(){float d=length(gl_PointCoord-.5);if(d>.5)discard;gl_FragColor=vec4(vColor,pow(1.0-d*2.0,1.6)*.56);}'
+      vertexShader: dustVertexShader,
+      fragmentShader: dustFragmentShader
     }))
     dust.rotation.set(0.36, -0.2, -0.40)
     world.add(dust)

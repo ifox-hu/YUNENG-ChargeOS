@@ -19,39 +19,69 @@
   </view>
 </template>
 <script setup>
-import {ref,reactive} from 'vue'
-import {onLoad,onShow} from '@dcloudio/uni-app'
-import {faultTypes,faultRequest} from '../../components/js/fault-api.js'
+import { ref, reactive } from 'vue'
+import { onLoad, onShow } from '@dcloudio/uni-app'
+import { faultTypes, faultRequest } from '../../components/js/fault-api.js'
 import pageHeader from '../../components/page-header/index.vue'
-const form=reactive({pileId:'',description:''})
-const typeIndex=ref(0),submitting=ref(false)
-function goList(){uni.navigateTo({url:'/pages/repair/list'})}
-onLoad(options=>{form.pileId=options.pileId || ''})
-onShow(()=>{if(!uni.getStorageSync('token'))uni.navigateTo({url:'/pages/user/login'})})
+
+const form = reactive({ pileId: '', description: '' })
+const typeIndex = ref(0)
+const submitting = ref(false)
+
+function goList() {
+  uni.navigateTo({ url: '/pages/repair/list' })
+}
+
+onLoad(options => { form.pileId = options.pileId || '' })
+onShow(() => {
+  if (!uni.getStorageSync('token')) uni.navigateTo({ url: '/pages/user/login' })
+})
+
 function parsePile(result) {
-  const raw=String(result||'').trim()
-  // Accept a plain identifier or the existing charging QR's pileId/chargeNo query.
-  const match=raw.match(/[?&](?:pileId|chargeNo|chargeId)=([^&#]+)/i)
-  const id=match?decodeURIComponent(match[1]):raw
-  if(!/^[A-Za-z0-9_-]{1,64}$/.test(id))throw new Error('无法识别设备编号，请手动输入')
+  const raw = String(result || '').trim()
+  // Accept a plain identifier or an identifier from an existing charging QR code.
+  const match = raw.match(/[?&](?:pileId|chargeNo|chargeId)=([^&#]+)/i)
+  const id = match ? decodeURIComponent(match[1]) : raw
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) throw new Error('无法识别设备编号，请手动输入')
   return id
 }
-function scan(){
-  uni.scanCode({onlyFromCamera:false,scanType:['qrCode'],
-    success:res=>{try{form.pileId=parsePile(res.result)}catch(e){uni.showToast({title:e.message,icon:'none'})}},
-    fail:()=>uni.showToast({title:'未完成扫码，可手动输入设备编号',icon:'none'})
+
+function scan() {
+  uni.scanCode({
+    onlyFromCamera: false,
+    scanType: ['qrCode'],
+    success: result => {
+      try {
+        form.pileId = parsePile(result.result)
+      } catch (error) {
+        uni.showToast({ title: error.message, icon: 'none' })
+      }
+    },
+    fail: () => uni.showToast({ title: '未完成扫码，可手动输入设备编号', icon: 'none' })
   })
 }
-async function submit(){
-  if(submitting.value)return
-  if(!uni.getStorageSync('token'))return uni.navigateTo({url:'/pages/user/login'})
-  if(!form.pileId || !form.description.trim())return uni.showToast({title:'请填写设备编号和故障描述',icon:'none'})
-  submitting.value=true
+
+async function submit() {
+  if (submitting.value) return
+  if (!uni.getStorageSync('token')) return uni.navigateTo({ url: '/pages/user/login' })
+  const description = form.description.trim()
+  if (!form.pileId || !description) {
+    return uni.showToast({ title: '请填写设备编号和故障描述', icon: 'none' })
+  }
+  submitting.value = true
   try {
-    const result=await faultRequest('report','POST',{pileId:form.pileId,faultType:faultTypes[typeIndex.value].value,description:form.description.trim()})
-    uni.showToast({title:result.merged?'已合并到现有工单':'报修提交成功',icon:'none'})
-    uni.redirectTo({url:'/pages/repair/detail?id='+result.ticket.id})
-  } catch(e){uni.showToast({title:e.message,icon:'none'})}finally{submitting.value=false}
+    const result = await faultRequest('report', 'POST', {
+      pileId: form.pileId,
+      faultType: faultTypes[typeIndex.value].value,
+      description
+    })
+    uni.showToast({ title: result.merged ? '已合并到现有工单' : '报修提交成功', icon: 'none' })
+    uni.redirectTo({ url: `/pages/repair/detail?id=${result.ticket.id}` })
+  } catch (error) {
+    uni.showToast({ title: error.message, icon: 'none' })
+  } finally {
+    submitting.value = false
+  }
 }
 </script>
 <style scoped>

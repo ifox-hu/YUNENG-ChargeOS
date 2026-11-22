@@ -1,4 +1,4 @@
-import request from '@/utils/request'
+import { getOperationOverview } from '@/api/operator/operations'
 import { listStation } from '@/api/operator/station'
 
 export function unpackPage(response) {
@@ -25,7 +25,8 @@ export async function loadStations() {
 // imported rows use conventional names: accept only unambiguous mainland ranges.
 export function stationPosition(station) {
   if (station.lat == null || station.lng == null || String(station.lat).trim() === '' || String(station.lng).trim() === '') return null
-  const first = Number(station.lat); const second = Number(station.lng)
+  const first = Number(station.lat)
+  const second = Number(station.lng)
   if (first >= 73 && first <= 136 && second >= 3 && second <= 54) return [first, second]
   if (second >= 73 && second <= 136 && first >= 3 && first <= 54) return [second, first]
   return null
@@ -38,7 +39,34 @@ export function metric(value, digits = 0) {
 
 export default {
   data() {
-    return { summary: {}, comparison: {}, hourly: [], orderQuality: {}, actionSummary: {}, stations: [], stationTotal: null, faultSummary: {}, alarms: [], pendingFaults: [], offlineDevices: [], trend: [], ranking: [], operatorStats: [], stationStats: [], operators: [], stationOptions: [], canFault: true, scope: { root: Number(this.$store.getters.userId) === 1, tenantId: null, stationId: null }, loading: false, updatedAt: '', failures: [] }
+    return {
+      summary: {},
+      comparison: {},
+      hourly: [],
+      orderQuality: {},
+      actionSummary: {},
+      stations: [],
+      stationTotal: null,
+      faultSummary: {},
+      alarms: [],
+      pendingFaults: [],
+      offlineDevices: [],
+      trend: [],
+      ranking: [],
+      operatorStats: [],
+      stationStats: [],
+      operators: [],
+      stationOptions: [],
+      canFault: true,
+      scope: {
+        root: Number(this.$store.getters.userId) === 1,
+        tenantId: null,
+        stationId: null
+      },
+      loading: false,
+      updatedAt: '',
+      failures: []
+    }
   },
   computed: {
     scopeLabel() {
@@ -46,12 +74,23 @@ export default {
       const station = this.stationOptions.find(item => String(item.stationId) === String(this.scope.stationId))
       return [operator ? operator.name : this.scope.root ? '全部运营商' : '本运营商', station ? station.stationName : '全部站点'].join(' / ')
     },
-    selectedStation() { return this.scope.stationId ? this.stationOptions.find(item => String(item.stationId) === String(this.scope.stationId)) : null }
+    selectedStation() {
+      return this.scope.stationId
+        ? this.stationOptions.find(item => String(item.stationId) === String(this.scope.stationId))
+        : null
+    }
   },
-  watch: { '$route.query'() { this.refreshOverview() } },
+  watch: {
+    '$route.query'() {
+      this.refreshOverview()
+    }
+  },
   methods: {
     metric,
-    overviewParams() { return { tenantId: this.$route.query.tenantId, stationId: this.$route.query.stationId } },
+    overviewParams() {
+      const { tenantId, stationId } = this.$route.query
+      return { tenantId, stationId }
+    },
     clearOverview() {
       Object.assign(this, {
         summary: {}, comparison: {}, hourly: [], orderQuality: {}, actionSummary: {},
@@ -64,7 +103,8 @@ export default {
       const station = this.stationOptions.find(item => String(item.stationId) === String(value.stationId))
       if (this.scope.root && value.stationId && !value.tenantId && station) value = { ...value, tenantId: station.tenantId }
       const query = { ...this.$route.query }
-      delete query.tenantId; delete query.stationId
+      delete query.tenantId
+      delete query.stationId
       if (value.tenantId) query.tenantId = String(value.tenantId)
       if (value.stationId) query.stationId = String(value.stationId)
       await this.$router.push({ query }).catch(() => {})
@@ -79,7 +119,7 @@ export default {
         const key = JSON.stringify([this.$store.getters.userId, params])
         keepPrevious = Boolean(this.retainOverviewOnFailure && this.loadedOverviewKey === key)
         if (!keepPrevious) this.clearOverview()
-        const { data } = await request({ url: '/operator/overview', method: 'get', params })
+        const { data } = await getOperationOverview(params)
         if (sequence !== this.requestSequence || this._isDestroyed || this._isBeingDestroyed) return
         this.scope = data.scope
         this.operators = data.operators || []

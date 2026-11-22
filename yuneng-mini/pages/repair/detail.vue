@@ -24,32 +24,65 @@
   </view>
 </template>
 <script setup>
-import {ref} from 'vue'
-import {onLoad,onShow,onPullDownRefresh} from '@dcloudio/uni-app'
-import {faultRequest,statuses,faultLabel} from '../../components/js/fault-api.js'
+import { ref } from 'vue'
+import { onLoad, onShow, onPullDownRefresh } from '@dcloudio/uni-app'
+import { faultRequest, statuses, faultLabel } from '../../components/js/fault-api.js'
 import pageHeader from '../../components/page-header/index.vue'
-const id=ref(''),detail=ref({}),loading=ref(false),confirming=ref(false),error=ref('')
-const tips={NEW:'报修已收到，等待安排处理人',ASSIGNED:'已安排处理人，即将开始处理',PROCESSING:'工作人员正在排查与修复',RESOLVED:'工作人员已提交结果，请确认问题是否解决',CLOSED:'感谢反馈，本次工单已关闭'}
-onLoad(options=>{id.value=options.id||''})
-onShow(()=>load())
-onPullDownRefresh(()=>load())
-async function load(){
-  if(loading.value || !id.value)return
-  if(!uni.getStorageSync('token')){detail.value={};return uni.navigateTo({url:'/pages/user/login'})}
-  loading.value=true;error.value=''
-  try{detail.value=await faultRequest(id.value)}
-  catch(e){error.value=e.message}
-  finally{loading.value=false;uni.stopPullDownRefresh()}
+
+const id = ref('')
+const detail = ref({})
+const loading = ref(false)
+const confirming = ref(false)
+const error = ref('')
+const tips = {
+  NEW: '报修已收到，等待安排处理人',
+  ASSIGNED: '已安排处理人，即将开始处理',
+  PROCESSING: '工作人员正在排查与修复',
+  RESOLVED: '工作人员已提交结果，请确认问题是否解决',
+  CLOSED: '感谢反馈，本次工单已关闭'
 }
-function confirm(){
-  if(confirming.value)return
-  uni.showModal({title:'确认关闭',content:'确认设备故障已经解决？',success:async res=>{
-    if(!res.confirm)return
-    confirming.value=true
-    try{detail.value=await faultRequest(id.value+'/confirm','POST');uni.showToast({title:'工单已关闭',icon:'success'})}
-    catch(e){uni.showToast({title:e.message,icon:'none'});load()}
-    finally{confirming.value=false}
-  }})
+
+onLoad(options => { id.value = options.id || '' })
+onShow(() => load())
+onPullDownRefresh(() => load())
+
+async function load() {
+  if (loading.value || !id.value) return
+  if (!uni.getStorageSync('token')) {
+    detail.value = {}
+    return uni.navigateTo({ url: '/pages/user/login' })
+  }
+  loading.value = true
+  error.value = ''
+  try {
+    detail.value = await faultRequest(id.value)
+  } catch (failure) {
+    error.value = failure.message
+  } finally {
+    loading.value = false
+    uni.stopPullDownRefresh()
+  }
+}
+
+function confirm() {
+  if (confirming.value) return
+  uni.showModal({
+    title: '确认关闭',
+    content: '确认设备故障已经解决？',
+    success: async result => {
+      if (!result.confirm) return
+      confirming.value = true
+      try {
+        detail.value = await faultRequest(`${id.value}/confirm`, 'POST')
+        uni.showToast({ title: '工单已关闭', icon: 'success' })
+      } catch (failure) {
+        uni.showToast({ title: failure.message, icon: 'none' })
+        load()
+      } finally {
+        confirming.value = false
+      }
+    }
+  })
 }
 </script>
 <style scoped>

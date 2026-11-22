@@ -22,23 +22,65 @@
 <script>
 import StationMap from './StationMap'
 import { stationPosition } from './data'
-import request from '@/utils/request'
+import { getOperationOverview } from '@/api/operator/operations'
+
 export default {
   name: 'OperationsMap',
   components: { StationMap },
-  data() { return { stations: [], keyword: '', region: null, selected: null, loading: false, error: '' } },
+  data() {
+    return {
+      stations: [],
+      keyword: '',
+      region: null,
+      selected: null,
+      loading: false,
+      error: ''
+    }
+  },
   computed: {
-    scopedStations() { const q = this.$route.query; return this.stations.filter(s => (!q.tenantId || String(s.tenantId) === String(q.tenantId)) && (!q.stationId || String(s.stationId) === String(q.stationId))) },
+    scopedStations() {
+      const { tenantId, stationId } = this.$route.query
+      return this.stations.filter(station => {
+        const matchesTenant = !tenantId || String(station.tenantId) === String(tenantId)
+        return matchesTenant && (!stationId || String(station.stationId) === String(stationId))
+      })
+    },
     filteredStations() {
       const keyword = this.keyword.trim().toLowerCase()
-      return this.scopedStations.filter(station => (!this.region || String(station.regionCode || '').slice(0, 2) === this.region.prefix || station.province === this.region.name) && (!keyword || [station.stationName, station.address].some(value => String(value || '').toLowerCase().includes(keyword))))
+      return this.scopedStations.filter(station => {
+        const matchesRegion = !this.region ||
+          String(station.regionCode || '').slice(0, 2) === this.region.prefix ||
+          station.province === this.region.name
+        return matchesRegion && (!keyword || [station.stationName, station.address]
+          .some(value => String(value || '').toLowerCase().includes(keyword)))
+      })
     },
-    missingCoordinates() { return this.scopedStations.filter(station => !stationPosition(station)).length },
-    demoLocations() { return this.scopedStations.filter(station => station.coordinateSource === 'DEMO' && stationPosition(station)).length },
-    detailVisible: { get() { return !!this.selected }, set(value) { if (!value) this.selected = null } }
+    missingCoordinates() {
+      return this.scopedStations.filter(station => !stationPosition(station)).length
+    },
+    demoLocations() {
+      return this.scopedStations.filter(station => station.coordinateSource === 'DEMO' && stationPosition(station)).length
+    },
+    detailVisible: {
+      get() {
+        return !!this.selected
+      },
+      set(value) {
+        if (!value) this.selected = null
+      }
+    }
   },
-  created() { this.load() },
-  watch: { '$route.query'() { this.region = null; this.selected = null; this.keyword = ''; this.load() } },
+  watch: {
+    '$route.query'() {
+      this.region = null
+      this.selected = null
+      this.keyword = ''
+      this.load()
+    }
+  },
+  created() {
+    this.load()
+  },
   methods: {
     position: stationPosition,
     async load() {
@@ -47,10 +89,17 @@ export default {
       this.error = ''
       try {
         const { tenantId, stationId } = this.$route.query
-        const { data } = await request({ url: '/operator/overview', method: 'get', params: { tenantId, stationId }})
+        const { data } = await getOperationOverview({ tenantId, stationId })
         if (sequence !== this.loadSequence || this._isDestroyed) return
         this.stations = data.stations || []
-      } catch (error) { if (sequence === this.loadSequence) { this.stations = []; this.error = '站点加载失败，请检查站点查看权限或网络后重试。' } } finally { if (sequence === this.loadSequence) this.loading = false }
+      } catch (error) {
+        if (sequence === this.loadSequence) {
+          this.stations = []
+          this.error = '站点加载失败，请检查站点查看权限或网络后重试。'
+        }
+      } finally {
+        if (sequence === this.loadSequence) this.loading = false
+      }
     }
   }
 }

@@ -9,7 +9,7 @@
   </div>
 </template>
 <script>
-import { loadThree } from '@/components/EnergyScene/scene'
+import { loadThree } from '@/utils/three-runtime'
 import StationMap from './StationMap'
 import { createAtlas } from './atlas'
 export default {

@@ -213,35 +213,40 @@ public class RuleServiceImpl implements IRuleService
 //        }
     }
 
-    public AjaxResult copyRule(Rule rule) {
-        Rule oldRule = ruleMapper.selectById(rule.getId());
-        oldRule.setChangeName(rule.getChangeName());
-        oldRule.setId(null);
-        oldRule.setUserId(rule.getUserId());
-        /*复制规则*/
-        /*如果重复 不做插入操作 并提示重复*/
-        if (!ruleMapper.selectRuleList(rule).isEmpty() && ruleMapper.selectRuleList(rule).get(0) != null) {
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public AjaxResult copyRule(Rule rule)
+    {
+        Rule source = ruleMapper.selectById(rule.getId());
+        if (source == null)
+        {
+            return AjaxResult.error(-1, "复制失败，规则不存在！");
+        }
+        if (!ruleMapper.selectRuleList(rule).isEmpty())
+        {
             return AjaxResult.error(-1, "复制失败，规则名称重复！");
         }
 
-        //设置为非默认规则
-        oldRule.setIsGive(0);
-        oldRule.setIsSysGive(0);
-        oldRule.setCreateTime(new Date());
-        // 插入规则
-        ruleMapper.insert(oldRule);
+        Date createdAt = new Date();
+        Rule copy = BeanUtil.copyProperties(source, Rule.class);
+        copy.setId(null);
+        copy.setChangeName(rule.getChangeName());
+        copy.setUserId(rule.getUserId());
+        copy.setIsGive(0);
+        copy.setIsSysGive(0);
+        copy.setCreateTime(createdAt);
+        ruleMapper.insert(copy);
 
-        QueryWrapper<CustomPrice> queryWrapper = new QueryWrapper();
-        queryWrapper.eq("rule_id", oldRule.getId());
-        // 复制规则价格
-        List<CustomPrice> customPrices = customPriceMapper.selectList(queryWrapper);
-        if (customPrices.size() > 0) {
-            for (CustomPrice c : customPrices) {
-                c.setPileId(null);
-                c.setRuleId(String.valueOf(oldRule.getId()));
-                c.setCreateTime(new Date());
-                customPriceMapper.insert(c);
-            }
+        QueryWrapper<CustomPrice> query = new QueryWrapper<>();
+        query.eq("rule_id", source.getId());
+        for (CustomPrice sourcePrice : customPriceMapper.selectList(query))
+        {
+            CustomPrice price = BeanUtil.copyProperties(sourcePrice, CustomPrice.class);
+            price.setPriceId(null);
+            price.setPileId(null);
+            price.setRuleId(String.valueOf(copy.getId()));
+            price.setCreateTime(createdAt);
+            customPriceMapper.insert(price);
         }
         return AjaxResult.success("复制成功");
     }

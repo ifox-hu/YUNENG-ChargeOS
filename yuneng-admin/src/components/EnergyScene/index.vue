@@ -10,7 +10,8 @@
 </template>
 
 <script>
-import { loadThree, createEnergyScene } from './scene'
+import { loadThree } from '@/utils/three-runtime'
+import { createEnergyScene } from './scene'
 
 export default {
   name: 'EnergyScene',
