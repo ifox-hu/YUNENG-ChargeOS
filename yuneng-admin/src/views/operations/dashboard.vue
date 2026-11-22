@@ -62,7 +62,12 @@
     </div>
     <p class="dashboard-footnote"><span v-if="containsDemoData" class="demo-note">当前范围含演示样本，仅供功能展示，不代表真实经营。 </span>经营数据按订单创建日期汇总，净收入为订单金额扣除退款；站点、设备与待办为当前状态。</p>
     <el-dialog :title="pendingKind==='faults'?'未关闭故障工单':'离线设备'" :visible.sync="pendingVisible" width="min(1000px,94vw)" class="pending-dialog"><p class="pending-scope">{{ scopeLabel }} · 当前状态，按时间由早到晚，最多展示前20条</p><el-table :data="pendingKind==='faults'?pendingFaults:offlineDevices" max-height="420" empty-text="当前范围暂无待处理数据"><el-table-column prop="pileId" label="设备编号" min-width="140" show-overflow-tooltip /><el-table-column prop="stationName" label="所属站点" min-width="140" show-overflow-tooltip /><el-table-column v-if="pendingKind==='faults'" prop="description" label="故障描述" min-width="170" show-overflow-tooltip /><el-table-column v-else prop="name" label="设备名称" min-width="140" show-overflow-tooltip /><el-table-column v-if="pendingKind==='faults'" label="状态" width="90"><template slot-scope="item">{{ ticketStatus(item.row.status) }}</template></el-table-column><el-table-column :label="pendingKind==='faults'?'创建时间':'离线时间'" min-width="160"><template slot-scope="item">{{ item.row[pendingKind==='faults'?'createdAt':'offlineTime'] || '时间未记录' }}</template></el-table-column><el-table-column :label="pendingKind==='faults'?'未关闭时长':'离线时长'" min-width="130"><template slot-scope="item"><span :class="{'duration-warning':Number(item.row[pendingKind==='faults'?'ageMinutes':'offlineMinutes'])>=1440}">{{ durationText(item.row[pendingKind==='faults'?'ageMinutes':'offlineMinutes']) }}</span></template></el-table-column><el-table-column label="操作" width="100"><template slot-scope="item"><el-button type="text" @click="openPendingRow(item.row)">{{ pendingKind==='faults'?'处理工单':'查看设备' }}</el-button></template></el-table-column></el-table></el-dialog>
-    <el-dialog title="站点详情" :visible.sync="stationDetailVisible" width="min(540px,94vw)"><el-descriptions v-if="selectedStation" :column="1" border><el-descriptions-item label="站点名称">{{ selectedStation.stationName }}</el-descriptions-item><el-descriptions-item label="站点编号">{{ selectedStation.stationId }}</el-descriptions-item><el-descriptions-item label="地址">{{ selectedStation.address || '地址待录入' }}</el-descriptions-item><el-descriptions-item label="所属运营商">{{ scopeLabel.split(' / ')[0] }}</el-descriptions-item></el-descriptions></el-dialog>
+    <el-dialog title="站点详情" :visible.sync="stationDetailVisible" width="min(540px,94vw)">
+      <el-descriptions v-if="selectedStation" :column="1" border><el-descriptions-item label="站点名称">{{ selectedStation.stationName }}</el-descriptions-item><el-descriptions-item label="站点编号">{{ selectedStation.stationId }}</el-descriptions-item><el-descriptions-item label="地址">{{ selectedStation.address || '地址待录入' }}</el-descriptions-item><el-descriptions-item label="所属运营商">{{ scopeLabel.split(' / ')[0] }}</el-descriptions-item></el-descriptions>
+      <template v-if="demoMode && selectedStation" #footer>
+        <el-button type="primary" @click="openStationDevices">查看设备</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 <script>
@@ -84,7 +89,7 @@ export default {
   name: 'Index',
   components: { ScopeSelector, OverviewChart, QuickActions, DashboardInsights },
   mixins: [overview],
-  data() { return { presets, calendarDay: businessToday(), retainOverviewOnFailure: true, stationDetailVisible: false, pendingVisible: false, pendingKind: 'faults', customMode: false, businessView: 'operators', tablePage: 1, businessKeyword: '', businessSort: { prop: 'revenue', order: 'descending' }, trendView: 'business' } },
+  data() { return { demoMode: process.env.VUE_APP_DEMO === 'true', presets, calendarDay: businessToday(), retainOverviewOnFailure: true, stationDetailVisible: false, pendingVisible: false, pendingKind: 'faults', customMode: false, businessView: 'operators', tablePage: 1, businessKeyword: '', businessSort: { prop: 'revenue', order: 'descending' }, trendView: 'business' } },
   computed: {
     activePreset() {
       const { periodPreset, startDate, endDate } = this.$route.query
@@ -131,6 +136,10 @@ export default {
   },
   created() { this.refreshOverview() },
   methods: {
+    openStationDevices() {
+      const { stationId, tenantId } = this.selectedStation
+      this.$router.push({ path: '/operate/station', query: { stationId: String(stationId), tenantId: String(tenantId) } })
+    },
     durationText, ticketStatus,
     comparisonFor(card) { return periodComparison(card.value, this.comparison.available && this.comparison.summary ? this.comparison.summary[card.key] : null, this.comparisonLabel) },
     sortBusiness({ prop, order }) { this.businessSort = prop && order ? { prop, order } : { prop: 'revenue', order: 'descending' }; this.tablePage = 1 },

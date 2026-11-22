@@ -138,6 +138,12 @@
       <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
         <template slot-scope="scope">
           <el-button
+            v-if="demoMode"
+            size="mini"
+            type="text"
+            @click="openDevices(scope.row)"
+          >查看设备</el-button>
+          <el-button
             size="mini"
             type="text"
             icon="el-icon-edit"
@@ -156,6 +162,14 @@
         </template>
       </el-table-column>
     </el-table>
+    <station-devices
+      v-if="demoMode && $route.name === 'Station' && $route.query.stationId"
+      :key="`${$route.query.tenantId}:${$route.query.stationId}:${$route.query.pileId}`"
+      :station-id="String($route.query.stationId)"
+      :tenant-id="$route.query.tenantId"
+      :pile-id="$route.query.pileId"
+      @close="$router.replace({ query: {} })"
+    />
 
     <pagination
       v-show="total>0"
@@ -241,12 +255,15 @@
 <script>
 import {listStation, getStation, delStation, addStation, updateStation} from "@/api/operator/station";
 import {parseTime} from "@/utils/hcp";
+import StationDevices from './StationDevices';
 
 export default {
   name: "Station",
+  components: { StationDevices },
   dicts: ['plot_supporting_facilities', 'sys_yes_no', 'device_type', 'plot_park_car_status', 'plot_receipt_status'],
   data() {
     return {
+      demoMode: process.env.VUE_APP_DEMO === 'true',
       // 遮罩层
       loading: true,
       // 选中数组
@@ -296,6 +313,11 @@ export default {
     this.getList();
   },
   methods: {
+    openDevices(station) {
+      const query = { stationId: String(station.stationId) };
+      if (station.tenantId != null) query.tenantId = String(station.tenantId);
+      this.$router.push({ query });
+    },
     /** 查询站点列表 */
     getList() {
       this.loading = true;

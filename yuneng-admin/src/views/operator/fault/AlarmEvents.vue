@@ -6,7 +6,7 @@
     </div>
     <el-alert v-if="demoMode" title="静态演示：告警与工单仅保存在当前浏览器，不连接后端、RocketMQ 或真实设备。提交后稍候刷新可查看模拟处理结果。" type="info" :closable="false" show-icon />
     <el-form :inline="true" :model="query">
-      <el-form-item label="设备"><el-input v-model.trim="query.pileId" placeholder="筛选告警设备" clearable /></el-form-item>
+      <el-form-item label="设备"><el-input v-model.trim="query.pileId" placeholder="筛选告警设备" :disabled="!!scope.pileId" clearable /></el-form-item>
       <el-form-item label="事件状态"><el-select v-model="query.status" clearable placeholder="全部">
         <el-option v-for="(label,key) in labels" :key="key" :value="key" :label="label" />
       </el-select></el-form-item>
@@ -46,6 +46,7 @@ import { listAlarmEvents, acceptAlarmEvent, replayAlarmEvent } from '@/api/opera
 
 export default {
   name: 'AlarmEvents',
+  props: { scope: { type: Object, default: () => ({}) } },
   data() {
     return {
       demoMode: process.env.VUE_APP_DEMO === 'true',
@@ -56,11 +57,33 @@ export default {
       form: { pileId: '', faultType: 'OFFLINE', priority: 'NORMAL', description: '' }, pending: null
     }
   },
-  mounted() { this.load() },
+  watch: {
+    scope: {
+      immediate: true,
+      handler() {
+        this.query.pileId = this.scope.pileId || ''
+        this.query.status = ''
+        this.query.pageNum = 1
+        this.load()
+      }
+    }
+  },
   methods: {
     load() {
       this.loading = true
-      return listAlarmEvents(this.query).then(r => { this.rows = r.data.records; this.total = r.data.total }).catch(() => {}).finally(() => { this.loading = false })
+      const request = listAlarmEvents({ ...this.query, ...this.scope })
+      this.pendingLoad = request
+      return request.then(r => {
+        if (this.pendingLoad !== request) return
+        this.rows = r.data.records
+        this.total = r.data.total
+      }).catch(() => {
+        if (this.pendingLoad !== request) return
+        this.rows = []
+        this.total = 0
+      }).finally(() => {
+        if (this.pendingLoad === request) this.loading = false
+      })
     },
     search() { this.query.pageNum = 1; this.load() },
     newAlarm() { this.pending = null; this.form = { pileId: '', faultType: 'OFFLINE', priority: 'NORMAL', description: '' }; this.visible = true },

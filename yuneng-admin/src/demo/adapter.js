@@ -70,7 +70,7 @@ const forbidden=()=>fail('此账号无权访问该演示功能或数据',403)
 const rows=url=>{const collection=db.lists[url]||{};return collection.rows||collection.data||[]}
 const same=(a,b)=>String(a)===String(b)
 const visible=(identity,row)=>identity.root||same(row.tenantId,identity.tenantId)
-const tenantRead=/^\/operator\/(?:overview|station\/[^/]+|order\/(?:getOrderByOrderNumber\/)?[^/]+|fault\/(?:list|stats|\d+|alarms(?:\/\d+)?))$/
+const tenantRead=/^\/operator\/(?:overview|station\/[^/]+(?:\/devices)?|order\/(?:getOrderByOrderNumber\/)?[^/]+|fault\/(?:list|stats|\d+|alarms(?:\/\d+)?))$/
 const tenantCommon=/^\/system\/(?:menu\/getRouters|user\/getInfo|dict\/data\/type\/\w+|config\/configKey\/[\w.]+)$/
 const primaryKeys={station:'stationId',pile:'pileId',port:'portId',order:'orderId',member:'memberId',balance:'id',rule:'ruleId',price:'id',city:'id',miniapp:'id',user:'userId',role:'roleId',post:'postId',notice:'noticeId',tenant:'id',tenantpackage:'id',config:'configId',type:'dictId',demo:'demoId',online:'tokenId',operlog:'operId',logininfor:'infoId',data:'dictCode'}
 function listResponse(rows,query,original={}) {
@@ -118,6 +118,22 @@ function handle(config) {
  if(operationResult){persist();return operationResult}
  if(url==='/operator/overview'){handleDemoAlarms(db,'/operator/fault/alarms','get',{},{});persist();return ok(demoOverview(db,q,identity))}
  if(url==='/operator/station/list'&&!identity.root)return listResponse(rows(url).filter(row=>visible(identity,row)),q)
+ const stationDevices=url.match(/^\/operator\/station\/([^/]+)\/devices$/)
+ if(stationDevices&&method==='get'){
+  const station=rows('/operator/station/list').find(row=>visible(identity,row)&&same(row.stationId,decodeURIComponent(stationDevices[1]))&&(!q.tenantId||same(row.tenantId,q.tenantId))&&!Number(row.delFlag))
+  if(!station)return fail('站点不存在',404)
+  const owned=row=>same(row.tenantId,station.tenantId)
+  const portsByPile=new Map()
+  for(const port of rows('/operator/port/list').filter(port=>owned(port)&&!Number(port.deleted)&&!Number(port.delFlag))){
+    const pileId=String(port.pileId)
+    if(!portsByPile.has(pileId))portsByPile.set(pileId,[])
+    portsByPile.get(pileId).push(port)
+  }
+  const piles=rows('/operator/pile/list')
+    .filter(pile=>owned(pile)&&same(pile.stationId,station.stationId)&&!Number(pile.deleted))
+    .map(pile=>({...pile,ports:portsByPile.get(String(pile.pileId))||[]}))
+  return ok({station,piles})
+ }
  if(url==='/operator/order/list'&&method==='get') {
    const byTenant=(tenantId,id)=>tenantId+':'+id
    const piles=new Map(rows('/operator/pile/list').map(pile=>[byTenant(pile.tenantId,pile.pileId),pile]))
@@ -190,7 +206,7 @@ function handle(config) {
 function fault(url,method,b,q,identity){
  const id=Number(url.split('/')[3])
  const piles=rows('/operator/pile/list')
- const scoped=db.faults.filter(t=>visible(identity,t)&&(!q.tenantId||same(t.tenantId,q.tenantId))&&(!q.stationId||piles.some(p=>same(p.pileId,t.pileId)&&same(p.tenantId,t.tenantId)&&same(p.stationId,q.stationId))))
+ const scoped=db.faults.filter(t=>visible(identity,t)&&(!q.tenantId||same(t.tenantId,q.tenantId))&&(!q.pileId||same(t.pileId,q.pileId))&&(!q.stationId||piles.some(p=>same(p.pileId,t.pileId)&&same(p.tenantId,t.tenantId)&&same(p.stationId,q.stationId))))
  const ticket=scoped.find(t=>t.id===id)
  if(url.endsWith('/list')){const r=listResponse(scoped.filter(t=>q.activeOnly!=='true'||t.status!=='CLOSED'),q);return ok({records:r.rows,total:r.total})}
  if(url.endsWith('/stats'))return ok({total:scoped.length,active:scoped.filter(t=>t.status!=='CLOSED').length,pending:scoped.filter(t=>t.status==='NEW').length,closed:scoped.filter(t=>t.status==='CLOSED').length,alarmCount:scoped.reduce((sum,t)=>sum+Number(t.alarmCount||0),0),avgResolveMinutes:null,trend:[{day:new Date().toISOString().slice(0,10),count:scoped.length}],byType:['OFFLINE','CONNECTOR','POWER','OTHER'].map(faultType=>({faultType,count:scoped.filter(t=>t.faultType===faultType).length}))})

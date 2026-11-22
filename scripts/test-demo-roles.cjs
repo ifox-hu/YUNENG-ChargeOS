@@ -63,6 +63,32 @@ test('platform and tenant logins return different routes and scope operator reco
   assert.equal(overview.operators[0].name, '城际快充 · 演示')
   assert.equal(overview.stationOptions.length, 3)
   assert.equal((await request('/operator/overview', admin)).data.scope.root, true)
+  const stationId = overview.stationOptions[0].stationId
+  const stationDevices = '/operator/station/' + stationId + '/devices'
+  const devices = await request(stationDevices, demo)
+  assert.equal(devices.code, 200)
+  assert.equal(devices.data.station.stationId, stationId)
+  assert.equal(devices.data.piles.length, 12)
+  assert.equal(devices.data.piles.flatMap(pile => pile.ports).length, 24)
+  assert(devices.data.piles.every(pile =>
+    pile.tenantId === 887001 && pile.ports.every(port => port.pileId === pile.pileId && port.tenantId === 887001)))
+  assert.equal((await request(stationDevices, demo, 'put', {})).code, 403)
+  assert.equal((await request(stationDevices + '?tenantId=9999', demo)).code, 403)
+  const allStations = (await request('/operator/station/list?pageSize=50', admin)).rows
+  const otherStation = allStations.find(row => Number(row.tenantId) === 9999)
+  const otherDevices = '/operator/station/' + otherStation.stationId + '/devices'
+  assert.equal((await request(otherDevices, admin)).code, 200)
+  assert.equal((await request(otherDevices, demo)).code, 404)
+
+  const pileId = devices.data.piles[0].pileId
+  const filter = '?tenantId=887001&stationId=' + stationId + '&pileId=' + pileId
+  const alarm = (await request('/operator/fault/alarms' + filter, demo)).data.records[0]
+  assert.equal(alarm.pileId, pileId)
+  assert.equal((await request('/operator/fault/' + alarm.ticketId, demo)).data.ticket.pileId, pileId)
+  assert.equal((await request('/operator/fault/stats' + filter, demo)).data.total, 1)
+  const otherPileFilter = '?pileId=' + devices.data.piles[1].pileId
+  assert.equal((await request('/operator/fault/alarms' + otherPileFilter, demo)).data.total, 0)
+  assert.equal((await request('/operator/fault/stats' + otherPileFilter, demo)).data.total, 0)
   for (const [endpoint, key] of [
     ['/operator/station/list', 'stationId'],
     ['/operator/order/list', 'orderId'],
@@ -89,4 +115,15 @@ test('platform and tenant logins return different routes and scope operator reco
   assert.equal((await request('/auth/logout', demo, 'delete')).code, 200)
   assert.equal((await request('/operator/station/list', demo)).code, 401)
   assert.equal((await request('/operator/station/list', admin)).code, 200)
+
+  const saved = JSON.parse(storage.get('yuneng-original-ui-demo-v1'))
+  const { sampleMarker, prepareDashboardSamples } = files.get(path.join(source, 'dashboardSamples.js')).namespace
+  const ports = saved.lists['/operator/port/list']
+  const originalPorts = (ports.rows || ports.data).filter(port => port.createBy !== sampleMarker)
+  ports.rows = ports.data = originalPorts.slice()
+  saved.dashboardSampleVersion = 1
+  prepareDashboardSamples(saved, saved.dashboardSampleDate, 43200)
+  prepareDashboardSamples(saved, saved.dashboardSampleDate, 43200)
+  assert.deepEqual(Array.from(ports.rows.filter(port => port.createBy !== sampleMarker)), originalPorts)
+  assert.equal(ports.rows.filter(port => port.tenantId === 887001).length, 72)
 })

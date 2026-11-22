@@ -17,6 +17,14 @@ export function getStation(stationId) {
   })
 }
 
+export function getDemoStationDevices(stationId, tenantId) {
+  return request({
+    url: '/operator/station/' + encodeURIComponent(stationId) + '/devices',
+    method: 'get',
+    params: { tenantId }
+  })
+}
+
 // 新增站点
 export function addStation(data) {
   return request({

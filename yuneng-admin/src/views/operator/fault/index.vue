@@ -10,10 +10,13 @@
       <el-col :span="16"><el-card shadow="never"><div slot="header">近七天新增工单</div><div ref="trendChart" class="chart"></div></el-card></el-col>
       <el-col :span="8"><el-card shadow="never"><div slot="header">故障类型分布</div><div ref="typeChart" class="chart"></div></el-card></el-col>
     </el-row>
-    <el-alert v-if="query.tenantId || query.stationId" title="工单列表与统计已沿用仪表盘的运营范围" type="info" :closable="false" style="margin-bottom:16px"><el-button type="text" @click="$router.replace({path:'/operate/fault',query:{}})">查看全部可见工单</el-button></el-alert>
+    <el-alert v-if="query.tenantId || query.stationId" :title="alarmScope.pileId ? '当前设备 ' + alarmScope.pileId : '工单列表与统计已沿用仪表盘的运营范围'" type="info" :closable="false" style="margin-bottom:16px">
+      <el-button v-if="alarmScope.pileId" type="text" @click="$router.push({ path: '/operate/station', query: alarmScope })">返回站点设备</el-button>
+      <el-button type="text" @click="$router.replace({path:'/operate/fault',query:{}})">查看全部可见工单</el-button>
+    </el-alert>
     <el-form :inline="true" :model="query">
       <el-form-item><el-checkbox v-model="query.activeOnly" @change="search">仅未关闭工单</el-checkbox></el-form-item>
-      <el-form-item label="设备编号"><el-input v-model.trim="query.pileId" placeholder="完整桩编号" clearable @keyup.enter.native="search" /></el-form-item>
+      <el-form-item label="设备编号"><el-input v-model.trim="query.pileId" placeholder="完整桩编号" :disabled="!!alarmScope.pileId" clearable @keyup.enter.native="search" /></el-form-item>
       <el-form-item label="工单状态"><el-select v-model="query.status" clearable placeholder="全部状态"><el-option v-for="(label,key) in statuses" :key="key" :value="key" :label="label" /></el-select></el-form-item>
       <el-form-item label="故障类型"><el-select v-model="query.faultType" clearable placeholder="全部类型"><el-option v-for="(label,key) in types" :key="key" :value="key" :label="label" /></el-select></el-form-item>
       <el-form-item><el-button type="primary" icon="el-icon-search" @click="search">查询</el-button><el-button @click="reset">重置</el-button></el-form-item>
@@ -32,7 +35,7 @@
     <pagination v-show="total>0" :total="total" :page.sync="query.pageNum" :limit.sync="query.pageSize" @pagination="load" />
     <p class="muted">累计告警 {{stats.alarmCount || 0}} 次 · 平均解决耗时 {{stats.avgResolveMinutes == null ? '暂无' : stats.avgResolveMinutes+' 分钟'}}。统计来自实际工单记录。</p>
 
-    <alarm-events @open-ticket="openDetail" @accepted="refresh" />
+    <alarm-events ref="alarmEvents" :scope="alarmScope" @open-ticket="openDetail" @accepted="refresh" />
     <el-dialog title="模拟设备告警" :visible.sync="alarmVisible" width="500px">
       <el-alert title="用于本地演示，会生成告警记录及工单，不改变设备充电状态。" type="info" :closable="false" />
       <el-form :model="alarm" label-width="90px" class="dialog-form">
@@ -94,15 +97,26 @@ export default {
     alarm:{pileId:'',faultType:'OFFLINE',priority:'NORMAL',description:''},detail:{},assignees:[],
     action:{action:'ASSIGN',note:'',assigneeId:null}
   }},
-  mounted() { this.applyDashboardFilters(); this.refresh(); if(this.$route.query.ticketId)this.openDetail(this.$route.query.ticketId); window.addEventListener('resize',this.resize) },
-  watch: { '$route.query'(q) { if(this.$route.path==='/operate/fault'){this.applyDashboardFilters();this.refresh();if(q.ticketId)this.openDetail(q.ticketId)} } },
+  computed: {
+    alarmScope() {
+      const { view, tenantId, stationId, pileId } = this.$route.query
+      return process.env.VUE_APP_DEMO === 'true' && view === 'alarms' && stationId && pileId
+        ? { tenantId, stationId, pileId }
+        : {}
+    }
+  },
+  mounted() { this.applyDashboardFilters(); this.refresh(); this.focusAlarms(); if(this.$route.query.ticketId)this.openDetail(this.$route.query.ticketId); window.addEventListener('resize',this.resize) },
+  watch: { '$route.query'(q) { if(this.$route.path==='/operate/fault'){this.applyDashboardFilters();this.refresh();this.focusAlarms();if(q.ticketId)this.openDetail(q.ticketId)} } },
   beforeDestroy() { window.removeEventListener('resize',this.resize); if(this.trendChart)this.trendChart.dispose();if(this.typeChart)this.typeChart.dispose() },
   methods:{
-    applyDashboardFilters() {const q=this.$route.query;this.query.tenantId=q.tenantId||q.targetTenantId||null;this.query.stationId=q.stationId||null;this.query.activeOnly=q.activeOnly==='true'||q.status==='ACTIVE';this.query.pageNum=1;this.query.status=q.status==='ACTIVE'?'':q.status||'';this.query.faultType='';this.query.pileId=''},
+    applyDashboardFilters() {const q=this.$route.query;this.query.tenantId=q.tenantId||q.targetTenantId||null;this.query.stationId=q.stationId||null;this.query.activeOnly=q.activeOnly==='true'||q.status==='ACTIVE';this.query.pageNum=1;this.query.status=q.status==='ACTIVE'?'':q.status||'';this.query.faultType='';this.query.pileId=this.alarmScope.pileId||''},
+    focusAlarms() {
+      if (this.alarmScope.pileId) this.$nextTick(() => this.$refs.alarmEvents?.$el.scrollIntoView({ block: 'start' }))
+    },
     load() { this.loading=true; return api.listFaults(this.query).then(r=>{this.rows=r.data.records;this.total=r.data.total}).finally(()=>{this.loading=false}) },
-    refresh() { this.load(); api.faultStats({tenantId:this.query.tenantId,stationId:this.query.stationId}).then(r=>{this.stats=r.data;this.$nextTick(this.drawCharts)}) },
+    refresh() { this.load(); api.faultStats({tenantId:this.query.tenantId,stationId:this.query.stationId,pileId:this.alarmScope.pileId}).then(r=>{this.stats=r.data;this.$nextTick(this.drawCharts)}) },
     search() {this.query.pageNum=1;this.load()},
-    reset() {this.query={...this.query,pageNum:1,pageSize:10,pileId:'',status:'',faultType:'',activeOnly:false};this.load()},
+    reset() {this.query={...this.query,pageNum:1,pageSize:10,pileId:this.alarmScope.pileId||'',status:'',faultType:'',activeOnly:false};this.load()},
     resize() {if(this.trendChart)this.trendChart.resize();if(this.typeChart)this.typeChart.resize()},
     drawCharts() {
       if(!this.trendChart)this.trendChart=echarts.init(this.$refs.trendChart);
